@@ -191,7 +191,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
 /// All methods are serialized by the actor — no concurrent WASM engine access.
 actor WasmActor {
     let delegate = WasmDelegate()
-    private let logger: @Sendable (String) -> Void
+    let logger: @Sendable (String) -> Void
 
     // MARK: - Init
 
