@@ -46,7 +46,10 @@ let package = Package(
                 // Merged sub-module directory created by MergeFlowKitModules plugin.
                 // Contains AsyncWasm, TaskWasm, etc. but NOT FlowKit/SwiftProtobuf
                 // (those are resolved by SPM to the correct xcframework slice).
-                .unsafeFlags(["-I", "\(packageDir)/.build/flowkit-merged-modules"]),
+                .unsafeFlags([
+                    "-I", "\(packageDir)/.build/flowkit-merged-modules",  // local dev
+                    "-I", "/tmp/wasmclient-flowkit-modules",              // build plugin
+                ]),
             ],
             plugins: [
                 .plugin(name: "MergeFlowKitModules"),
