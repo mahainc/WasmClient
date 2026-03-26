@@ -55,6 +55,7 @@ extension WasmClient {
                 ActionInfo(id: ActionID.livescore.rawValue, provider: "football", name: "Livescore"),
             ]
         },
+        refreshActions: { },
         uploadImage: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return "https://example.com/mock-image.jpg"
