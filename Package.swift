@@ -22,8 +22,8 @@ let package = Package(
             branch: "main"
         ),
         .package(
-            url: "https://github.com/haikt-vtn/flow-kit.git",
-            from: "1.2.6"
+            url: "https://github.com/mahainc/flow-kit.git",
+            from: "1.2.3"
         ),
     ],
     targets: [
