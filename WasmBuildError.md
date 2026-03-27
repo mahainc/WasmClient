@@ -38,3 +38,26 @@ Root Cause: Xcode 26 corrupts .wasm files in xcframework artifacts
 
   The fix script copies the valid base.wasm from SourcePackages/checkouts/ (uncorrupted) to replace the corrupted copies in the app bundle, intermediate products, and artifacts
   directory.
+
+  Automatic Fix Integration
+
+  The fix is shipped as scripts/fix-wasm-corruption.sh in this repository. Any XcodeGen
+  project that adds WasmClient to its Features package gets the fix by adding two things
+  to project.yml:
+
+  1. Project-level setting:
+
+     settings:
+       base:
+         ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+  2. Post-build script on the app target:
+
+     postBuildScripts:
+       - name: Fix Wasm Resource
+         script: |
+           SCRIPT="${SRCROOT}/../Features/.build/checkouts/WasmClient/scripts/fix-wasm-corruption.sh"
+           [ -x "$SCRIPT" ] && "$SCRIPT" || echo "warning: fix-wasm-corruption.sh not found at $SCRIPT"
+         basedOnDependencyAnalysis: false
+
+  See xcodegen/wasm-postbuild.yml for the full reference.
