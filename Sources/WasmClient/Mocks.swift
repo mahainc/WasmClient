@@ -67,13 +67,28 @@ extension WasmClient {
                 price: PriceInfo(averageFairMarketPrice: "$29.99")
             )
         },
-        visualSearch: { _ in
+        describe: { _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return ScanResult(
+                title: "Mock Object",
+                description: "An enriched description with full details.",
+                categoryType: "electronics",
+                characteristics: ["Color": "Blue", "Material": "Metal", "Weight": "150g"],
+                suggestedQuestions: ["What is this?", "Where can I buy it?"],
+                price: PriceInfo(averageFairMarketPrice: "$29.99"),
+                aiCommentary: AICommentary(
+                    aiAssistantSays: "This appears to be a high-quality item.",
+                    interestingFacts: "This type of product has been popular since 2020."
+                )
+            )
+        },
+        visualSearch: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return [
                 ShoppingProduct(title: "Similar Item", price: "$19.99", url: "https://example.com/product"),
             ]
         },
-        shopping: { _ in
+        shopping: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return [
                 ShoppingProduct(title: "Mock Product", price: "$24.99", url: "https://example.com/shop"),

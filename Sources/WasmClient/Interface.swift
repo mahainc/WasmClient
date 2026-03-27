@@ -61,11 +61,25 @@ public struct WasmClient: Sendable {
         _ imageData: Data, _ category: String, _ language: String
     ) async throws -> WasmClient.ScanResult
 
+    /// Describe/enrich a previously scanned image with full details.
+    /// Uses the image URL returned by a prior `scan` call and the detected category
+    /// to fetch characteristics, AI commentary, and richer metadata.
+    /// Pass the scan result's `provider` to ensure the same provider handles enrichment.
+    public var describe: @Sendable (
+        _ imageURL: String, _ category: String, _ language: String, _ provider: String
+    ) async throws -> WasmClient.ScanResult
+
     /// Visual search on an already-uploaded image URL. Returns matching products.
-    public var visualSearch: @Sendable (_ imageURL: String) async throws -> [WasmClient.ShoppingProduct]
+    /// Pass the scan result's `provider` for provider-consistent results.
+    public var visualSearch: @Sendable (
+        _ imageURL: String, _ provider: String
+    ) async throws -> [WasmClient.ShoppingProduct]
 
     /// Search for shopping products by text query.
-    public var shopping: @Sendable (_ query: String) async throws -> [WasmClient.ShoppingProduct]
+    /// Pass the scan result's `provider` for provider-consistent results.
+    public var shopping: @Sendable (
+        _ query: String, _ provider: String
+    ) async throws -> [WasmClient.ShoppingProduct]
 
     // MARK: - Blobstore
 

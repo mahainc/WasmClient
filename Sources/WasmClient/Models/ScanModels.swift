@@ -7,6 +7,8 @@ extension WasmClient {
         public var description: String
         public var categoryType: String
         public var imageURL: String
+        /// The provider that produced this result (for provider-matching on enrichment).
+        public var provider: String
         public var characteristics: [String: String]
         public var suggestedQuestions: [String]
         public var nutrition: NutritionInfo?
@@ -23,6 +25,7 @@ extension WasmClient {
             description: String = "",
             categoryType: String = "",
             imageURL: String = "",
+            provider: String = "",
             characteristics: [String: String] = [:],
             suggestedQuestions: [String] = [],
             nutrition: NutritionInfo? = nil,
@@ -38,6 +41,7 @@ extension WasmClient {
             self.description = description
             self.categoryType = categoryType
             self.imageURL = imageURL
+            self.provider = provider
             self.characteristics = characteristics
             self.suggestedQuestions = suggestedQuestions
             self.nutrition = nutrition

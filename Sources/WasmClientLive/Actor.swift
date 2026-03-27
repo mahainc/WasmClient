@@ -197,14 +197,25 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     }
 
     /// Resolve an action — lazily discovers providers on first call.
-    func resolveAction(actionID: String, logger: @escaping @Sendable (String) -> Void) async throws -> WaTAction {
+    /// When `preferredProvider` is given, selects the action from that provider
+    /// (matching flow-kit-example's pattern of using the same provider across
+    /// scan/describe/visualSearch/shopping). Falls back to first available.
+    func resolveAction(
+        actionID: String,
+        preferredProvider: String? = nil,
+        logger: @escaping @Sendable (String) -> Void
+    ) async throws -> WaTAction {
         if actionCache.isEmpty {
             try await ensureActionsLoaded(logger: logger)
         }
-        guard let actions = actionCache[actionID], let action = actions.first else {
+        guard let actions = actionCache[actionID], !actions.isEmpty else {
             throw WasmClient.Error.noProviderFound(action: actionID)
         }
-        return action
+        if let preferred = preferredProvider,
+           let match = actions.first(where: { $0.provider == preferred }) {
+            return match
+        }
+        return actions[0]
     }
 
     /// Reset the engine — clear all cached state.
