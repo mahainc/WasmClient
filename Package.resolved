@@ -1,5 +1,5 @@
 {
-  "originHash" : "ceafa6644fefe775ad7ae0a9238772a01abbf4abf91164f0558d097e6bef6098",
+  "originHash" : "d6c4eea4335c5be6f0aa3f3ea2e57fce1a15a87a8a02407cd01b05dc555a83f6",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/haikt-vtn/flow-kit.git",
       "state" : {
-        "revision" : "17c8682853a408d36a12711b523220863c0e23ff",
-        "version" : "1.2.5"
+        "revision" : "3effc51d878868e0d144f00253e4dd7f645a9074",
+        "version" : "1.2.6"
       }
     },
     {

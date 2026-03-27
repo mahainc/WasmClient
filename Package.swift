@@ -23,7 +23,7 @@ let package = Package(
         ),
         .package(
             url: "https://github.com/haikt-vtn/flow-kit.git",
-            from: "1.2.5"
+            from: "1.2.6"
         ),
     ],
     targets: [
