@@ -22,6 +22,9 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     /// Flag set when stateChanged(.running) fires — guards against the race
     /// where the callback arrives before withCheckedContinuation stores itself.
     private var engineDidReachRunning = false
+    /// In-flight start task — prevents actor reentrancy from building
+    /// duplicate engines when multiple callers hit ensureStarted concurrently.
+    private var startTask: Task<TaskWasmProtocol, any Error>?
 
     // MARK: - WasmInstanceDelegate
 
@@ -46,54 +49,68 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     // MARK: - Engine Lifecycle
 
     /// Build and start the engine. Action discovery is deferred to first use.
+    /// Safe to call concurrently — the second caller awaits the first caller's
+    /// in-flight task instead of building a duplicate engine (actor reentrancy guard).
     func ensureStarted(logger: @escaping @Sendable (String) -> Void) async throws -> TaskWasmProtocol {
         if let engine, isStarted { return engine }
+
+        // If another call is already starting the engine, piggyback on it.
+        if let startTask {
+            logger("Engine start already in progress — waiting for existing task...")
+            return try await startTask.value
+        }
+
         self.logger = logger
 
-        Self.installWasmBinaryIfNeeded(logger: logger)
+        let task = Task<TaskWasmProtocol, any Error> {
+            Self.installWasmBinaryIfNeeded(logger: logger)
 
-        // If no downloaded version exists, clear any bad cache state so
-        // WasmUpdateManager inside TaskWasm.default() triggers a fresh download.
-        if AsyncifyWasm.currentVersionID == nil {
-            logger("No cached wasm version — resetting downloads to force fresh download")
-            AsyncifyWasm.resetDownloads()
-        } else {
-            logger("Using cached wasm version: \(AsyncifyWasm.currentVersionID!)")
-        }
+            // If no downloaded version exists, clear any bad cache state so
+            // WasmUpdateManager inside TaskWasm.default() triggers a fresh download.
+            if AsyncifyWasm.currentVersionID == nil {
+                logger("No cached wasm version — resetting downloads to force fresh download")
+                AsyncifyWasm.resetDownloads()
+            } else {
+                logger("Using cached wasm version: \(AsyncifyWasm.currentVersionID!)")
+            }
 
-        logger("Building engine via TaskWasm.default()...")
-        var instance = try await TaskWasm.default()
-        instance.premium = true
-        instance.delegate = self
+            logger("Building engine via TaskWasm.default()...")
+            var instance = try await TaskWasm.default()
+            instance.premium = true
+            instance.delegate = self
 
-        logger("Starting engine (delegate set)...")
-        stateContinuation?.yield(.starting)
-        try await instance.start()
-        logger("Engine start() returned, waiting for delegate .running callback...")
+            logger("Starting engine (delegate set)...")
+            self.stateContinuation?.yield(.starting)
+            try await instance.start()
+            logger("Engine start() returned, waiting for delegate .running callback...")
 
-        // Wait for the delegate's stateChanged(.running) callback.
-        // FlowKit fires this AFTER start() returns, once the engine is truly ready
-        // with providers registered. Without this wait, engine.actions() returns
-        // empty because the internal state machine hasn't reached .running yet.
-        //
-        // Guard: if stateChanged(.running) already fired during start(), skip
-        // the continuation entirely to avoid a leaked-continuation hang.
-        if !engineDidReachRunning {
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                if self.engineDidReachRunning {
-                    // .running arrived between the if-check and here — resume immediately.
-                    continuation.resume()
-                } else {
-                    self.runningContinuation = continuation
+            // Wait for the delegate's stateChanged(.running) callback.
+            // FlowKit fires this AFTER start() returns, once the engine is truly ready
+            // with providers registered. Without this wait, engine.actions() returns
+            // empty because the internal state machine hasn't reached .running yet.
+            //
+            // Guard: if stateChanged(.running) already fired during start(), skip
+            // the continuation entirely to avoid a leaked-continuation hang.
+            if !self.engineDidReachRunning {
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    if self.engineDidReachRunning {
+                        // .running arrived between the if-check and here — resume immediately.
+                        continuation.resume()
+                    } else {
+                        self.runningContinuation = continuation
+                    }
                 }
             }
-        }
-        logger("Engine delegate confirmed .running")
+            logger("Engine delegate confirmed .running")
 
-        engine = instance
-        isStarted = true
-        stateContinuation?.yield(.running)
-        return instance
+            self.engine = instance
+            self.isStarted = true
+            self.startTask = nil
+            self.stateContinuation?.yield(.running)
+            return instance
+        }
+        startTask = task
+        return try await task.value
     }
 
     /// Poll the engine for action providers. Called lazily on first
@@ -192,6 +209,8 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
 
     /// Reset the engine — clear all cached state.
     func resetEngine() {
+        startTask?.cancel()
+        startTask = nil
         engine = nil
         isStarted = false
         engineDidReachRunning = false
