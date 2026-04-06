@@ -21,12 +21,23 @@ EXCLUDE="FlowKit.swiftmodule SwiftProtobuf.swiftmodule"
 XCFW=""
 for candidate in \
   "$PACKAGE_DIR/.build/artifacts/flow-kit/FlowKit/FlowKit.xcframework" \
-  "$PACKAGE_DIR/../../artifacts/flow-kit/FlowKit/FlowKit.xcframework"; do
+  "$PACKAGE_DIR/.build/artifacts/flowkitpackage/FlowKit/FlowKit.xcframework" \
+  "$PACKAGE_DIR/../../artifacts/flow-kit/FlowKit/FlowKit.xcframework" \
+  "$PACKAGE_DIR/../../artifacts/flowkitpackage/FlowKit/FlowKit.xcframework"; do
   if [ -d "$candidate" ]; then
     XCFW="$candidate"
     break
   fi
 done
+
+if [ -z "$XCFW" ]; then
+  while IFS= read -r candidate; do
+    if [ -d "$candidate" ]; then
+      XCFW="$candidate"
+      break
+    fi
+  done < <(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/SourcePackages/artifacts/flowkitpackage/FlowKit/FlowKit.xcframework' -type d 2>/dev/null | sort)
+fi
 
 if [ -z "$XCFW" ]; then
   echo "warning: FlowKit.xcframework not found — sub-modules will not be available." >&2

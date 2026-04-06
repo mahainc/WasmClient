@@ -1,4 +1,4 @@
-// swift-tools-version: 6.3
+// swift-tools-version: 6.2
 import PackageDescription
 
 let packageDir = Context.packageDirectory
@@ -6,6 +6,7 @@ let packageDir = Context.packageDirectory
 let package = Package(
     name: "WasmClient",
     platforms: [
+        .macOS(.v14),
         .iOS(.v17),
     ],
     products: [
@@ -21,10 +22,7 @@ let package = Package(
             url: "https://github.com/apple/swift-protobuf.git",
             branch: "main"
         ),
-        .package(
-            url: "https://github.com/mahainc/flow-kit.git",
-            from: "1.2.3"
-        ),
+        .package(path: "Vendor/FlowKitPackage"),
     ],
     targets: [
         .target(
@@ -38,8 +36,8 @@ let package = Package(
             dependencies: [
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
-                .product(name: "FlowKit", package: "flow-kit"),
-                .product(name: "FlowKitCModules", package: "flow-kit"),
+                .product(name: "FlowKit", package: "FlowKitPackage"),
+                .product(name: "FlowKitCModules", package: "FlowKitPackage"),
                 "WasmClient",
             ],
             resources: [
