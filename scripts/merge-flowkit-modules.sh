@@ -20,8 +20,10 @@ EXCLUDE="FlowKit.swiftmodule SwiftProtobuf.swiftmodule"
 # Search known xcframework locations (local dev + dependency consumer).
 XCFW=""
 for candidate in \
+  "$PACKAGE_DIR/.build/artifacts/wasmclient/FlowKit/FlowKit.xcframework" \
   "$PACKAGE_DIR/.build/artifacts/flow-kit/FlowKit/FlowKit.xcframework" \
   "$PACKAGE_DIR/.build/artifacts/flowkitpackage/FlowKit/FlowKit.xcframework" \
+  "$PACKAGE_DIR/../../artifacts/wasmclient/FlowKit/FlowKit.xcframework" \
   "$PACKAGE_DIR/../../artifacts/flow-kit/FlowKit/FlowKit.xcframework" \
   "$PACKAGE_DIR/../../artifacts/flowkitpackage/FlowKit/FlowKit.xcframework"; do
   if [ -d "$candidate" ]; then
@@ -36,7 +38,7 @@ if [ -z "$XCFW" ]; then
       XCFW="$candidate"
       break
     fi
-  done < <(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/SourcePackages/artifacts/flowkitpackage/FlowKit/FlowKit.xcframework' -type d 2>/dev/null | sort)
+  done < <(find "$HOME/Library/Developer/Xcode/DerivedData" \( -path '*/SourcePackages/artifacts/wasmclient/FlowKit/FlowKit.xcframework' -o -path '*/SourcePackages/artifacts/flowkitpackage/FlowKit/FlowKit.xcframework' \) -type d 2>/dev/null | sort)
 fi
 
 if [ -z "$XCFW" ]; then

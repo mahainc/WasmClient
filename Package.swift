@@ -2,6 +2,9 @@
 import PackageDescription
 
 let packageDir = Context.packageDirectory
+let flowKitVersion = "1.2.7-26.1.1"
+let flowKitChecksum = "bfe7eb1ad796bcf2722653d10e58c49d9296ede42219998e9cb26f61f92dad26"
+let flowKitURL = "https://github.com/mahainc/flow-kit/releases/download/\(flowKitVersion)/FlowKit.xcframework.zip"
 
 let package = Package(
     name: "WasmClient",
@@ -22,9 +25,18 @@ let package = Package(
             url: "https://github.com/apple/swift-protobuf.git",
             branch: "main"
         ),
-        .package(path: "Vendor/FlowKitPackage"),
     ],
     targets: [
+        .binaryTarget(
+            name: "FlowKit",
+            url: flowKitURL,
+            checksum: flowKitChecksum
+        ),
+        .target(
+            name: "FlowKitCModules",
+            path: "Vendor/FlowKitPackage/Sources/CModules",
+            publicHeadersPath: "."
+        ),
         .target(
             name: "WasmClient",
             dependencies: [
@@ -36,8 +48,8 @@ let package = Package(
             dependencies: [
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
-                .product(name: "FlowKit", package: "FlowKitPackage"),
-                .product(name: "FlowKitCModules", package: "FlowKitPackage"),
+                "FlowKit",
+                "FlowKitCModules",
                 "WasmClient",
             ],
             resources: [

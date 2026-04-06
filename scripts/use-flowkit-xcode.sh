@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VERSIONS_FILE="$ROOT_DIR/Vendor/FlowKitPackage/flowkit-versions.sh"
-PACKAGE_FILE="$ROOT_DIR/Vendor/FlowKitPackage/Package.swift"
+PACKAGE_FILE="$ROOT_DIR/Package.swift"
 
 if [ ! -f "$VERSIONS_FILE" ]; then
   echo "error: missing $VERSIONS_FILE" >&2
@@ -47,25 +47,25 @@ url = sys.argv[2]
 checksum = sys.argv[3]
 text = package_file.read_text()
 
-text, url_count = re.subn(
-    r'url: "https://github\.com/mahainc/flow-kit/releases/download/[^"]+/FlowKit\.xcframework\.zip"',
-    f'url: "{url}"',
+text, version_count = re.subn(
+    r'let flowKitVersion = "[^"]+"',
+    f'let flowKitVersion = "{url.split("/")[-2]}"',
     text,
     count=1,
 )
 text, checksum_count = re.subn(
-    r'checksum: "[0-9a-f]+"',
-    f'checksum: "{checksum}"',
+    r'let flowKitChecksum = "[0-9a-f]+"',
+    f'let flowKitChecksum = "{checksum}"',
     text,
     count=1,
 )
 
-if url_count != 1 or checksum_count != 1:
+if version_count != 1 or checksum_count != 1:
     raise SystemExit("failed to update FlowKit package manifest")
 
 package_file.write_text(text)
 PY
 
-echo "Switched FlowKitPackage to $FLOWKIT_VERSION for Xcode $TARGET_XCODE"
+echo "Switched WasmClient FlowKit binary to $FLOWKIT_VERSION for Xcode $TARGET_XCODE"
 echo "Run: swift package resolve"
 echo "Or build in Xcode/xcodebuild to refresh package artifacts."

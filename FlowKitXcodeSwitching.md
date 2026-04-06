@@ -23,7 +23,7 @@ or:
 ```
 
 This updates the vendored wrapper package in
-`Vendor/FlowKitPackage/Package.swift` to point at the matching FlowKit release
+the root [Package.swift](/Users/thanhhaikhong/Documents/WasmClient/Package.swift) to point at the matching FlowKit release
 artifact and checksum.
 
 ## After Switching
