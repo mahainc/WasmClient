@@ -100,27 +100,49 @@ extension WasmActor {
     }
 
     /// Available chat models parsed from the chat action's metadata.
+    /// Tries each provider for the chat action until one with model metadata is found.
     func chatModels() async throws -> (models: [WasmClient.ChatModelInfo], defaultEnumId: Int) {
         _ = try await readyEngine()
-        let action = try await delegate.resolveAction(actionID: WasmClient.ActionID.chat.rawValue, logger: logger)
+        let actions = try await delegate.resolveAllActions(actionID: WasmClient.ActionID.chat.rawValue, logger: logger)
 
-        var models: [WasmClient.ChatModelInfo] = []
-        if let list = action.metadata.fields["model_infos"]?.listValue {
-            models = list.values.compactMap { val in
+        for action in actions {
+            // Try both "model_infos" (legacy) and "models" (current) metadata keys.
+            let list = action.metadata.fields["model_infos"]?.listValue
+                ?? action.metadata.fields["models"]?.listValue
+            guard let list, !list.values.isEmpty else { continue }
+
+            let models: [WasmClient.ChatModelInfo] = list.values.enumerated().compactMap { idx, val in
+                // Case 1: Value is a struct with field keys (legacy format).
                 let fields = val.structValue.fields
-                guard let stringId = fields["string_id"]?.stringValue, !stringId.isEmpty else { return nil }
-                return WasmClient.ChatModelInfo(
-                    id: stringId,
-                    name: fields["name"]?.stringValue ?? stringId,
-                    isPro: fields["is_pro"]?.boolValue ?? false,
-                    imageSupport: fields["image_support"]?.boolValue ?? true,
-                    enumId: Int(fields["id"]?.numberValue ?? 0)
-                )
+                if !fields.isEmpty {
+                    let stringId = fields["string_id"]?.stringValue
+                        ?? fields["model"]?.stringValue
+                        ?? fields["id"]?.stringValue
+                    guard let stringId, !stringId.isEmpty else { return nil }
+                    return WasmClient.ChatModelInfo(
+                        id: stringId,
+                        name: fields["name"]?.stringValue ?? stringId,
+                        isPro: fields["is_pro"]?.boolValue ?? false,
+                        imageSupport: fields["image_support"]?.boolValue ?? true,
+                        enumId: Int(fields["id"]?.numberValue ?? 0)
+                    )
+                }
+                // Case 2: Value is a plain string (just the model ID).
+                let str = val.stringValue
+                if !str.isEmpty {
+                    return WasmClient.ChatModelInfo(
+                        id: str, name: str, isPro: false, imageSupport: true, enumId: idx
+                    )
+                }
+                return nil
+            }
+            if !models.isEmpty {
+                let defaultEnumId = Int(action.metadata.fields["default_model"]?.numberValue ?? 0)
+                return (models, defaultEnumId)
             }
         }
 
-        let defaultEnumId = Int(action.metadata.fields["default_model"]?.numberValue ?? 0)
-        return (models, defaultEnumId)
+        return ([], 0)
     }
 
     // MARK: - Private Chat Helpers

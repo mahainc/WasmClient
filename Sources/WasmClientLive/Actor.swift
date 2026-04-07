@@ -218,6 +218,20 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         return actions[0]
     }
 
+    /// Return all providers registered for a given action ID.
+    func resolveAllActions(
+        actionID: String,
+        logger: @escaping @Sendable (String) -> Void
+    ) async throws -> [WaTAction] {
+        if actionCache.isEmpty {
+            try await ensureActionsLoaded(logger: logger)
+        }
+        guard let actions = actionCache[actionID], !actions.isEmpty else {
+            throw WasmClient.Error.noProviderFound(action: actionID)
+        }
+        return actions
+    }
+
     /// Reset the engine — clear all cached state.
     func resetEngine() {
         startTask?.cancel()
