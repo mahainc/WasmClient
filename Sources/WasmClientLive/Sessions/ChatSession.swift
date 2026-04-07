@@ -99,6 +99,30 @@ extension WasmActor {
         }
     }
 
+    /// Available chat models parsed from the chat action's metadata.
+    func chatModels() async throws -> (models: [WasmClient.ChatModelInfo], defaultEnumId: Int) {
+        _ = try await readyEngine()
+        let action = try await delegate.resolveAction(actionID: WasmClient.ActionID.chat.rawValue, logger: logger)
+
+        var models: [WasmClient.ChatModelInfo] = []
+        if let list = action.metadata.fields["model_infos"]?.listValue {
+            models = list.values.compactMap { val in
+                let fields = val.structValue.fields
+                guard let stringId = fields["string_id"]?.stringValue, !stringId.isEmpty else { return nil }
+                return WasmClient.ChatModelInfo(
+                    id: stringId,
+                    name: fields["name"]?.stringValue ?? stringId,
+                    isPro: fields["is_pro"]?.boolValue ?? false,
+                    imageSupport: fields["image_support"]?.boolValue ?? true,
+                    enumId: Int(fields["id"]?.numberValue ?? 0)
+                )
+            }
+        }
+
+        let defaultEnumId = Int(action.metadata.fields["default_model"]?.numberValue ?? 0)
+        return (models, defaultEnumId)
+    }
+
     // MARK: - Private Chat Helpers
 
     private static func buildChatBody(

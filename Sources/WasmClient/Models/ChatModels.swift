@@ -120,6 +120,30 @@ extension WasmClient {
         }
     }
 
+    /// Describes a single AI model available from a chat provider.
+    /// Parsed from the WASM action's `model_infos` metadata.
+    public struct ChatModelInfo: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let name: String
+        public let isPro: Bool
+        public let imageSupport: Bool
+        public let enumId: Int
+
+        public init(
+            id: String,
+            name: String = "",
+            isPro: Bool = false,
+            imageSupport: Bool = true,
+            enumId: Int = 0
+        ) {
+            self.id = id
+            self.name = name.isEmpty ? id : name
+            self.isPro = isPro
+            self.imageSupport = imageSupport
+            self.enumId = enumId
+        }
+    }
+
     /// Configuration for creating a chat session.
     public struct ChatConfig: Sendable, Equatable {
         public let model: String

@@ -102,6 +102,16 @@ extension WasmClient {
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return "https://example.com/mock-file.jpg"
         },
+        chatModels: {
+            (
+                models: [
+                    ChatModelInfo(id: "gpt-4o-mini", name: "GPT-4o mini", enumId: 1),
+                    ChatModelInfo(id: "gpt-4o", name: "GPT-4o", isPro: true, enumId: 2),
+                    ChatModelInfo(id: "gpt-4.1", name: "GPT-4.1", isPro: true, enumId: 3),
+                ],
+                defaultEnumId: 1
+            )
+        },
         chatSend: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
             return ChatMessage(role: .assistant, content: "Hello! How can I help you today?")
