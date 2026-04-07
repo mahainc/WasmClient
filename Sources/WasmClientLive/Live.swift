@@ -60,6 +60,24 @@ extension WasmClient: DependencyKey {
             chatStream: { config, messages in
                 try await actor.chatStream(config: config, messages: messages)
             },
+            aiartGenerate: { actionID, args in
+                try await actor.aiartGenerate(actionID: actionID, args: args)
+            },
+            searchPhotos: { query, page, perPage in
+                try await actor.searchPhotos(query: query, page: page, perPage: perPage)
+            },
+            photoVisualSearch: { imageURL, page, perPage in
+                try await actor.photoVisualSearch(imageURL: imageURL, page: page, perPage: perPage)
+            },
+            listMedia: { query, page, perPage in
+                try await actor.listMedia(query: query, page: page, perPage: perPage)
+            },
+            homeDesign: { actionID, args in
+                try await actor.homeDesign(actionID: actionID, args: args)
+            },
+            homeDesignStatus: { taskID in
+                try await actor.homeDesignStatus(taskID: taskID)
+            },
             autoSuggestion: { image, cacheDir in
                 try await actor.autoSuggestion(image: image, cacheDir: cacheDir)
             },

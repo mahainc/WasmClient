@@ -109,6 +109,47 @@ public struct WasmClient: Sendable {
         _ messages: [WasmClient.ChatMessage]
     ) async throws -> AsyncThrowingStream<String, Swift.Error>
 
+    // MARK: - AI Art
+
+    /// Generate AI art using the specified action (stamp or normal).
+    /// Pass the action ID (e.g. `ActionID.aiartStamp.rawValue`) and flat string args
+    /// (prompt, style, image_url, aspect_ratio, etc.).
+    public var aiartGenerate: @Sendable (
+        _ actionID: String, _ args: [String: String]
+    ) async throws -> WasmClient.AiartResult
+
+    // MARK: - Visual / Media
+
+    /// Search photos by text query.
+    public var searchPhotos: @Sendable (
+        _ query: String, _ page: Int, _ perPage: Int
+    ) async throws -> WasmClient.PhotoSearchResult
+
+    /// Visual search: find similar photos given an image URL.
+    public var photoVisualSearch: @Sendable (
+        _ imageURL: String, _ page: Int, _ perPage: Int
+    ) async throws -> WasmClient.PhotoSearchResult
+
+    /// List media (editorial/trending). Pass empty query for editorial content.
+    public var listMedia: @Sendable (
+        _ query: String, _ page: Int, _ perPage: Int
+    ) async throws -> WasmClient.PhotoSearchResult
+
+    // MARK: - Home Decor
+
+    /// Generate a home decor design. Pass the action ID for the design type
+    /// (e.g. `ActionID.interiorDesign.rawValue`) and flat string args
+    /// (file, room_style, room_type, etc.).
+    /// May return `.processing` status — poll via `homeDesignStatus`.
+    public var homeDesign: @Sendable (
+        _ actionID: String, _ args: [String: String]
+    ) async throws -> WasmClient.HomedecorResult
+
+    /// Poll a home decor task by ID.
+    public var homeDesignStatus: @Sendable (
+        _ taskID: String
+    ) async throws -> WasmClient.HomedecorResult
+
     // MARK: - Inpaint
 
     /// Auto-detect objects in an image for removal suggestions.

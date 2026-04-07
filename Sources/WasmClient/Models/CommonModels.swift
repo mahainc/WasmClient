@@ -33,6 +33,25 @@ extension WasmClient {
         case related = "5c770798-6c09-4dd7-8e77-5bab032c269b"
         // Suggestion
         case musicSuggestion = "c5edf8f6-e18d-4a9d-acef-27d19fbb909a"
+        // Aiart
+        case aiartStamp = "b7e5fcb7-4746-4f79-b2b9-a78c7b574001"
+        case aiartNormal = "b7e5fcb7-4746-4f79-b2b9-a78c7b574002"
+        // Visual / Media
+        case searchPhotos = "f1a2b3c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
+        case photoVisualSearch = "a7b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d"
+        case listMedia = "b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e"
+        // Homedecor
+        case interiorDesign = "6e9ba966-b677-4de4-acab-32711586f52a"
+        case exteriorDesign = "6e9ba966-b677-4de4-acab-32711586f52b"
+        case gardenDesign = "6e9ba966-b677-4de4-acab-32711586f52c"
+        case paintRoom = "6e9ba966-b677-4de4-acab-32711586f52d"
+        case replaceObjects = "6e9ba966-b677-4de4-acab-32711586f52e"
+        case floorRestyle = "6e9ba966-b677-4de4-acab-32711586f52f"
+        case referenceStyle = "6e9ba966-b677-4de4-acab-327115870530"
+        case roomStaging = "6e9ba966-b677-4de4-acab-327115870531"
+        case declutterRoom = "6e9ba966-b677-4de4-acab-327115870532"
+        case floorPlan = "6e9ba966-b677-4de4-acab-327115870533"
+        case planToImage = "6e9ba966-b677-4de4-acab-327115870534"
         // Livescore
         case livescore = "a1c3e5f7-2b4d-4a6c-8e0f-1a2b3c4d5e6f"
         case lsHighlights = "e7a9c1d3-8f0b-4ea2-adf3-7e8f9a0b1c2d"

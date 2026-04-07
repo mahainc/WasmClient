@@ -127,6 +127,54 @@ extension WasmClient {
                 }
             }
         },
+        aiartGenerate: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return AiartResult(
+                images: [AiartImage(url: "https://example.com/aiart.png")],
+                prompt: "A beautiful sunset",
+                style: "watercolor",
+                aspectRatio: "1:1",
+                width: 1024,
+                height: 1024
+            )
+        },
+        searchPhotos: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return PhotoSearchResult(
+                total: 100,
+                totalPages: 5,
+                results: [
+                    Photo(
+                        id: "photo-1", description: "A landscape photo",
+                        width: 1920, height: 1080,
+                        urls: PhotoUrls(small: "https://example.com/photo-sm.jpg", thumb: "https://example.com/photo-th.jpg"),
+                        userName: "John Doe", likes: 42
+                    ),
+                ]
+            )
+        },
+        photoVisualSearch: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return PhotoSearchResult(total: 10, totalPages: 1, results: [])
+        },
+        listMedia: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return PhotoSearchResult(total: 50, totalPages: 3, results: [])
+        },
+        homeDesign: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return HomedecorResult(
+                imageURL: "https://example.com/redesigned-room.jpg",
+                inputImageURL: "https://example.com/original-room.jpg",
+                taskID: "mock-task-id"
+            )
+        },
+        homeDesignStatus: { _ in
+            HomedecorResult(
+                imageURL: "https://example.com/redesigned-room.jpg",
+                taskID: "mock-task-id"
+            )
+        },
         autoSuggestion: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return ObjectSegments(sessionID: "mock-session")
