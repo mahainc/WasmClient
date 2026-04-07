@@ -105,6 +105,30 @@ extension WasmActor {
         return mapSegment(result)
     }
 
+    /// Categorize clothes — detects clothing type from an image.
+    func categorizeClothes(image: String, cacheDir: String) async throws -> WasmClient.ObjectSegments {
+        let instance = try await readyEngine()
+        let action = try await delegate.resolveAction(actionID: WasmClient.ActionID.clothes.rawValue, logger: logger)
+        let args: [String: Google_Protobuf_Value] = [
+            "image": Google_Protobuf_Value(stringValue: image),
+            "cache_dir": Google_Protobuf_Value(stringValue: cacheDir),
+        ]
+        let task = try await instance.create(action: action, args: args)
+        guard task.status == .completed else {
+            throw WasmClient.Error.taskFailed(status: "\(task.status)")
+        }
+        guard task.hasValue else {
+            return WasmClient.ObjectSegments(sessionID: task.id)
+        }
+        if let result = try? InpaintObjectSegments(unpackingAny: task.value) {
+            return mapObjectSegments(result)
+        }
+        if let result = try? InpaintObjectSegments(serializedBytes: task.value.value) {
+            return mapObjectSegments(result)
+        }
+        return WasmClient.ObjectSegments(sessionID: task.id)
+    }
+
     /// Virtual try-on.
     func tryOn(
         cacheDir: String,

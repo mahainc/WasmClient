@@ -127,6 +127,54 @@ extension WasmClient {
                 }
             }
         },
+        musicDiscover: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return MusicTrackList(items: [
+                MusicTrackItem(id: "track-1", title: "Mock Song", kind: "song", authorName: "Mock Artist"),
+            ])
+        },
+        musicDetails: { _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return MusicTrackDetail(
+                id: "track-1", title: "Mock Song", description: "A great mock song",
+                authorName: "Mock Artist", duration: 240, views: 1_000_000,
+                formats: [MusicFormat(id: "f1", url: "https://example.com/audio.mp3", quality: "high", mimeType: "audio/mpeg")]
+            )
+        },
+        musicTracks: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return MusicTrackList(items: [
+                MusicTrackItem(id: "track-1", title: "Track One", kind: "song", authorName: "Artist A"),
+                MusicTrackItem(id: "track-2", title: "Track Two", kind: "song", authorName: "Artist B"),
+            ])
+        },
+        musicSearch: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return MusicTrackList(items: [
+                MusicTrackItem(id: "track-1", title: "Search Result", kind: "song", authorName: "Mock Artist"),
+            ])
+        },
+        musicLyrics: { _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return [
+                MusicLyricSegment(text: "Hello, world", offset: 0, duration: 3000),
+                MusicLyricSegment(text: "This is a mock song", offset: 3000, duration: 4000),
+            ]
+        },
+        musicRelated: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return MusicTrackList(items: [
+                MusicTrackItem(id: "track-3", title: "Related Track", kind: "song", authorName: "Related Artist"),
+            ])
+        },
+        musicSuggestions: { _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return ["pop music", "rock classics", "jazz vibes"]
+        },
+        suggest: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return ["Tell me about this", "What can you help with?", "Explain this image", "Suggest improvements"]
+        },
         aiartGenerate: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
             return AiartResult(
@@ -198,6 +246,10 @@ extension WasmClient {
         sky: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return Segment(maskURL: "https://example.com/sky-mask.png")
+        },
+        categorizeClothes: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return ObjectSegments(sessionID: "mock-session")
         },
         tryOn: { _, _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)

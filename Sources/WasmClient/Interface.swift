@@ -109,6 +109,51 @@ public struct WasmClient: Sendable {
         _ messages: [WasmClient.ChatMessage]
     ) async throws -> AsyncThrowingStream<String, Swift.Error>
 
+    // MARK: - Music
+
+    /// Discover music tracks by category.
+    public var musicDiscover: @Sendable (
+        _ category: String, _ continuation: String?
+    ) async throws -> WasmClient.MusicTrackList
+
+    /// Get detailed info for a music track.
+    public var musicDetails: @Sendable (
+        _ trackID: String
+    ) async throws -> WasmClient.MusicTrackDetail
+
+    /// List tracks (e.g. playlist, album).
+    public var musicTracks: @Sendable (
+        _ listID: String, _ continuation: String?
+    ) async throws -> WasmClient.MusicTrackList
+
+    /// Search music by query.
+    public var musicSearch: @Sendable (
+        _ query: String, _ continuation: String?
+    ) async throws -> WasmClient.MusicTrackList
+
+    /// Get lyrics for a track.
+    public var musicLyrics: @Sendable (
+        _ trackID: String
+    ) async throws -> [WasmClient.MusicLyricSegment]
+
+    /// Get related tracks.
+    public var musicRelated: @Sendable (
+        _ trackID: String, _ continuation: String?
+    ) async throws -> WasmClient.MusicTrackList
+
+    /// Get music search suggestions.
+    public var musicSuggestions: @Sendable (
+        _ query: String
+    ) async throws -> [String]
+
+    // MARK: - Suggest
+
+    /// Get AI-generated prompt suggestions.
+    /// Optionally pass an image URL for context-aware suggestions.
+    public var suggest: @Sendable (
+        _ systemPrompt: String, _ imageURL: String?
+    ) async throws -> [String]
+
     // MARK: - AI Art
 
     /// Generate AI art using the specified action (stamp or normal).
@@ -185,6 +230,12 @@ public struct WasmClient: Sendable {
     public var sky: @Sendable (
         _ image: String, _ cacheDir: String
     ) async throws -> WasmClient.Segment
+
+    /// Categorize clothes from an image for virtual try-on.
+    /// Returns an async task — clothing type segments detected in the image.
+    public var categorizeClothes: @Sendable (
+        _ image: String, _ cacheDir: String
+    ) async throws -> WasmClient.ObjectSegments
 
     /// Virtual try-on. Returns initial result (may be `.processing` — poll via `tryOnStatus`).
     public var tryOn: @Sendable (

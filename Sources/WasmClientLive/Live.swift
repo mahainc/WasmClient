@@ -60,6 +60,30 @@ extension WasmClient: DependencyKey {
             chatStream: { config, messages in
                 try await actor.chatStream(config: config, messages: messages)
             },
+            musicDiscover: { category, continuation in
+                try await actor.musicDiscover(category: category, continuation: continuation)
+            },
+            musicDetails: { trackID in
+                try await actor.musicDetails(trackID: trackID)
+            },
+            musicTracks: { listID, continuation in
+                try await actor.musicTracks(listID: listID, continuation: continuation)
+            },
+            musicSearch: { query, continuation in
+                try await actor.musicSearch(query: query, continuation: continuation)
+            },
+            musicLyrics: { trackID in
+                try await actor.musicLyrics(trackID: trackID)
+            },
+            musicRelated: { trackID, continuation in
+                try await actor.musicRelated(trackID: trackID, continuation: continuation)
+            },
+            musicSuggestions: { query in
+                try await actor.musicSuggestions(query: query)
+            },
+            suggest: { systemPrompt, imageURL in
+                try await actor.suggest(systemPrompt: systemPrompt, imageURL: imageURL)
+            },
             aiartGenerate: { actionID, args in
                 try await actor.aiartGenerate(actionID: actionID, args: args)
             },
@@ -98,6 +122,9 @@ extension WasmClient: DependencyKey {
             },
             sky: { image, cacheDir in
                 try await actor.sky(image: image, cacheDir: cacheDir)
+            },
+            categorizeClothes: { image, cacheDir in
+                try await actor.categorizeClothes(image: image, cacheDir: cacheDir)
             },
             tryOn: { cacheDir, image, modelId, clothType, clothId in
                 try await actor.tryOn(
