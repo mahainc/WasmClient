@@ -3,6 +3,19 @@ import Foundation
 // MARK: - Livescore
 
 extension WasmClient {
+    public enum FixtureStatus: Sendable, Equatable {
+        case notStarted
+        case live
+        case halfTime
+        case finished
+        case extraTime
+        case penalties
+        case postponed
+        case cancelled
+        case suspended
+        case other(String)
+    }
+
     /// Livescore API endpoint selector (raw values match proto `LivescoreEndpoint`).
     public enum LivescoreEndpoint: Int, Sendable {
         case livescores = 1
@@ -23,25 +36,39 @@ extension WasmClient {
     /// A football fixture.
     public struct Fixture: Sendable, Equatable, Identifiable {
         public let id: String
+        public let leagueID: String
+        public let seasonID: String
         public let homeTeam: String
         public let awayTeam: String
         public let homeScore: Int?
         public let awayScore: Int?
+        public let venueName: String
+        public let statusShort: String
+        public let elapsedMinutes: Int?
+        public let statusKind: FixtureStatus
         public let status: String
         public let date: String
         public let league: String
         public let round: String
 
         public init(
-            id: String = "", homeTeam: String = "", awayTeam: String = "",
-            homeScore: Int? = nil, awayScore: Int? = nil, status: String = "",
-            date: String = "", league: String = "", round: String = ""
+            id: String = "", leagueID: String = "", seasonID: String = "",
+            homeTeam: String = "", awayTeam: String = "", homeScore: Int? = nil,
+            awayScore: Int? = nil, venueName: String = "", statusShort: String = "",
+            elapsedMinutes: Int? = nil, statusKind: FixtureStatus = .other(""),
+            status: String = "", date: String = "", league: String = "", round: String = ""
         ) {
             self.id = id
+            self.leagueID = leagueID
+            self.seasonID = seasonID
             self.homeTeam = homeTeam
             self.awayTeam = awayTeam
             self.homeScore = homeScore
             self.awayScore = awayScore
+            self.venueName = venueName
+            self.statusShort = statusShort
+            self.elapsedMinutes = elapsedMinutes
+            self.statusKind = statusKind
             self.status = status
             self.date = date
             self.league = league

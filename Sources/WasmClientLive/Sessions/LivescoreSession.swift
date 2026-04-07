@@ -184,19 +184,61 @@ extension WasmActor {
     // MARK: - Livescore Mapping
 
     private func mapFixture(_ f: LivescoreFixture) -> WasmClient.Fixture {
-        let homeScore: Int? = f.hasScores && f.scores.hasFulltime ? Int(f.scores.fulltime.home) : nil
-        let awayScore: Int? = f.hasScores && f.scores.hasFulltime ? Int(f.scores.fulltime.away) : nil
+        let scoreLine: LivescoreScoreLine? = if f.hasScores, f.scores.hasCurrent {
+            f.scores.current
+        } else if f.hasScores, f.scores.hasFulltime {
+            f.scores.fulltime
+        } else {
+            nil
+        }
+        let homeScore = scoreLine?.hasHome == true ? Int(scoreLine?.home ?? 0) : nil
+        let awayScore = scoreLine?.hasAway == true ? Int(scoreLine?.away ?? 0) : nil
         return WasmClient.Fixture(
             id: f.id,
+            leagueID: f.leagueID,
+            seasonID: f.seasonID,
             homeTeam: f.hasHomeTeam ? f.homeTeam.name : (f.participants.first?.name ?? ""),
             awayTeam: f.hasAwayTeam ? f.awayTeam.name : (f.participants.count > 1 ? f.participants[1].name : ""),
             homeScore: homeScore,
             awayScore: awayScore,
+            venueName: f.hasVenue ? f.venue.name : "",
+            statusShort: f.statusShort,
+            elapsedMinutes: f.hasElapsed ? Int(f.elapsed) : nil,
+            statusKind: mapFixtureStatus(f),
             status: f.statusShort,
             date: f.startingAt,
             league: f.hasLeague ? f.league.name : "",
             round: f.roundName
         )
+    }
+
+    private func mapFixtureStatus(_ fixture: LivescoreFixture) -> WasmClient.FixtureStatus {
+        switch fixture.status {
+        case .notStarted, .tbd:
+            return .notStarted
+        case .firstHalf, .secondHalf:
+            return .live
+        case .halftime:
+            return .halfTime
+        case .fullTime, .afterExtraTime, .afterPenalties:
+            return .finished
+        case .extraTime, .extraTimeBreak:
+            return .extraTime
+        case .penalties:
+            return .penalties
+        case .postponed:
+            return .postponed
+        case .cancelled:
+            return .cancelled
+        case .suspended, .interrupted, .abandoned, .walkover, .delayed:
+            return .suspended
+        case .awarded:
+            return .finished
+        case .unspecified:
+            return .other(fixture.statusShort)
+        case .UNRECOGNIZED(_):
+            return .other(fixture.statusShort)
+        }
     }
 
     private func mapLeague(_ l: LivescoreLeague) -> WasmClient.League {
