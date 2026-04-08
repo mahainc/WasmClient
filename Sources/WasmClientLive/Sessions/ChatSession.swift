@@ -78,6 +78,7 @@ extension WasmActor {
 
         return AsyncThrowingStream { continuation in
             Task {
+                var didReceiveChunks = false
                 let prev = AsyncifyWasmInternal.onSSEChunk
                 AsyncifyWasmInternal.onSSEChunk = { chunk in
                     guard let data = chunk.data(using: .utf8),
@@ -86,11 +87,30 @@ extension WasmActor {
                           let delta = choices.first?["delta"] as? [String: Any],
                           let content = delta["content"] as? String,
                           !content.isEmpty else { return }
+                    didReceiveChunks = true
                     continuation.yield(content)
                 }
                 defer { AsyncifyWasmInternal.onSSEChunk = prev }
                 do {
-                    _ = try await instance.create(action: action, args: args)
+                    let task = try await instance.create(action: action, args: args)
+                    // If no SSE chunks arrived, fall back to the task result
+                    if !didReceiveChunks,
+                       task.status == .completed,
+                       task.hasValue,
+                       let result = try? TypesBytes(unpackingAny: task.value),
+                       case .raw(let data) = result.data
+                    {
+                        var opts = JSONDecodingOptions()
+                        opts.ignoreUnknownFields = true
+                        if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
+                           let choice = completion.choices.first,
+                           !choice.message.content.isEmpty
+                        {
+                            continuation.yield(choice.message.content)
+                        } else if let text = String(data: data, encoding: .utf8), !text.isEmpty {
+                            continuation.yield(text)
+                        }
+                    }
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
