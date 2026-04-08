@@ -74,40 +74,49 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
                 logger("Using cached wasm version: \(AsyncifyWasm.currentVersionID!)")
             }
 
-            logger("Building engine via TaskWasm.default()...")
-            var instance = try await TaskWasm.default()
-            instance.premium = true
-            instance.delegate = self
+            do {
+                logger("Building engine via TaskWasm.default()...")
+                var instance = try await TaskWasm.default()
+                instance.premium = true
+                instance.delegate = self
 
-            logger("Starting engine (delegate set)...")
-            self.stateContinuation?.yield(.starting)
-            try await instance.start()
-            logger("Engine start() returned, waiting for delegate .running callback...")
+                logger("Starting engine (delegate set)...")
+                self.stateContinuation?.yield(.starting)
+                try await instance.start()
+                logger("Engine start() returned, waiting for delegate .running callback...")
 
-            // Wait for the delegate's stateChanged(.running) callback.
-            // FlowKit fires this AFTER start() returns, once the engine is truly ready
-            // with providers registered. Without this wait, engine.actions() returns
-            // empty because the internal state machine hasn't reached .running yet.
-            //
-            // Guard: if stateChanged(.running) already fired during start(), skip
-            // the continuation entirely to avoid a leaked-continuation hang.
-            if !self.engineDidReachRunning {
-                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                    if self.engineDidReachRunning {
-                        // .running arrived between the if-check and here — resume immediately.
-                        continuation.resume()
-                    } else {
-                        self.runningContinuation = continuation
+                // Wait for the delegate's stateChanged(.running) callback.
+                // FlowKit fires this AFTER start() returns, once the engine is truly ready
+                // with providers registered. Without this wait, engine.actions() returns
+                // empty because the internal state machine hasn't reached .running yet.
+                //
+                // Guard: if stateChanged(.running) already fired during start(), skip
+                // the continuation entirely to avoid a leaked-continuation hang.
+                if !self.engineDidReachRunning {
+                    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                        if self.engineDidReachRunning {
+                            // .running arrived between the if-check and here — resume immediately.
+                            continuation.resume()
+                        } else {
+                            self.runningContinuation = continuation
+                        }
                     }
                 }
-            }
-            logger("Engine delegate confirmed .running")
+                logger("Engine delegate confirmed .running")
 
-            self.engine = instance
-            self.isStarted = true
-            self.startTask = nil
-            self.stateContinuation?.yield(.running)
-            return instance
+                self.engine = instance
+                self.isStarted = true
+                self.startTask = nil
+                self.stateContinuation?.yield(.running)
+                return instance
+            } catch {
+                // Clear startTask so future calls retry instead of re-throwing the stale error.
+                self.startTask = nil
+                self.engineDidReachRunning = false
+                self.stateContinuation?.yield(.failed(error.localizedDescription))
+                logger("Engine start failed: \(error.localizedDescription)")
+                throw error
+            }
         }
         startTask = task
         return try await task.value
