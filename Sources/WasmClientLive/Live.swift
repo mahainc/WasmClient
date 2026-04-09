@@ -87,6 +87,9 @@ extension WasmClient: DependencyKey {
             aiartGenerate: { actionID, args in
                 try await actor.aiartGenerate(actionID: actionID, args: args)
             },
+            aiartStyles: { actionID in
+                try await actor.aiartStyles(actionID: actionID)
+            },
             searchPhotos: { query, page, perPage in
                 try await actor.searchPhotos(query: query, page: page, perPage: perPage)
             },

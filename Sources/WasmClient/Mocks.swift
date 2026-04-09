@@ -186,6 +186,12 @@ extension WasmClient {
                 height: 1024
             )
         },
+        aiartStyles: { _ in
+            [
+                "ANIME", "CYBERPUNK", "WATERCOLOR", "PIXEL_ART", "THREE_D_CARTOON",
+                "FANTASY", "OIL_PAINTING", "LINE_ART", "MINIMAL", "PHOTOREAL",
+            ]
+        },
         searchPhotos: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return PhotoSearchResult(

@@ -24,6 +24,22 @@ extension WasmActor {
         return mapAiartResult(result)
     }
 
+    /// Read the valid style values from an aiart action's `style` arg
+    /// regex validator. Returns an empty array if the validator is missing
+    /// or the regex pattern cannot be parsed.
+    func aiartStyles(actionID: String) async throws -> [String] {
+        _ = try await readyEngine()
+        let action = try await delegate.resolveAction(actionID: actionID, logger: logger)
+
+        guard let styleArg = action.args["style"],
+            styleArg.hasValidator,
+            case .string(let stringValidator) = styleArg.validator.data,
+            stringValidator.hasRegex
+        else { return [] }
+
+        return Self.parseRegexAlternatives(stringValidator.regex) ?? []
+    }
+
     // MARK: - Aiart Mapping
 
     private func mapAiartResult(_ proto: AiartGenerateResult) -> WasmClient.AiartResult {
@@ -39,5 +55,16 @@ extension WasmActor {
             height: Int(proto.height),
             providerTaskID: proto.providerTaskID
         )
+    }
+
+    /// Parse a regex alternation pattern of the form `^(A|B|C)$` into its
+    /// individual alternatives. Returns nil if the pattern doesn't match
+    /// the expected shape. This matches the format used by aiart action
+    /// schema validators.
+    private static func parseRegexAlternatives(_ pattern: String) -> [String]? {
+        guard pattern.hasPrefix("^("), pattern.hasSuffix(")$") else { return nil }
+        let inner = String(pattern.dropFirst(2).dropLast(2))
+        let values = inner.components(separatedBy: "|")
+        return values.isEmpty ? nil : values
     }
 }

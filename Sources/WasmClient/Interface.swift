@@ -163,6 +163,16 @@ public struct WasmClient: Sendable {
         _ actionID: String, _ args: [String: String]
     ) async throws -> WasmClient.AiartResult
 
+    /// Available style values for an aiart action, parsed from the action
+    /// schema's `style` arg regex validator (e.g. `^(ANIME|CYBERPUNK|...)$`).
+    /// Returns an empty array if the action has no style validator or the regex
+    /// cannot be parsed. Callers should use these values verbatim when building
+    /// args for `aiartGenerate` — sending a style that isn't in this list causes
+    /// the server to reject the task with `status=unspecified`.
+    public var aiartStyles: @Sendable (
+        _ actionID: String
+    ) async throws -> [String]
+
     // MARK: - Visual / Media
 
     /// Search photos by text query.
