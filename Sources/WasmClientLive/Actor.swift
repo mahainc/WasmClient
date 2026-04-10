@@ -12,6 +12,10 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     private(set) var isStarted = false
     /// Cached actions keyed by action ID — populated after engine stabilizes.
     private var actionCache: [String: [WaTAction]] = [:]
+    /// Per-action round-robin counter for `resolveNextAction`. In-memory only —
+    /// mirrors flow-kit-example's default `.roundRobin` strategy in
+    /// `ProviderSettings.selectedAction(for:)` without persisting across launches.
+    private var providerRotationIndex: [String: Int] = [:]
     private var logger: (@Sendable (String) -> Void)?
     /// Continuation for engine state stream.
     var stateContinuation: AsyncStream<WasmClient.EngineState>.Continuation?
@@ -239,6 +243,29 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             throw WasmClient.Error.noProviderFound(action: actionID)
         }
         return actions
+    }
+
+    /// Resolve the next provider for an action using round-robin rotation.
+    /// Mirrors flow-kit-example's `ProviderSettings.selectedAction(for:)` default
+    /// `.roundRobin` strategy — each call returns the next provider in the cached
+    /// order, cycling back to the first after reaching the end. In-memory state;
+    /// not persisted across process launches.
+    func resolveNextAction(
+        actionID: String,
+        logger: @escaping @Sendable (String) -> Void
+    ) async throws -> WaTAction {
+        if actionCache.isEmpty {
+            try await ensureActionsLoaded(logger: logger)
+        }
+        guard let actions = actionCache[actionID], !actions.isEmpty else {
+            throw WasmClient.Error.noProviderFound(action: actionID)
+        }
+        let current = providerRotationIndex[actionID] ?? 0
+        let index = current % actions.count
+        let picked = actions[index]
+        providerRotationIndex[actionID] = (index + 1) % actions.count
+        logger("\(actionID) → provider: \(picked.provider) (\(index + 1)/\(actions.count))")
+        return picked
     }
 
     /// Reset the engine — clear all cached state.
