@@ -31,13 +31,31 @@ extension WasmActor {
         _ = try await readyEngine()
         let action = try await delegate.resolveAction(actionID: actionID, logger: logger)
 
-        guard let styleArg = action.args["style"],
-            styleArg.hasValidator,
-            case .string(let stringValidator) = styleArg.validator.data,
-            stringValidator.hasRegex
-        else { return [] }
+        logger("aiartStyles: actionID=\(actionID) provider=\(action.provider) args=\(action.args.keys.sorted())")
 
-        return Self.parseRegexAlternatives(stringValidator.regex) ?? []
+        guard let styleArg = action.args["style"] else {
+            logger("aiartStyles: no 'style' arg on action")
+            return []
+        }
+        guard styleArg.hasValidator else {
+            logger("aiartStyles: style arg has no validator")
+            return []
+        }
+        guard case .string(let stringValidator) = styleArg.validator.data else {
+            logger("aiartStyles: style validator is not a string validator (data=\(styleArg.validator.data as Any))")
+            return []
+        }
+        guard stringValidator.hasRegex else {
+            logger("aiartStyles: string validator has no regex")
+            return []
+        }
+
+        let rawPattern = stringValidator.regex
+        logger("aiartStyles: raw regex=\(rawPattern)")
+
+        let parsed = Self.parseRegexAlternatives(rawPattern) ?? []
+        logger("aiartStyles: parsed \(parsed.count) styles → \(parsed)")
+        return parsed
     }
 
     // MARK: - Aiart Mapping
