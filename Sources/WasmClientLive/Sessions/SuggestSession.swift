@@ -9,12 +9,12 @@ extension WasmActor {
 
     /// Get AI-generated prompt suggestions.
     ///
-    /// Mirrors flow-kit-example's `AiartView.fetchSuggestions()`
-    /// (AiartView.swift:291-312): resolve action, pass `system_prompt` and
-    /// optional `image_url`, decode `TypesListStrings`, return empty on failure.
+    /// Tries all available providers (round-robin order) until one returns
+    /// non-empty suggestions. Some providers return a valid but empty
+    /// `TypesListStrings` — cycling through providers handles this gracefully.
     func suggest(systemPrompt: String, imageURL: String?) async throws -> [String] {
         let instance = try await readyEngine()
-        let action = try await delegate.resolveNextAction(
+        let actions = try await delegate.resolveAllActions(
             actionID: WasmClient.ActionID.suggest.rawValue, logger: logger
         )
         var args: [String: Google_Protobuf_Value] = [
@@ -23,20 +23,26 @@ extension WasmActor {
         if let imageURL, !imageURL.isEmpty {
             args["image_url"] = Google_Protobuf_Value(stringValue: imageURL)
         }
-        logger("Suggest: creating task with args: \(args.keys.sorted().joined(separator: ", "))")
-        let task = try await instance.create(action: action, args: args)
-        logger("Suggest: task status=\(task.status) hasValue=\(task.hasValue)")
-        guard task.status == .completed, task.hasValue else {
-            logger("Suggest: task not completed or no value — returning empty")
-            return []
+        logger("Suggest: \(actions.count) providers available, args: \(args.keys.sorted().joined(separator: ", "))")
+
+        for (index, action) in actions.enumerated() {
+            logger("Suggest: trying provider \(index + 1)/\(actions.count) (\(action.provider.prefix(12))…)")
+            do {
+                let task = try await instance.create(action: action, args: args)
+                logger("Suggest: provider \(index + 1) status=\(task.status) hasValue=\(task.hasValue)")
+                guard task.status == .completed, task.hasValue else { continue }
+                let list = try TypesListStrings(unpackingAny: task.value)
+                if !list.values.isEmpty {
+                    logger("Suggest: provider \(index + 1) returned \(list.values.count) suggestions")
+                    return list.values
+                }
+                logger("Suggest: provider \(index + 1) returned 0 suggestions — trying next")
+            } catch {
+                logger("Suggest: provider \(index + 1) failed: \(error) — trying next")
+            }
         }
-        do {
-            let list = try TypesListStrings(unpackingAny: task.value)
-            logger("Suggest: decoded \(list.values.count) suggestions")
-            return list.values
-        } catch {
-            logger("Suggest: TypesListStrings decode failed: \(error)")
-            return []
-        }
+
+        logger("Suggest: all \(actions.count) providers returned empty — returning []")
+        return []
     }
 }
