@@ -23,11 +23,20 @@ extension WasmActor {
         if let imageURL, !imageURL.isEmpty {
             args["image_url"] = Google_Protobuf_Value(stringValue: imageURL)
         }
+        logger("Suggest: creating task with args: \(args.keys.sorted().joined(separator: ", "))")
         let task = try await instance.create(action: action, args: args)
-        guard task.status == .completed, task.hasValue else { return [] }
-        guard let list = try? TypesListStrings(unpackingAny: task.value),
-              !list.values.isEmpty
-        else { return [] }
-        return list.values
+        logger("Suggest: task status=\(task.status) hasValue=\(task.hasValue)")
+        guard task.status == .completed, task.hasValue else {
+            logger("Suggest: task not completed or no value — returning empty")
+            return []
+        }
+        do {
+            let list = try TypesListStrings(unpackingAny: task.value)
+            logger("Suggest: decoded \(list.values.count) suggestions")
+            return list.values
+        } catch {
+            logger("Suggest: TypesListStrings decode failed: \(error)")
+            return []
+        }
     }
 }
