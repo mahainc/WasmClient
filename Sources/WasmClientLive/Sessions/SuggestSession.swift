@@ -9,10 +9,9 @@ extension WasmActor {
 
     /// Get AI-generated prompt suggestions.
     ///
-    /// Mirrors flow-kit-example's `fetchSuggestions()`
-    /// (ChatView.swift:180-221, AiartView.swift:291-312): round-robin provider
-    /// selection, a single `TypesListStrings(unpackingAny:)` decode path, and
-    /// silent empty-array returns on non-completed / missing / undecodable results.
+    /// Mirrors flow-kit-example's `AiartView.fetchSuggestions()`
+    /// (AiartView.swift:291-312): resolve action, pass `system_prompt` and
+    /// optional `image_url`, decode `TypesListStrings`, return empty on failure.
     func suggest(systemPrompt: String, imageURL: String?) async throws -> [String] {
         let instance = try await readyEngine()
         let action = try await delegate.resolveNextAction(
