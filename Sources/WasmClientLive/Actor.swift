@@ -26,9 +26,57 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     /// Flag set when stateChanged(.running) fires — guards against the race
     /// where the callback arrives before withCheckedContinuation stores itself.
     private var engineDidReachRunning = false
+    /// Lock protecting `engineDidReachRunning` and `runningContinuation` from
+    /// concurrent access between the FlowKit delegate thread and the Task.
+    private let runningLock = NSLock()
     /// In-flight start task — prevents actor reentrancy from building
     /// duplicate engines when multiple callers hit ensureStarted concurrently.
     private var startTask: Task<TaskWasmProtocol, any Error>?
+
+    // MARK: - Running-state synchronisation helpers
+
+    /// Called from `stateChanged(.running)` (FlowKit thread) — atomically marks
+    /// the engine as running and returns the stored continuation (if any) so the
+    /// caller can resume it *outside* the lock.
+    private func markRunningAndTakeContinuation() -> CheckedContinuation<Void, Never>? {
+        runningLock.lock()
+        engineDidReachRunning = true
+        let continuation = runningContinuation
+        runningContinuation = nil
+        runningLock.unlock()
+        return continuation
+    }
+
+    /// Returns `true` if the delegate has already received `.running`.
+    /// Safe to call from any context (sync or async).
+    private func isAlreadyRunning() -> Bool {
+        runningLock.lock()
+        defer { runningLock.unlock() }
+        return engineDidReachRunning
+    }
+
+    /// Atomically checks `engineDidReachRunning`; if still `false`, stores the
+    /// continuation so `stateChanged(.running)` can resume it later. If `true`,
+    /// returns the continuation for immediate resumption by the caller.
+    /// Must be called from within `withCheckedContinuation`.
+    private func storeOrResolveContinuation(
+        _ continuation: CheckedContinuation<Void, Never>
+    ) -> CheckedContinuation<Void, Never>? {
+        runningLock.lock()
+        if engineDidReachRunning {
+            runningLock.unlock()
+            return continuation  // caller resumes immediately
+        } else {
+            runningContinuation = continuation
+            runningLock.unlock()
+            return nil  // will be resumed by stateChanged(.running)
+        }
+    }
+
+    /// Reset the running flag under the lock. Used by `resetEngine()`.
+    private func clearRunningFlag() {
+        clearRunningFlag()
+    }
 
     // MARK: - WasmInstanceDelegate
 
@@ -38,10 +86,8 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         switch state {
         case .running:
             mapped = .running
-            engineDidReachRunning = true
-            // Resume anyone waiting for the engine to be truly running.
-            runningContinuation?.resume()
-            runningContinuation = nil
+            let continuation = markRunningAndTakeContinuation()
+            continuation?.resume()
         case .reload:
             mapped = .starting
         default:
@@ -96,13 +142,10 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
                 //
                 // Guard: if stateChanged(.running) already fired during start(), skip
                 // the continuation entirely to avoid a leaked-continuation hang.
-                if !self.engineDidReachRunning {
+                if !self.isAlreadyRunning() {
                     await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                        if self.engineDidReachRunning {
-                            // .running arrived between the if-check and here — resume immediately.
-                            continuation.resume()
-                        } else {
-                            self.runningContinuation = continuation
+                        if let ready = self.storeOrResolveContinuation(continuation) {
+                            ready.resume()
                         }
                     }
                 }
@@ -274,7 +317,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         startTask = nil
         engine = nil
         isStarted = false
-        engineDidReachRunning = false
+        clearRunningFlag()
         actionCache = [:]
         stateContinuation?.yield(.stopped)
     }
