@@ -2,8 +2,8 @@
 import PackageDescription
 
 let packageDir = Context.packageDirectory
-let flowKitVersion = "1.2.8-26.1.1"
-let flowKitChecksum = "57abf7c0595af806b82a6b83bcd0c3f818d95f549b056f52848df92b0907e8e1"
+let flowKitVersion = "1.2.13-26.1.1"
+let flowKitChecksum = "868e1318455f41a6d51c162403dad59d1426a949f9b669aa02cf82a9afe49dff"
 let flowKitURL = "https://github.com/mahainc/flow-kit/releases/download/\(flowKitVersion)/FlowKit.xcframework.zip"
 
 let package = Package(
@@ -21,10 +21,10 @@ let package = Package(
             url: "https://github.com/pointfreeco/swift-composable-architecture.git",
             branch: "main"
         ),
-        .package(
-            url: "https://github.com/apple/swift-protobuf.git",
-            branch: "main"
-        ),
+        // SwiftProtobuf is provided by FlowKit.xcframework's merged modules.
+        // Do NOT add a separate swift-protobuf SPM dependency — it creates
+        // duplicate ObjC class registrations that silently break protobuf
+        // arg passing to FlowKit when Xcode builds with a debug dylib.
     ],
     targets: [
         .binaryTarget(
@@ -47,7 +47,7 @@ let package = Package(
             name: "WasmClientLive",
             dependencies: [
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
-                .product(name: "SwiftProtobuf", package: "swift-protobuf"),
+                // SwiftProtobuf comes from FlowKit.xcframework via merged modules
                 "FlowKit",
                 "FlowKitCModules",
                 "WasmClient",
@@ -57,8 +57,8 @@ let package = Package(
             ],
             swiftSettings: [
                 // Merged sub-module directory created by MergeFlowKitModules plugin.
-                // Contains AsyncWasm, TaskWasm, etc. but NOT FlowKit/SwiftProtobuf
-                // (those are resolved by SPM to the correct xcframework slice).
+                // Contains AsyncWasm, TaskWasm, SwiftProtobuf, etc. but NOT FlowKit
+                // (resolved by SPM to the correct xcframework slice).
                 .unsafeFlags([
                     "-I", "\(packageDir)/.build/flowkit-merged-modules",  // local dev
                     "-I", "/tmp/wasmclient-flowkit-modules",              // build plugin

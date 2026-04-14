@@ -59,11 +59,15 @@ extension WasmActor {
         config: WasmClient.ChatConfig,
         messages: [WasmClient.ChatMessage]
     ) async throws -> AsyncThrowingStream<String, Swift.Error> {
+        logger("chatStream: acquiring engine...")
         let instance = try await readyEngine()
+        logger("chatStream: resolving chat action...")
         let action = try await delegate.resolveAction(actionID: WasmClient.ActionID.chat.rawValue, logger: logger)
+        logger("chatStream: action resolved — provider: \(action.provider)")
 
         let bodyData = try Self.buildChatBody(config: config, messages: messages, stream: true)
         let bodyString = String(data: bodyData, encoding: .utf8)!
+        logger("chatStream: body built (\(bodyData.count) bytes), model: \(config.model)")
 
         var streamArgs: [String: Google_Protobuf_Value] = [
             "body": Google_Protobuf_Value(stringValue: bodyString),
@@ -75,9 +79,15 @@ extension WasmActor {
             streamArgs["api_key"] = Google_Protobuf_Value(stringValue: config.apiKey)
         }
         let args = streamArgs
+        let log = logger
 
         return AsyncThrowingStream { continuation in
-            Task {
+            // Use Task.detached to avoid inheriting WasmActor isolation.
+            // FlowKit's instance.create() must run on the global executor —
+            // running it actor-isolated causes hangs under Xcode's debugger
+            // (flow-kit-example avoids this by using a plain class, not an actor).
+            Task.detached {
+                log("chatStream: Task started, setting SSE callback...")
                 var didReceiveChunks = false
                 let prev = AsyncifyWasmInternal.onSSEChunk
                 AsyncifyWasmInternal.onSSEChunk = { chunk in
@@ -92,7 +102,9 @@ extension WasmActor {
                 }
                 defer { AsyncifyWasmInternal.onSSEChunk = prev }
                 do {
+                    log("chatStream: calling instance.create(action:args:)...")
                     let task = try await instance.create(action: action, args: args)
+                    log("chatStream: task completed — status: \(task.status), hasValue: \(task.hasValue), didReceiveChunks: \(didReceiveChunks)")
                     // If no SSE chunks arrived, fall back to the task result
                     if !didReceiveChunks,
                        task.status == .completed,
@@ -100,6 +112,7 @@ extension WasmActor {
                        let result = try? TypesBytes(unpackingAny: task.value),
                        case .raw(let data) = result.data
                     {
+                        log("chatStream: no SSE chunks, falling back to task result (\(data.count) bytes)")
                         var opts = JSONDecodingOptions()
                         opts.ignoreUnknownFields = true
                         if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
@@ -112,7 +125,9 @@ extension WasmActor {
                         }
                     }
                     continuation.finish()
+                    log("chatStream: finished successfully")
                 } catch {
+                    log("chatStream: error — \(error)")
                     continuation.finish(throwing: error)
                 }
             }

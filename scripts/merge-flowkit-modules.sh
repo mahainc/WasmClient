@@ -15,7 +15,10 @@ PACKAGE_DIR="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 OUTPUT_DIR="${2:-$PACKAGE_DIR/.build/flowkit-merged-modules}"
 
 # Modules managed by SPM — MUST be excluded to prevent slice conflicts.
-EXCLUDE="FlowKit.swiftmodule SwiftProtobuf.swiftmodule"
+# SwiftProtobuf is NOT excluded — we use the copy inside FlowKit.xcframework
+# to avoid duplicate ObjC class registrations that cause silent protobuf
+# casting failures when Xcode builds the app with a debug dylib.
+EXCLUDE="FlowKit.swiftmodule"
 
 # Search known xcframework locations (local dev + dependency consumer).
 XCFW=""

@@ -2,6 +2,10 @@
 import Foundation
 import WasmClient
 
+#if canImport(Darwin)
+import Darwin
+#endif
+
 // MARK: - Delegate
 
 /// Bridges FlowKit's TaskWasmEngine lifecycle to the actor.
@@ -10,75 +14,39 @@ import WasmClient
 internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Sendable {
     private(set) var engine: TaskWasmProtocol?
     private(set) var isStarted = false
-    /// Cached actions keyed by action ID — populated after engine stabilizes.
+    /// True while ensureStarted() is actively building the engine.
+    private var isStarting = false
+    /// Cached actions keyed by action ID — populated after engine stabilises.
     private var actionCache: [String: [WaTAction]] = [:]
-    /// Per-action round-robin counter for `resolveNextAction`. In-memory only —
-    /// mirrors flow-kit-example's default `.roundRobin` strategy in
-    /// `ProviderSettings.selectedAction(for:)` without persisting across launches.
+    /// Per-action round-robin counter for `resolveNextAction`.
     private var providerRotationIndex: [String: Int] = [:]
     private var logger: (@Sendable (String) -> Void)?
     /// Continuation for engine state stream.
     var stateContinuation: AsyncStream<WasmClient.EngineState>.Continuation?
-    /// One-shot continuation resolved when the delegate receives `.running`.
-    /// Used by ensureStarted() to wait for the engine to be truly ready
-    /// (matching flow-kit-example's WasmContainerView pattern).
-    private var runningContinuation: CheckedContinuation<Void, Never>?
-    /// Flag set when stateChanged(.running) fires — guards against the race
-    /// where the callback arrives before withCheckedContinuation stores itself.
+    /// Set to true when stateChanged(.running) fires. Thread-safe via lock.
     private var engineDidReachRunning = false
-    /// Lock protecting `engineDidReachRunning` and `runningContinuation` from
-    /// concurrent access between the FlowKit delegate thread and the Task.
     private let runningLock = NSLock()
-    /// In-flight start task — prevents actor reentrancy from building
-    /// duplicate engines when multiple callers hit ensureStarted concurrently.
-    private var startTask: Task<TaskWasmProtocol, any Error>?
 
-    // MARK: - Running-state synchronisation helpers
-
-    /// Called from `stateChanged(.running)` (FlowKit thread) — atomically marks
-    /// the engine as running and returns the stored continuation (if any) so the
-    /// caller can resume it *outside* the lock.
-    private func markRunningAndTakeContinuation() -> CheckedContinuation<Void, Never>? {
+    private func markRunning() {
         runningLock.lock()
         engineDidReachRunning = true
-        let continuation = runningContinuation
-        runningContinuation = nil
         runningLock.unlock()
-        return continuation
     }
 
-    /// Returns `true` if the delegate has already received `.running`.
-    /// Safe to call from any context (sync or async).
-    private func isAlreadyRunning() -> Bool {
+    private func isRunning() -> Bool {
         runningLock.lock()
         defer { runningLock.unlock() }
         return engineDidReachRunning
     }
 
-    /// Atomically checks `engineDidReachRunning`; if still `false`, stores the
-    /// continuation so `stateChanged(.running)` can resume it later. If `true`,
-    /// returns the continuation for immediate resumption by the caller.
-    /// Must be called from within `withCheckedContinuation`.
-    private func storeOrResolveContinuation(
-        _ continuation: CheckedContinuation<Void, Never>
-    ) -> CheckedContinuation<Void, Never>? {
+    private func clearRunning() {
         runningLock.lock()
-        if engineDidReachRunning {
-            runningLock.unlock()
-            return continuation  // caller resumes immediately
-        } else {
-            runningContinuation = continuation
-            runningLock.unlock()
-            return nil  // will be resumed by stateChanged(.running)
-        }
-    }
-
-    /// Reset the running flag under the lock. Used by `resetEngine()`.
-    private func clearRunningFlag() {
-        clearRunningFlag()
+        engineDidReachRunning = false
+        runningLock.unlock()
     }
 
     // MARK: - WasmInstanceDelegate
+    // Matches flow-kit-example's WasmEngine.stateChanged.
 
     func stateChanged(state: AsyncWasm.EngineState) {
         logger?("Engine state: \(state)")
@@ -86,8 +54,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         switch state {
         case .running:
             mapped = .running
-            let continuation = markRunningAndTakeContinuation()
-            continuation?.resume()
+            markRunning()
         case .reload:
             mapped = .starting
         default:
@@ -98,25 +65,38 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
 
     // MARK: - Engine Lifecycle
 
-    /// Build and start the engine. Action discovery is deferred to first use.
-    /// Safe to call concurrently — the second caller awaits the first caller's
-    /// in-flight task instead of building a duplicate engine (actor reentrancy guard).
+    /// Build and start the engine, matching flow-kit-example's WasmEngine.load() pattern:
+    ///   guard instance == nil || force else { return }
+    ///   instance = try await builder.build()
+    ///   instance.delegate = self
+    ///   try await instance.start()
+    ///
+    /// No Task wrapper, no CheckedContinuation — async work runs directly.
+    /// Action discovery is deferred to first use via ensureActionsLoaded().
     func ensureStarted(logger: @escaping @Sendable (String) -> Void) async throws -> TaskWasmProtocol {
+        #if canImport(Darwin)
+        signal(SIGPIPE, SIG_IGN)
+        #endif
+
+        // Fast path — already started.
         if let engine, isStarted { return engine }
 
-        // If another call is already starting the engine, piggyback on it.
-        if let startTask {
-            logger("Engine start already in progress — waiting for existing task...")
-            return try await startTask.value
+        // Another call is already starting — poll-wait for it to finish.
+        if isStarting {
+            logger("Engine start in progress — waiting...")
+            while isStarting {
+                try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            }
+            if let engine, isStarted { return engine }
+            throw WasmClient.Error.engineInitFailed
         }
 
+        isStarting = true
         self.logger = logger
 
-        let task = Task<TaskWasmProtocol, any Error> {
+        do {
             Self.installWasmBinaryIfNeeded(logger: logger)
 
-            // If no downloaded version exists, clear any bad cache state so
-            // WasmUpdateManager inside TaskWasm.default() triggers a fresh download.
             if AsyncifyWasm.currentVersionID == nil {
                 logger("No cached wasm version — resetting downloads to force fresh download")
                 AsyncifyWasm.resetDownloads()
@@ -124,49 +104,39 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
                 logger("Using cached wasm version: \(AsyncifyWasm.currentVersionID!)")
             }
 
-            do {
-                logger("Building engine via TaskWasm.default()...")
-                var instance = try await TaskWasm.default()
-                instance.premium = true
-                instance.delegate = self
+            // Direct async calls — exactly like flow-kit-example's WasmEngine.load()
+            logger("Building engine via TaskWasm.default()...")
+            self.stateContinuation?.yield(.starting)
+            var instance = try await TaskWasm.default()
+            instance.premium = true
+            instance.delegate = self
 
-                logger("Starting engine (delegate set)...")
-                self.stateContinuation?.yield(.starting)
-                try await instance.start()
-                logger("Engine start() returned, waiting for delegate .running callback...")
+            logger("Starting engine (delegate set)...")
+            try await instance.start()
+            logger("Engine start() returned, waiting for .running state...")
 
-                // Wait for the delegate's stateChanged(.running) callback.
-                // FlowKit fires this AFTER start() returns, once the engine is truly ready
-                // with providers registered. Without this wait, engine.actions() returns
-                // empty because the internal state machine hasn't reached .running yet.
-                //
-                // Guard: if stateChanged(.running) already fired during start(), skip
-                // the continuation entirely to avoid a leaked-continuation hang.
-                if !self.isAlreadyRunning() {
-                    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                        if let ready = self.storeOrResolveContinuation(continuation) {
-                            ready.resume()
-                        }
-                    }
+            // Poll-wait for the delegate's .running callback, matching
+            // flow-kit-example's WasmContainerView.onReceive(engine.$state)
+            // which gates interaction until .running is observed.
+            for tick in 1...300 { // 300 × 100ms = 30s
+                if isRunning() {
+                    logger("Engine reached .running after \(tick) tick(s)")
+                    break
                 }
-                logger("Engine delegate confirmed .running")
-
-                self.engine = instance
-                self.isStarted = true
-                self.startTask = nil
-                self.stateContinuation?.yield(.running)
-                return instance
-            } catch {
-                // Clear startTask so future calls retry instead of re-throwing the stale error.
-                self.startTask = nil
-                self.engineDidReachRunning = false
-                self.stateContinuation?.yield(.failed(error.localizedDescription))
-                logger("Engine start failed: \(error.localizedDescription)")
-                throw error
+                try await Task.sleep(nanoseconds: 100_000_000)
             }
+
+            self.engine = instance
+            self.isStarted = true
+            self.isStarting = false
+            self.stateContinuation?.yield(.running)
+            return instance
+        } catch {
+            self.isStarting = false
+            self.stateContinuation?.yield(.failed(error.localizedDescription))
+            logger("Engine start failed: \(error.localizedDescription)")
+            throw error
         }
-        startTask = task
-        return try await task.value
     }
 
     /// Poll the engine for action providers. Called lazily on first
@@ -313,11 +283,10 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
 
     /// Reset the engine — clear all cached state.
     func resetEngine() {
-        startTask?.cancel()
-        startTask = nil
         engine = nil
         isStarted = false
-        clearRunningFlag()
+        isStarting = false
+        clearRunning()
         actionCache = [:]
         stateContinuation?.yield(.stopped)
     }
