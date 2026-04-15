@@ -53,9 +53,9 @@ extension WasmClient {
         },
         availableActions: {
             [
-                ActionInfo(id: ActionID.chat.rawValue, provider: "openai", name: "Chat"),
-                ActionInfo(id: ActionID.scan.rawValue, provider: "vision", name: "Scan"),
-                ActionInfo(id: ActionID.livescore.rawValue, provider: "football", name: "Livescore"),
+                ActionInfo(actionID: ActionID.chat.rawValue, provider: "openai", name: "Chat"),
+                ActionInfo(actionID: ActionID.scan.rawValue, provider: "vision", name: "Scan"),
+                ActionInfo(actionID: ActionID.livescore.rawValue, provider: "football", name: "Livescore"),
             ]
         },
         refreshActions: { },
@@ -226,7 +226,7 @@ extension WasmClient {
                 taskID: "mock-task-id"
             )
         },
-        homeDesignStatus: { _ in
+        homeDesignStatus: { _, _ in
             HomedecorResult(
                 imageURL: "https://example.com/redesigned-room.jpg",
                 taskID: "mock-task-id"

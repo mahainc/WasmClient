@@ -204,9 +204,9 @@ public struct WasmClient: Sendable {
         _ actionID: String, _ args: [String: String]
     ) async throws -> WasmClient.HomedecorResult
 
-    /// Poll a home decor task by ID.
+    /// Poll a home decor task by ID. Pass the same actionID used for `homeDesign`.
     public var homeDesignStatus: @Sendable (
-        _ taskID: String
+        _ taskID: String, _ actionID: String
     ) async throws -> WasmClient.HomedecorResult
 
     // MARK: - Inpaint

@@ -209,18 +209,30 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         }
     }
 
-    /// Re-poll the engine for available actions. Call this to retry action
-    /// discovery after a network-related failure during initial startup.
+    /// Re-poll the engine for available actions. Waits for the provider count
+    /// to stabilize (same count on two consecutive polls) to catch late-registering
+    /// providers like Banana/Replicate/FalAI/Runware.
     func refreshActions(logger: @escaping @Sendable (String) -> Void) async throws {
         guard let engine else { throw WasmClient.Error.engineNotStarted }
-        let allActions = try await engine.actions()
-        var cache: [String: [WaTAction]] = [:]
-        for action in allActions.actions {
-            cache[action.id, default: []].append(action)
-        }
-        if !cache.isEmpty {
-            actionCache = cache
-            logger("Refreshed \(cache.count) action types (\(allActions.actions.count) total providers)")
+        var previousCount = 0
+        for attempt in 1...15 { // 15 × 2s = 30s max
+            let allActions = try await engine.actions()
+            let currentCount = allActions.actions.count
+            var cache: [String: [WaTAction]] = [:]
+            for action in allActions.actions {
+                cache[action.id, default: []].append(action)
+            }
+            if !cache.isEmpty {
+                actionCache = cache
+            }
+            logger("Refresh poll \(attempt): \(cache.count) types, \(currentCount) providers")
+            // Stable when count matches previous poll and is non-zero
+            if currentCount > 0 && currentCount == previousCount {
+                logger("Provider count stabilized at \(currentCount)")
+                break
+            }
+            previousCount = currentCount
+            try await Task.sleep(nanoseconds: 2_000_000_000)
         }
     }
 
@@ -422,12 +434,45 @@ actor WasmActor {
         if delegate.allActions().isEmpty {
             try await delegate.ensureActionsLoaded(logger: logger)
         }
-        return delegate.allActions().map { action in
-            WasmClient.ActionInfo(
-                id: action.id,
-                provider: action.provider,
-                name: action.name
-            )
+        return delegate.allActions().map { Self.mapActionInfo($0) }
+    }
+
+    /// Map a FlowKit WaTAction to our ActionInfo, extracting arg metadata.
+    static func mapActionInfo(_ action: WaTAction) -> WasmClient.ActionInfo {
+        let providerName = action.metadata.fields["provider_name"]?.stringValue ?? ""
+        let sortedKeys = action.sortedArgs
+        let args: [WasmClient.ActionArg] = action.args.map { key, arg in
+            let name = arg.name.isEmpty ? key : arg.name
+            let isRequired = arg.hasValidator && arg.validator.required
+            let kind: WasmClient.ActionArg.ArgKind
+            if arg.hasValidator, case .media(_) = arg.validator.data {
+                kind = .media
+            } else if arg.hasValidator, case .string(let s) = arg.validator.data {
+                if s.hasRegex, let values = Self.regexValues(s.regex), !values.isEmpty {
+                    kind = .picker(values: values, defaultValue: s.hasDefault ? s.default : (values.first ?? ""))
+                } else {
+                    kind = .text(defaultValue: s.hasDefault ? s.default : "")
+                }
+            } else {
+                kind = .text(defaultValue: "")
+            }
+            return WasmClient.ActionArg(key: key, name: name, isRequired: isRequired, kind: kind)
         }
+        return WasmClient.ActionInfo(
+            actionID: action.id,
+            provider: action.provider,
+            name: action.name,
+            providerName: providerName,
+            args: args,
+            sortedArgKeys: sortedKeys
+        )
+    }
+
+    /// Parse regex pattern `^(val1|val2|...)$` into values array.
+    private static func regexValues(_ pattern: String) -> [String]? {
+        guard pattern.hasPrefix("^("), pattern.hasSuffix(")$") else { return nil }
+        let inner = String(pattern.dropFirst(2).dropLast(2))
+        let values = inner.components(separatedBy: "|")
+        return values.isEmpty ? nil : values
     }
 }

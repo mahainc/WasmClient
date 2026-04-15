@@ -105,8 +105,8 @@ extension WasmClient: DependencyKey {
             homeDesign: { actionID, args in
                 try await actor.homeDesign(actionID: actionID, args: args)
             },
-            homeDesignStatus: { taskID in
-                try await actor.homeDesignStatus(taskID: taskID)
+            homeDesignStatus: { taskID, actionID in
+                try await actor.homeDesignStatus(taskID: taskID, actionID: actionID)
             },
             autoSuggestion: { image, cacheDir in
                 try await actor.autoSuggestion(image: image, cacheDir: cacheDir)

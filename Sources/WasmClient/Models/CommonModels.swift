@@ -55,6 +55,12 @@ extension WasmClient {
         // Livescore
         case livescore = "a1c3e5f7-2b4d-4a6c-8e0f-1a2b3c4d5e6f"
         case lsHighlights = "e7a9c1d3-8f0b-4ea2-adf3-7e8f9a0b1c2d"
+
+        public static let homedecorCases: [ActionID] = [
+            .interiorDesign, .exteriorDesign, .gardenDesign,
+            .paintRoom, .replaceObjects, .floorRestyle, .referenceStyle,
+            .roomStaging, .declutterRoom, .floorPlan, .planToImage,
+        ]
     }
 }
 
