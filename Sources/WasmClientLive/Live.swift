@@ -18,6 +18,9 @@ extension WasmClient: DependencyKey {
             reset: {
                 try await actor.reset()
             },
+            restart: {
+                try await actor.restart()
+            },
             engineVersion: {
                 await actor.engineVersion()
             },

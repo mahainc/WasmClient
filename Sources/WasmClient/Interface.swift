@@ -33,6 +33,10 @@ public struct WasmClient: Sendable {
     /// After calling reset, you must call `start` again.
     public var reset: @Sendable () async throws -> Void
 
+    /// Reset and restart the WASM engine in one call.
+    /// Equivalent to calling `reset()` then `start()`.
+    public var restart: @Sendable () async throws -> Void
+
     /// Current WASM binary version ID, or nil if engine hasn't loaded yet.
     public var engineVersion: @Sendable () async -> String? = { nil }
 
