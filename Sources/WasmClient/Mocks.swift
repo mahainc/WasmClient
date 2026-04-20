@@ -48,6 +48,7 @@ extension WasmClient {
         },
         engineVersion: { "mock-1.2.3" },
         resetDownloads: { },
+        setExpectedVersionProvider: { _ in },
         warmUp: {
             try? await Task.sleep(nanoseconds: MockConstants.warmUpDelay)
         },

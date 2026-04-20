@@ -43,6 +43,17 @@ public struct WasmClient: Sendable {
     /// Clear the cached WASM binary, forcing re-download on next start.
     public var resetDownloads: @Sendable () async -> Void = { }
 
+    /// Register a callback that returns the wasm version the app expects to run.
+    /// Invoked inside `start()` before `TaskWasm.default()`. If the returned ID
+    /// differs from the currently cached version, the download cache is cleared
+    /// so the engine fetches the new bundle on start. Returning `nil` or throwing
+    /// is treated as "no expectation" and preserves the default behavior.
+    /// Configure once at app launch — the registered provider persists across
+    /// `reset()` / `restart()`.
+    public var setExpectedVersionProvider: @Sendable (
+        _ provider: @escaping @Sendable () async throws -> String?
+    ) -> Void = { _ in }
+
     /// Pre-warm the WASM engine. Convenience wrapper around `start` that
     /// ignores errors. Call early (e.g. on home screen appear) to avoid cold-start delay.
     public var warmUp: @Sendable () async -> Void = { }

@@ -30,6 +30,15 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     /// Set to true when stateChanged(.running) fires. Thread-safe via lock.
     private var engineDidReachRunning = false
     private let runningLock = NSLock()
+    /// Host-supplied closure returning the wasm version the app expects.
+    /// Consulted inside `ensureStarted` before `TaskWasm.default()`; a mismatch
+    /// with `AsyncifyWasm.currentVersionID` triggers `AsyncifyWasm.resetDownloads()`.
+    /// Persists across `resetEngine()` — registered once at app launch.
+    private var expectedVersionProvider: (@Sendable () async throws -> String?)?
+
+    func setExpectedVersionProvider(_ provider: (@Sendable () async throws -> String?)?) {
+        expectedVersionProvider = provider
+    }
 
     private func markRunning() {
         runningLock.withLock { engineDidReachRunning = true }
@@ -113,11 +122,27 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         do {
             Self.installWasmBinaryIfNeeded(logger: logger)
 
-            if AsyncifyWasm.currentVersionID == nil {
+            let cachedID = AsyncifyWasm.currentVersionID
+
+            // Ask the host for the expected wasm version. nil / throw = no-op policy.
+            var expectedID: String? = nil
+            if let provider = expectedVersionProvider {
+                do {
+                    expectedID = try await provider()
+                } catch {
+                    logger("Expected-version provider threw \(error.localizedDescription) — skipping update check")
+                }
+            }
+
+            switch (cachedID, expectedID) {
+            case (nil, _):
                 logger("No cached wasm version — resetting downloads to force fresh download")
                 AsyncifyWasm.resetDownloads()
-            } else {
-                logger("Using cached wasm version: \(AsyncifyWasm.currentVersionID!)")
+            case let (.some(cached), .some(expected)) where cached != expected:
+                logger("Wasm version mismatch (cached=\(cached), expected=\(expected)) — resetting downloads")
+                AsyncifyWasm.resetDownloads()
+            case let (.some(cached), _):
+                logger("Using cached wasm version: \(cached)")
             }
 
             // Direct async calls — exactly like flow-kit-example's WasmEngine.load()
@@ -413,6 +438,10 @@ actor WasmActor {
 
     func resetDownloads() {
         AsyncifyWasm.resetDownloads()
+    }
+
+    func setExpectedVersionProvider(_ provider: (@Sendable () async throws -> String?)?) {
+        delegate.setExpectedVersionProvider(provider)
     }
 
     func warmUp() async {
