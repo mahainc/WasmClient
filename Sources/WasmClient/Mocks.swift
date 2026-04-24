@@ -319,7 +319,19 @@ extension WasmClient {
         expectedGoals: { _, _ in Data() },
         news: { _, _ in Data() },
         highlights: { _, _ in
-            [Highlight(title: "Arsenal vs Chelsea Highlights", videoURL: "https://example.com/video.mp4")]
+            [
+                Highlight(
+                    title: "Arsenal vs Chelsea Highlights",
+                    videoURL: "https://example.com/video.mp4",
+                    clips: [
+                        HighlightClip(
+                            id: "mock-clip-1",
+                            title: "Full match highlights",
+                            embed: "<iframe src=\"https://www.scorebat.com/embed/v/mock\" width=\"100%\" height=\"100%\" frameborder=\"0\" allowfullscreen allow=\"autoplay; fullscreen\" style=\"border:0;\"></iframe>"
+                        ),
+                    ]
+                ),
+            ]
         }
     )
 }

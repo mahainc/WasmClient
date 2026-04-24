@@ -291,7 +291,10 @@ extension WasmActor {
             videoURL: h.matchviewURL,
             thumbnailURL: h.thumbnail,
             competition: h.competition,
-            date: h.date
+            date: h.date,
+            clips: h.videos.map {
+                WasmClient.HighlightClip(id: $0.id, title: $0.title, embed: $0.embed)
+            }
         )
     }
 }

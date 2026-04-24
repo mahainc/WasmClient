@@ -138,6 +138,18 @@ extension WasmClient {
         }
     }
 
+    /// A single playable clip inside a highlight feed (Scorebat returns the
+    /// ready-to-render HTML iframe per clip).
+    public struct HighlightClip: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let title: String
+        public let embed: String
+
+        public init(id: String = "", title: String = "", embed: String = "") {
+            self.id = id; self.title = title; self.embed = embed
+        }
+    }
+
     /// A highlight video.
     public struct Highlight: Sendable, Equatable, Identifiable {
         public let id: UUID
@@ -146,13 +158,16 @@ extension WasmClient {
         public let thumbnailURL: String
         public let competition: String
         public let date: String
+        public let clips: [HighlightClip]
 
         public init(
             id: UUID = UUID(), title: String = "", videoURL: String = "",
-            thumbnailURL: String = "", competition: String = "", date: String = ""
+            thumbnailURL: String = "", competition: String = "", date: String = "",
+            clips: [HighlightClip] = []
         ) {
             self.id = id; self.title = title; self.videoURL = videoURL
-            self.thumbnailURL = thumbnailURL; self.competition = competition; self.date = date
+            self.thumbnailURL = thumbnailURL; self.competition = competition
+            self.date = date; self.clips = clips
         }
     }
 }

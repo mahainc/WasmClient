@@ -2,8 +2,8 @@
 import PackageDescription
 
 let packageDir = Context.packageDirectory
-let flowKitVersion = "1.2.15-26.1.1"
-let flowKitChecksum = "ac5d64178ef8e5c509028228cdab2eedaf9ed3a0304e334ea921f391c5e53039"
+let flowKitVersion = "1.2.16-26.1.1"
+let flowKitChecksum = "687d0192b61d15ce163b7e2795035290c398a2a894b6af3d6775a6b46151da87"
 let flowKitURL = "https://github.com/mahainc/flow-kit/releases/download/\(flowKitVersion)/FlowKit.xcframework.zip"
 
 let package = Package(
