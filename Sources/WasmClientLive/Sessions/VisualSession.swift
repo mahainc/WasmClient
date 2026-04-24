@@ -17,6 +17,7 @@ extension WasmActor {
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.searchPhotos.rawValue, logger: logger
         )
+        await instance.ensureBrowserCookies(for: action)
         var args: [String: Google_Protobuf_Value] = [
             "query": Google_Protobuf_Value(stringValue: query),
         ]
@@ -39,6 +40,7 @@ extension WasmActor {
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.photoVisualSearch.rawValue, logger: logger
         )
+        await instance.ensureBrowserCookies(for: action)
         var args: [String: Google_Protobuf_Value] = [
             "file": Google_Protobuf_Value(stringValue: imageURL),
         ]
