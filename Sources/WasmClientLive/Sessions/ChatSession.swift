@@ -90,7 +90,7 @@ extension WasmActor {
                 log("chatStream: Task started, setting SSE callback...")
                 var didReceiveChunks = false
                 let prev = AsyncifyWasmInternal.onSSEChunk
-                AsyncifyWasmInternal.onSSEChunk = { chunk in
+                AsyncifyWasmInternal.onSSEChunk = { _, chunk in
                     guard let data = chunk.data(using: .utf8),
                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                           let choices = json["choices"] as? [[String: Any]],
