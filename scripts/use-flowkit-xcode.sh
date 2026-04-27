@@ -16,7 +16,7 @@ source "$VERSIONS_FILE"
 
 TARGET_XCODE="${1:-}"
 if [ -z "$TARGET_XCODE" ]; then
-  echo "usage: $0 <26.1.1|26.4>" >&2
+  echo "usage: $0 <26.1.1>" >&2
   exit 1
 fi
 
@@ -25,12 +25,8 @@ case "$TARGET_XCODE" in
     FLOWKIT_VERSION="$FLOWKIT_VERSION_26_1_1"
     FLOWKIT_CHECKSUM="$FLOWKIT_CHECKSUM_26_1_1"
     ;;
-  26.4)
-    FLOWKIT_VERSION="$FLOWKIT_VERSION_26_4"
-    FLOWKIT_CHECKSUM="$FLOWKIT_CHECKSUM_26_4"
-    ;;
   *)
-    echo "error: unsupported Xcode version '$TARGET_XCODE' (expected 26.1.1 or 26.4)" >&2
+    echo "error: unsupported Xcode version '$TARGET_XCODE' (expected 26.1.1)" >&2
     exit 1
     ;;
 esac
