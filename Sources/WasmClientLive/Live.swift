@@ -96,14 +96,14 @@ extension WasmClient: DependencyKey {
             aiartStyles: { actionID in
                 try await actor.aiartStyles(actionID: actionID)
             },
-            searchPhotos: { query, page, perPage in
-                try await actor.searchPhotos(query: query, page: page, perPage: perPage)
+            searchPhotos: { query, provider, page, perPage in
+                try await actor.searchPhotos(query: query, provider: provider, page: page, perPage: perPage)
             },
-            photoVisualSearch: { imageURL, page, perPage in
-                try await actor.photoVisualSearch(imageURL: imageURL, page: page, perPage: perPage)
+            photoVisualSearch: { imageURL, provider, page, perPage in
+                try await actor.photoVisualSearch(imageURL: imageURL, provider: provider, page: page, perPage: perPage)
             },
-            listMedia: { query, page, perPage in
-                try await actor.listMedia(query: query, page: page, perPage: perPage)
+            listMedia: { query, provider, page, perPage in
+                try await actor.listMedia(query: query, provider: provider, page: page, perPage: perPage)
             },
             homeDesign: { actionID, args in
                 try await actor.homeDesign(actionID: actionID, args: args)

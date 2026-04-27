@@ -10,12 +10,15 @@ extension WasmActor {
     /// Search photos by text query.
     func searchPhotos(
         query: String,
+        provider: String,
         page: Int,
         perPage: Int
     ) async throws -> WasmClient.PhotoSearchResult {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
-            actionID: WasmClient.ActionID.searchPhotos.rawValue, logger: logger
+            actionID: WasmClient.ActionID.searchPhotos.rawValue,
+            preferredProvider: provider.isEmpty ? nil : provider,
+            logger: logger
         )
         await instance.ensureBrowserCookies(for: action)
         var args: [String: Google_Protobuf_Value] = [
@@ -33,12 +36,15 @@ extension WasmActor {
     /// Visual search: find similar photos given an image URL.
     func photoVisualSearch(
         imageURL: String,
+        provider: String,
         page: Int,
         perPage: Int
     ) async throws -> WasmClient.PhotoSearchResult {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
-            actionID: WasmClient.ActionID.photoVisualSearch.rawValue, logger: logger
+            actionID: WasmClient.ActionID.photoVisualSearch.rawValue,
+            preferredProvider: provider.isEmpty ? nil : provider,
+            logger: logger
         )
         await instance.ensureBrowserCookies(for: action)
         var args: [String: Google_Protobuf_Value] = [
@@ -56,12 +62,15 @@ extension WasmActor {
     /// List media (editorial/trending). Pass empty query for editorial content.
     func listMedia(
         query: String,
+        provider: String,
         page: Int,
         perPage: Int
     ) async throws -> WasmClient.PhotoSearchResult {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
-            actionID: WasmClient.ActionID.listMedia.rawValue, logger: logger
+            actionID: WasmClient.ActionID.listMedia.rawValue,
+            preferredProvider: provider.isEmpty ? nil : provider,
+            logger: logger
         )
         var args: [String: Google_Protobuf_Value] = [:]
         if !query.isEmpty {

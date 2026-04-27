@@ -191,18 +191,24 @@ public struct WasmClient: Sendable {
     // MARK: - Visual / Media
 
     /// Search photos by text query.
+    /// Pass empty string for `provider` to use the first available provider;
+    /// pass an `ActionInfo.provider` value (from `availableActions()`) to pin a specific one.
     public var searchPhotos: @Sendable (
-        _ query: String, _ page: Int, _ perPage: Int
+        _ query: String, _ provider: String, _ page: Int, _ perPage: Int
     ) async throws -> WasmClient.PhotoSearchResult
 
     /// Visual search: find similar photos given an image URL.
+    /// Pass empty string for `provider` to use the first available provider;
+    /// pass an `ActionInfo.provider` value (from `availableActions()`) to pin a specific one.
     public var photoVisualSearch: @Sendable (
-        _ imageURL: String, _ page: Int, _ perPage: Int
+        _ imageURL: String, _ provider: String, _ page: Int, _ perPage: Int
     ) async throws -> WasmClient.PhotoSearchResult
 
     /// List media (editorial/trending). Pass empty query for editorial content.
+    /// Pass empty string for `provider` to use the first available provider;
+    /// pass an `ActionInfo.provider` value (from `availableActions()`) to pin a specific one.
     public var listMedia: @Sendable (
-        _ query: String, _ page: Int, _ perPage: Int
+        _ query: String, _ provider: String, _ page: Int, _ perPage: Int
     ) async throws -> WasmClient.PhotoSearchResult
 
     // MARK: - Home Decor

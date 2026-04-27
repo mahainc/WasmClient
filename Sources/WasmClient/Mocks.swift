@@ -196,7 +196,7 @@ extension WasmClient {
                 "FANTASY", "OIL_PAINTING", "LINE_ART", "MINIMAL", "PHOTOREAL",
             ]
         },
-        searchPhotos: { _, _, _ in
+        searchPhotos: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return PhotoSearchResult(
                 total: 100,
@@ -211,11 +211,11 @@ extension WasmClient {
                 ]
             )
         },
-        photoVisualSearch: { _, _, _ in
+        photoVisualSearch: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return PhotoSearchResult(total: 10, totalPages: 1, results: [])
         },
-        listMedia: { _, _, _ in
+        listMedia: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return PhotoSearchResult(total: 50, totalPages: 3, results: [])
         },
