@@ -16099,3 +16099,301 @@ extension LivescoreExpectedMetricList: SwiftProtobuf.Message, SwiftProtobuf._Mes
     return true
   }
 }
+
+// MARK: - Manually backported types
+//
+// These messages exist in flow-kit-example's livescore.proto / pb.swift but
+// were missing from this checkout's regenerated copy. Backported verbatim so
+// LivescoreSession.highlightPages / webpageList can decode the WASM action's
+// `LivescoreWebPageList` Any payload. Safe to delete once livescore.proto
+// regenerates with these types included.
+
+public struct LivescoreWebPage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// thumbnail/logo URL for list display
+  public var image: String = String()
+
+  /// primary label (league name, team name, match title)
+  public var title: String = String()
+
+  /// secondary label (country, date, competition)
+  public var subtitle: String = String()
+
+  /// embed URL loaded directly in WKWebView (no-proxy)
+  public var url: String = String()
+
+  /// slug identifier (e.g. "team/real-madrid", "competition/england-premier-league")
+  public var id: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct LivescoreWebPageList: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var pages: [LivescoreWebPage] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebPage"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}image\0\u{1}title\0\u{1}subtitle\0\u{1}url\0\u{1}id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.image) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.title) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.subtitle) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.image.isEmpty {
+      try visitor.visitSingularStringField(value: self.image, fieldNumber: 1)
+    }
+    if !self.title.isEmpty {
+      try visitor.visitSingularStringField(value: self.title, fieldNumber: 2)
+    }
+    if !self.subtitle.isEmpty {
+      try visitor.visitSingularStringField(value: self.subtitle, fieldNumber: 3)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 4)
+    }
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: LivescoreWebPage, rhs: LivescoreWebPage) -> Bool {
+    if lhs.image != rhs.image {return false}
+    if lhs.title != rhs.title {return false}
+    if lhs.subtitle != rhs.subtitle {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.id != rhs.id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreWebPageList: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebPageList"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}pages\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.pages) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.pages.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.pages, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: LivescoreWebPageList, rhs: LivescoreWebPageList) -> Bool {
+    if lhs.pages != rhs.pages {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+// MARK: - Manually backported types (LivescoreUpcomingMatch / List)
+//
+// Same situation as LivescoreWebPage above — these messages exist in
+// flow-kit-example's livescore.proto / pb.swift but are missing from this
+// checkout's regenerated copy. Backported verbatim so
+// LivescoreSession.upcoming() can decode the WASM action's
+// 'LivescoreUpcomingMatchList' Any payload.
+
+public struct LivescoreUpcomingMatch: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Scorebat match ID
+  public var id: Int64 = 0
+
+  /// Short team name (e.g., "PSG")
+  public var team1Name: String = String()
+
+  /// Short team name (e.g., "Bayern Munich")
+  public var team2Name: String = String()
+
+  /// Team logo URL: scorebat.com/og/teamlogo/large/{s1Id}.png
+  public var team1Logo: String = String()
+
+  /// Team logo URL: scorebat.com/og/teamlogo/large/{s2Id}.png
+  public var team2Logo: String = String()
+
+  /// UNIX timestamp of match start
+  public var datetime: Int64 = 0
+
+  /// Scorebat competition ID
+  public var competitionID: Int64 = 0
+
+  /// Team 1 score (0 before kickoff)
+  public var score1: Int64 = 0
+
+  /// Team 2 score (0 before kickoff)
+  public var score2: Int64 = 0
+
+  /// Match status ("-" = not started)
+  public var status: String = String()
+
+  /// Embed URL: scorebat.com/embed/matchview/{id}
+  public var url: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct LivescoreUpcomingMatchList: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var matches: [LivescoreUpcomingMatch] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+extension LivescoreUpcomingMatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UpcomingMatch"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}team1_name\0\u{3}team2_name\0\u{3}team1_logo\0\u{3}team2_logo\0\u{1}datetime\0\u{3}competition_id\0\u{1}score1\0\u{1}score2\0\u{1}status\0\u{1}url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.team1Name) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.team2Name) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.team1Logo) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.team2Logo) }()
+      case 6: try { try decoder.decodeSingularInt64Field(value: &self.datetime) }()
+      case 7: try { try decoder.decodeSingularInt64Field(value: &self.competitionID) }()
+      case 8: try { try decoder.decodeSingularInt64Field(value: &self.score1) }()
+      case 9: try { try decoder.decodeSingularInt64Field(value: &self.score2) }()
+      case 10: try { try decoder.decodeSingularStringField(value: &self.status) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.id != 0 {
+      try visitor.visitSingularInt64Field(value: self.id, fieldNumber: 1)
+    }
+    if !self.team1Name.isEmpty {
+      try visitor.visitSingularStringField(value: self.team1Name, fieldNumber: 2)
+    }
+    if !self.team2Name.isEmpty {
+      try visitor.visitSingularStringField(value: self.team2Name, fieldNumber: 3)
+    }
+    if !self.team1Logo.isEmpty {
+      try visitor.visitSingularStringField(value: self.team1Logo, fieldNumber: 4)
+    }
+    if !self.team2Logo.isEmpty {
+      try visitor.visitSingularStringField(value: self.team2Logo, fieldNumber: 5)
+    }
+    if self.datetime != 0 {
+      try visitor.visitSingularInt64Field(value: self.datetime, fieldNumber: 6)
+    }
+    if self.competitionID != 0 {
+      try visitor.visitSingularInt64Field(value: self.competitionID, fieldNumber: 7)
+    }
+    if self.score1 != 0 {
+      try visitor.visitSingularInt64Field(value: self.score1, fieldNumber: 8)
+    }
+    if self.score2 != 0 {
+      try visitor.visitSingularInt64Field(value: self.score2, fieldNumber: 9)
+    }
+    if !self.status.isEmpty {
+      try visitor.visitSingularStringField(value: self.status, fieldNumber: 10)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 11)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: LivescoreUpcomingMatch, rhs: LivescoreUpcomingMatch) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.team1Name != rhs.team1Name {return false}
+    if lhs.team2Name != rhs.team2Name {return false}
+    if lhs.team1Logo != rhs.team1Logo {return false}
+    if lhs.team2Logo != rhs.team2Logo {return false}
+    if lhs.datetime != rhs.datetime {return false}
+    if lhs.competitionID != rhs.competitionID {return false}
+    if lhs.score1 != rhs.score1 {return false}
+    if lhs.score2 != rhs.score2 {return false}
+    if lhs.status != rhs.status {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreUpcomingMatchList: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UpcomingMatchList"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}matches\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.matches) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.matches.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.matches, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: LivescoreUpcomingMatchList, rhs: LivescoreUpcomingMatchList) -> Bool {
+    if lhs.matches != rhs.matches {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}

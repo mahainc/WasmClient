@@ -11,6 +11,10 @@ extension WasmClient {
     public enum EngineState: Sendable, Equatable {
         case stopped
         case starting
+        /// Engine is downloading a fresh wasm bundle. Associated value is the
+        /// download progress in [0.0, 1.0]. Treated like `.starting` for UI
+        /// purposes; surfaced separately so callers can show download progress.
+        case updating(Double)
         case running
         case failed(String)
     }

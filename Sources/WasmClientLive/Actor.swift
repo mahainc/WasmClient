@@ -87,6 +87,8 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             continuation?.resume()
         case .reload:
             mapped = .starting
+        case .updating(let progress):
+            mapped = .updating(progress)
         default:
             mapped = .stopped
         }

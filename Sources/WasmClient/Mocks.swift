@@ -56,7 +56,7 @@ extension WasmClient {
             [
                 ActionInfo(actionID: ActionID.chat.rawValue, provider: "openai", name: "Chat"),
                 ActionInfo(actionID: ActionID.scan.rawValue, provider: "vision", name: "Scan"),
-                ActionInfo(actionID: ActionID.livescore.rawValue, provider: "football", name: "Livescore"),
+                ActionInfo(actionID: ActionID.lsWebpage.rawValue, provider: "football", name: "Livescore Webpage"),
             ]
         },
         refreshActions: { },
@@ -268,69 +268,32 @@ extension WasmClient {
         tryOnStatus: { _ in
             TryOnResult(status: .completed, imageURL: "https://example.com/tryon.jpg")
         },
-        livescores: { _ in
-            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
-            return [
-                Fixture(id: "1", homeTeam: "Arsenal", awayTeam: "Chelsea", homeScore: 2, awayScore: 1, status: "FT"),
-                Fixture(id: "2", homeTeam: "Liverpool", awayTeam: "Man City", homeScore: 0, awayScore: 0, status: "LIVE"),
-            ]
+        webpageLeagues: {
+            [WebPage(id: "league/premier-league", title: "Premier League", subtitle: "England")]
         },
-        fixtures: { _ in
-            [Fixture(id: "1", homeTeam: "Arsenal", awayTeam: "Chelsea", status: "NS", date: "2026-03-25")]
+        webpageCompetitions: {
+            [WebPage(id: "competition/champions-league", title: "Champions League", subtitle: "UEFA")]
         },
-        fixture: { _ in
-            [Fixture(id: "1", homeTeam: "Arsenal", awayTeam: "Chelsea", homeScore: 2, awayScore: 1, status: "FT")]
+        webpageTeams: {
+            [WebPage(id: "team/arsenal", title: "Arsenal", subtitle: "England")]
         },
-        headToHead: { _, _ in
-            [Fixture(id: "h2h-1", homeTeam: "Arsenal", awayTeam: "Chelsea", homeScore: 1, awayScore: 0, status: "FT")]
+        webpage: { _ in
+            [WebPage(id: "page/example", title: "Example Page", url: "https://example.com")]
         },
-        leagues: {
+        highlightPages: { _, _, _ in
+            [WebPage(id: "highlight/example", title: "Example Highlight", subtitle: "Premier League")]
+        },
+        upcoming: {
             [
-                League(id: "39", name: "Premier League", country: "England", type: "League"),
-                League(id: "140", name: "La Liga", country: "Spain", type: "League"),
-            ]
-        },
-        searchLeagues: { _ in
-            [League(id: "39", name: "Premier League", country: "England")]
-        },
-        standings: { _ in
-            [Standing(rank: 1, teamID: "42", teamName: "Arsenal", points: 75, played: 30)]
-        },
-        searchTeams: { _ in
-            [Team(id: "42", name: "Arsenal", logo: "https://example.com/arsenal.png", country: "England")]
-        },
-        team: { _ in
-            [Team(id: "42", name: "Arsenal", logo: "https://example.com/arsenal.png", country: "England")]
-        },
-        searchPlayers: { _ in
-            [Player(id: "1", name: "Bukayo Saka", position: "Attacker", nationality: "England")]
-        },
-        player: { _ in
-            [Player(id: "1", name: "Bukayo Saka", position: "Attacker", nationality: "England")]
-        },
-        league: { _ in
-            [League(id: "39", name: "Premier League", country: "England")]
-        },
-        topscorers: { _ in
-            [Player(id: "1", name: "Erling Haaland", position: "Attacker", nationality: "Norway")]
-        },
-        predictions: { _ in Data() },
-        odds: { _, _ in Data() },
-        expectedGoals: { _, _ in Data() },
-        news: { _, _ in Data() },
-        highlights: { _, _ in
-            [
-                Highlight(
-                    title: "Arsenal vs Chelsea Highlights",
-                    videoURL: "https://example.com/video.mp4",
-                    clips: [
-                        HighlightClip(
-                            id: "mock-clip-1",
-                            title: "Full match highlights",
-                            embed: "<iframe src=\"https://www.scorebat.com/embed/v/mock\" width=\"100%\" height=\"100%\" frameborder=\"0\" allowfullscreen allow=\"autoplay; fullscreen\" style=\"border:0;\"></iframe>"
-                        ),
-                    ]
-                ),
+                UpcomingMatch(
+                    id: "1",
+                    homeTeam: "PSG", awayTeam: "Bayern Munich",
+                    homeLogoURL: "", awayLogoURL: "",
+                    kickoff: Date().addingTimeInterval(3600),
+                    competitionID: "0",
+                    homeScore: 0, awayScore: 0,
+                    status: "-", embedURL: ""
+                )
             ]
         }
     )

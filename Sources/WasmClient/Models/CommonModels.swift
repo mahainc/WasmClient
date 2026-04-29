@@ -53,8 +53,9 @@ extension WasmClient {
         case floorPlan = "6e9ba966-b677-4de4-acab-327115870533"
         case planToImage = "6e9ba966-b677-4de4-acab-327115870534"
         // Livescore
-        case livescore = "a1c3e5f7-2b4d-4a6c-8e0f-1a2b3c4d5e6f"
+        case lsWebpage = "b2d4f6a8-3c5e-4b7d-9f1a-2c3d4e5f6a7b"
         case lsHighlights = "e7a9c1d3-8f0b-4ea2-adf3-7e8f9a0b1c2d"
+        case lsUpcoming = "c3e5a7b9-4d6f-4c8e-a0b2-3d4e5f6a7b8c"
 
         public static let homedecorCases: [ActionID] = [
             .interiorDesign, .exteriorDesign, .gardenDesign,

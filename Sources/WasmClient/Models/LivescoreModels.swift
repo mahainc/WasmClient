@@ -1,173 +1,75 @@
 import Foundation
 
-// MARK: - Livescore
+// MARK: - Livescore Upcoming
 
 extension WasmClient {
-    public enum FixtureStatus: Sendable, Equatable {
-        case notStarted
-        case live
-        case halfTime
-        case finished
-        case extraTime
-        case penalties
-        case postponed
-        case cancelled
-        case suspended
-        case other(String)
-    }
-
-    /// Livescore API endpoint selector (raw values match proto `LivescoreEndpoint`).
-    public enum LivescoreEndpoint: Int, Sendable {
-        case livescores = 1
-        case fixtures = 2
-        case leagues = 3
-        case standings = 4
-        case teams = 5
-        case players = 6
-        case topscorers = 7
-        case predictions = 8
-        case odds = 9
-        case news = 10
-        case h2h = 11
-        case meta = 12
-        case expected = 13
-    }
-
-    /// A football fixture.
-    public struct Fixture: Sendable, Equatable, Identifiable {
+    /// A single upcoming match returned by `lsUpcoming`. Mirrors the
+    /// `LivescoreUpcomingMatch` proto, with the UNIX `datetime` field decoded
+    /// to a `Date` so consumers don't deal with the raw integer.
+    public struct UpcomingMatch: Sendable, Equatable, Identifiable {
+        /// String form of the Scorebat match id, suitable for `Identifiable`.
         public let id: String
-        public let leagueID: String
-        public let seasonID: String
         public let homeTeam: String
         public let awayTeam: String
-        public let homeScore: Int?
-        public let awayScore: Int?
-        public let venueName: String
-        public let statusShort: String
-        public let elapsedMinutes: Int?
-        public let statusKind: FixtureStatus
+        public let homeLogoURL: String
+        public let awayLogoURL: String
+        /// Decoded from the proto's `datetime` (UNIX seconds).
+        public let kickoff: Date
+        /// String form of the Scorebat competition id.
+        public let competitionID: String
+        /// 0 before kickoff; only meaningful when `status != "-"`.
+        public let homeScore: Int
+        public let awayScore: Int
+        /// `"-"` until kickoff; otherwise live/finished status text.
         public let status: String
-        public let date: String
-        public let league: String
-        public let round: String
+        /// Scorebat embed URL: `scorebat.com/embed/matchview/{id}`.
+        public let embedURL: String
 
         public init(
-            id: String = "", leagueID: String = "", seasonID: String = "",
-            homeTeam: String = "", awayTeam: String = "", homeScore: Int? = nil,
-            awayScore: Int? = nil, venueName: String = "", statusShort: String = "",
-            elapsedMinutes: Int? = nil, statusKind: FixtureStatus = .other(""),
-            status: String = "", date: String = "", league: String = "", round: String = ""
+            id: String, homeTeam: String, awayTeam: String,
+            homeLogoURL: String, awayLogoURL: String,
+            kickoff: Date, competitionID: String,
+            homeScore: Int, awayScore: Int,
+            status: String, embedURL: String
         ) {
             self.id = id
-            self.leagueID = leagueID
-            self.seasonID = seasonID
             self.homeTeam = homeTeam
             self.awayTeam = awayTeam
+            self.homeLogoURL = homeLogoURL
+            self.awayLogoURL = awayLogoURL
+            self.kickoff = kickoff
+            self.competitionID = competitionID
             self.homeScore = homeScore
             self.awayScore = awayScore
-            self.venueName = venueName
-            self.statusShort = statusShort
-            self.elapsedMinutes = elapsedMinutes
-            self.statusKind = statusKind
             self.status = status
-            self.date = date
-            self.league = league
-            self.round = round
+            self.embedURL = embedURL
         }
     }
+}
 
-    /// A league.
-    public struct League: Sendable, Equatable, Identifiable {
+// MARK: - Livescore Webpage
+
+extension WasmClient {
+    /// A webpage entry returned by `lsWebpage` (and historically by `lsHighlights`
+    /// with the `feed` arg). Mirrors `LivescoreWebPage` proto from FlowKit.
+    public struct WebPage: Sendable, Equatable, Identifiable {
+        /// Slug identifier (e.g. "team/real-madrid", "competition/england-premier-league").
         public let id: String
-        public let name: String
-        public let country: String
-        public let logo: String
-        public let type: String
-
-        public init(id: String = "", name: String = "", country: String = "", logo: String = "", type: String = "") {
-            self.id = id; self.name = name; self.country = country; self.logo = logo; self.type = type
-        }
-    }
-
-    /// A team.
-    public struct Team: Sendable, Equatable, Identifiable {
-        public let id: String
-        public let name: String
-        public let logo: String
-        public let country: String
-
-        public init(id: String = "", name: String = "", logo: String = "", country: String = "") {
-            self.id = id; self.name = name; self.logo = logo; self.country = country
-        }
-    }
-
-    /// A standing entry.
-    public struct Standing: Sendable, Equatable {
-        public let rank: Int
-        public let teamID: String
-        public let teamName: String
-        public let points: Int
-        public let played: Int
-        public let won: Int
-        public let drawn: Int
-        public let lost: Int
-        public let goalsFor: Int
-        public let goalsAgainst: Int
+        /// Thumbnail / logo URL for list display.
+        public let image: String
+        /// Primary label (league name, team name, match title).
+        public let title: String
+        /// Secondary label (country, date, competition).
+        public let subtitle: String
+        /// Embed URL loaded directly in WKWebView (no-proxy).
+        public let url: String
 
         public init(
-            rank: Int = 0, teamID: String = "", teamName: String = "",
-            points: Int = 0, played: Int = 0, won: Int = 0, drawn: Int = 0,
-            lost: Int = 0, goalsFor: Int = 0, goalsAgainst: Int = 0
+            id: String = "", image: String = "", title: String = "",
+            subtitle: String = "", url: String = ""
         ) {
-            self.rank = rank; self.teamID = teamID; self.teamName = teamName
-            self.points = points; self.played = played; self.won = won; self.drawn = drawn
-            self.lost = lost; self.goalsFor = goalsFor; self.goalsAgainst = goalsAgainst
-        }
-    }
-
-    /// A player.
-    public struct Player: Sendable, Equatable, Identifiable {
-        public let id: String
-        public let name: String
-        public let position: String
-        public let nationality: String
-        public let photo: String
-
-        public init(id: String = "", name: String = "", position: String = "", nationality: String = "", photo: String = "") {
-            self.id = id; self.name = name; self.position = position; self.nationality = nationality; self.photo = photo
-        }
-    }
-
-    /// A single playable clip inside a highlight feed (Scorebat returns the
-    /// ready-to-render HTML iframe per clip).
-    public struct HighlightClip: Sendable, Equatable, Identifiable {
-        public let id: String
-        public let title: String
-        public let embed: String
-
-        public init(id: String = "", title: String = "", embed: String = "") {
-            self.id = id; self.title = title; self.embed = embed
-        }
-    }
-
-    /// A highlight video.
-    public struct Highlight: Sendable, Equatable, Identifiable {
-        public let id: UUID
-        public let title: String
-        public let videoURL: String
-        public let thumbnailURL: String
-        public let competition: String
-        public let date: String
-        public let clips: [HighlightClip]
-
-        public init(
-            id: UUID = UUID(), title: String = "", videoURL: String = "",
-            thumbnailURL: String = "", competition: String = "", date: String = "",
-            clips: [HighlightClip] = []
-        ) {
-            self.id = id; self.title = title; self.videoURL = videoURL
-            self.thumbnailURL = thumbnailURL; self.competition = competition
-            self.date = date; self.clips = clips
+            self.id = id; self.image = image; self.title = title
+            self.subtitle = subtitle; self.url = url
         }
     }
 }

@@ -144,59 +144,23 @@ extension WasmClient: DependencyKey {
             tryOnStatus: { taskID in
                 try await actor.tryOnStatus(taskID: taskID)
             },
-            livescores: { type in
-                try await actor.livescores(type: type)
+            webpageLeagues: {
+                try await actor.webpageLeagues()
             },
-            fixtures: { date in
-                try await actor.fixtures(date: date)
+            webpageCompetitions: {
+                try await actor.webpageCompetitions()
             },
-            fixture: { id in
-                try await actor.fixture(id: id)
+            webpageTeams: {
+                try await actor.webpageTeams()
             },
-            headToHead: { team1, team2 in
-                try await actor.headToHead(team1: team1, team2: team2)
+            webpage: { url in
+                try await actor.webpage(url: url)
             },
-            leagues: {
-                try await actor.leagues()
+            highlightPages: { competition, team, feed in
+                try await actor.highlightPages(competition: competition, team: team, feed: feed)
             },
-            searchLeagues: { query in
-                try await actor.searchLeagues(query: query)
-            },
-            standings: { seasonID in
-                try await actor.standings(seasonID: seasonID)
-            },
-            searchTeams: { query in
-                try await actor.searchTeams(query: query)
-            },
-            team: { id in
-                try await actor.team(id: id)
-            },
-            searchPlayers: { query in
-                try await actor.searchPlayers(query: query)
-            },
-            player: { id in
-                try await actor.player(id: id)
-            },
-            league: { id in
-                try await actor.league(id: id)
-            },
-            topscorers: { seasonID in
-                try await actor.topscorers(seasonID: seasonID)
-            },
-            predictions: { fixtureID in
-                try await actor.predictions(fixtureID: fixtureID)
-            },
-            odds: { fixtureID, type in
-                try await actor.odds(fixtureID: fixtureID, type: type)
-            },
-            expectedGoals: { fixtureID, type in
-                try await actor.expectedGoals(fixtureID: fixtureID, type: type)
-            },
-            news: { seasonID, type in
-                try await actor.news(seasonID: seasonID, type: type)
-            },
-            highlights: { competition, team in
-                try await actor.highlights(competition: competition, team: team)
+            upcoming: {
+                try await actor.upcoming()
             }
         )
     }()

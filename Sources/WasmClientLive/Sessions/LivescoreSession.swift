@@ -3,298 +3,117 @@ import Foundation
 import SwiftProtobuf
 import WasmClient
 
-// MARK: - Livescore
+// MARK: - Livescore (Webpage only)
 
 extension WasmActor {
 
-    // MARK: - Generic Helper
+    // MARK: - Webpage
 
-    /// Run a livescore request and decode the proto response.
-    private func runLivescore<T: SwiftProtobuf.Message>(
-        endpoint: LivescoreEndpoint,
-        params: [String: String] = [:]
-    ) async throws -> T {
+    /// `LivescoreWebPageType` enum (server side): 1=leagues, 2=competitions,
+    /// 3=teams, 4=page (URL-targeted).
+    private func webpageList(type: Int, url: String? = nil) async throws -> [WasmClient.WebPage] {
         let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(actionID: WasmClient.ActionID.livescore.rawValue, logger: logger)
+        let action = try await instance.action(for: WasmClient.ActionID.lsWebpage.rawValue, strategy: .roundRobin)
         var args: [String: Google_Protobuf_Value] = [
-            "endpoint": Google_Protobuf_Value(numberValue: Double(endpoint.rawValue)),
+            "type": Google_Protobuf_Value(numberValue: Double(type)),
         ]
-        for (k, v) in params {
-            args[k] = Google_Protobuf_Value(stringValue: v)
-        }
+        if let url { args["url"] = Google_Protobuf_Value(stringValue: url) }
         let task = try await instance.create(action: action, args: args)
         let taskStatus = task.status
         guard taskStatus == .completed, task.hasValue else {
             throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
         }
-        return try T(unpackingAny: task.value)
-    }
-
-    // MARK: - Livescores
-
-    func livescores(type: String) async throws -> [WasmClient.Fixture] {
-        let list: LivescoreFixtureList = try await runLivescore(
-            endpoint: .livescores, params: ["type": type]
-        )
-        return list.fixtures.map(mapFixture)
-    }
-
-    func fixtures(date: String) async throws -> [WasmClient.Fixture] {
-        let list: LivescoreFixtureList = try await runLivescore(
-            endpoint: .fixtures, params: ["date": date]
-        )
-        return list.fixtures.map(mapFixture)
-    }
-
-    func fixture(id: String) async throws -> [WasmClient.Fixture] {
-        let list: LivescoreFixtureList = try await runLivescore(
-            endpoint: .fixtures, params: ["id": id]
-        )
-        return list.fixtures.map(mapFixture)
-    }
-
-    func headToHead(team1: String, team2: String) async throws -> [WasmClient.Fixture] {
-        let list: LivescoreFixtureList = try await runLivescore(
-            endpoint: .h2H, params: ["team1_id": team1, "team2_id": team2]
-        )
-        return list.fixtures.map(mapFixture)
-    }
-
-    // MARK: - Leagues
-
-    func leagues() async throws -> [WasmClient.League] {
-        let list: LivescoreLeagueList = try await runLivescore(endpoint: .leagues)
-        return list.leagues.map(mapLeague)
-    }
-
-    func searchLeagues(query: String) async throws -> [WasmClient.League] {
-        let list: LivescoreLeagueList = try await runLivescore(
-            endpoint: .leagues, params: ["search": query]
-        )
-        return list.leagues.map(mapLeague)
-    }
-
-    func league(id: String) async throws -> [WasmClient.League] {
-        let list: LivescoreLeagueList = try await runLivescore(
-            endpoint: .leagues, params: ["id": id]
-        )
-        return list.leagues.map(mapLeague)
-    }
-
-    // MARK: - Standings
-
-    func standings(seasonID: String) async throws -> [WasmClient.Standing] {
-        let list: LivescoreStandingList = try await runLivescore(
-            endpoint: .standings, params: ["season_id": seasonID]
-        )
-        return list.standings.map(mapStanding)
-    }
-
-    // MARK: - Teams
-
-    func searchTeams(query: String) async throws -> [WasmClient.Team] {
-        let list: LivescoreTeamList = try await runLivescore(
-            endpoint: .teams, params: ["search": query]
-        )
-        return list.teams.map(mapTeam)
-    }
-
-    func team(id: String) async throws -> [WasmClient.Team] {
-        let list: LivescoreTeamList = try await runLivescore(
-            endpoint: .teams, params: ["id": id]
-        )
-        return list.teams.map(mapTeam)
-    }
-
-    // MARK: - Players
-
-    func searchPlayers(query: String) async throws -> [WasmClient.Player] {
-        let list: LivescorePlayerList = try await runLivescore(
-            endpoint: .players, params: ["search": query]
-        )
-        return list.players.map(mapPlayer)
-    }
-
-    func player(id: String) async throws -> [WasmClient.Player] {
-        let list: LivescorePlayerList = try await runLivescore(
-            endpoint: .players, params: ["id": id]
-        )
-        return list.players.map(mapPlayer)
-    }
-
-    // MARK: - Topscorers
-
-    func topscorers(seasonID: String) async throws -> [WasmClient.Player] {
-        let list: LivescoreTopscorerList = try await runLivescore(
-            endpoint: .topscorers, params: ["season_id": seasonID]
-        )
-        return list.topscorers.compactMap { ts in
-            guard ts.hasPlayer else { return nil }
-            return mapPlayer(ts.player)
+        let list: LivescoreWebPageList
+        do {
+            list = try LivescoreWebPageList(unpackingAny: task.value)
+        } catch {
+            logger("lsWebpage(type=\(type)) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreWebPageList.protoMessageName) error=\(error)")
+            throw error
         }
+        return list.pages.map(mapWebPage)
     }
 
-    // MARK: - Predictions / Odds / Expected / News (raw Data)
-
-    func predictions(fixtureID: String) async throws -> Data {
-        let list: LivescorePredictionList = try await runLivescore(
-            endpoint: .predictions, params: ["fixture_id": fixtureID]
-        )
-        return try list.serializedData()
+    func webpageLeagues() async throws -> [WasmClient.WebPage] {
+        try await webpageList(type: 1)
     }
 
-    func odds(fixtureID: String, type: String) async throws -> Data {
-        let list: LivescoreOddList = try await runLivescore(
-            endpoint: .odds, params: ["fixture_id": fixtureID, "type": type]
-        )
-        return try list.serializedData()
+    func webpageCompetitions() async throws -> [WasmClient.WebPage] {
+        try await webpageList(type: 2)
     }
 
-    func expectedGoals(fixtureID: String, type: String) async throws -> Data {
-        let list: LivescoreExpectedMetricList = try await runLivescore(
-            endpoint: .expected, params: ["fixture_id": fixtureID, "type": type]
-        )
-        return try list.serializedData()
+    func webpageTeams() async throws -> [WasmClient.WebPage] {
+        try await webpageList(type: 3)
     }
 
-    func news(seasonID: String, type: String) async throws -> Data {
-        let list: LivescoreNewsList = try await runLivescore(
-            endpoint: .news, params: ["season_id": seasonID, "type": type]
-        )
-        return try list.serializedData()
+    func webpage(url: String) async throws -> [WasmClient.WebPage] {
+        try await webpageList(type: 4, url: url)
     }
 
     // MARK: - Highlights
 
-    func highlights(competition: String?, team: String?) async throws -> [WasmClient.Highlight] {
+    func highlightPages(
+        competition: String? = nil,
+        team: String? = nil,
+        feed: String? = nil
+    ) async throws -> [WasmClient.WebPage] {
         let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(actionID: WasmClient.ActionID.lsHighlights.rawValue, logger: logger)
+        let action = try await instance.action(for: WasmClient.ActionID.lsHighlights.rawValue, strategy: .roundRobin)
         var args: [String: Google_Protobuf_Value] = [:]
-        if let c = competition { args["competition"] = Google_Protobuf_Value(stringValue: c) }
-        if let t = team { args["team"] = Google_Protobuf_Value(stringValue: t) }
+        if let competition { args["competition"] = Google_Protobuf_Value(stringValue: competition) }
+        if let team { args["team"] = Google_Protobuf_Value(stringValue: team) }
+        if let feed { args["feed"] = Google_Protobuf_Value(stringValue: feed) }
         let task = try await instance.create(action: action, args: args)
         let taskStatus = task.status
         guard taskStatus == .completed, task.hasValue else {
             throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
         }
-        let list = try LivescoreHighlightList(unpackingAny: task.value)
-        return list.highlights.map(mapHighlight)
-    }
-
-    // MARK: - Livescore Mapping
-
-    private func mapFixture(_ f: LivescoreFixture) -> WasmClient.Fixture {
-        let scoreLine: LivescoreScoreLine? = if f.hasScores, f.scores.hasCurrent {
-            f.scores.current
-        } else if f.hasScores, f.scores.hasFulltime {
-            f.scores.fulltime
-        } else {
-            nil
+        let list: LivescoreWebPageList
+        do {
+            list = try LivescoreWebPageList(unpackingAny: task.value)
+        } catch {
+            logger("lsHighlights unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreWebPageList.protoMessageName) error=\(error)")
+            throw error
         }
-        let homeScore = scoreLine?.hasHome == true ? Int(scoreLine?.home ?? 0) : nil
-        let awayScore = scoreLine?.hasAway == true ? Int(scoreLine?.away ?? 0) : nil
-        return WasmClient.Fixture(
-            id: f.id,
-            leagueID: f.leagueID,
-            seasonID: f.seasonID,
-            homeTeam: f.hasHomeTeam ? f.homeTeam.name : (f.participants.first?.name ?? ""),
-            awayTeam: f.hasAwayTeam ? f.awayTeam.name : (f.participants.count > 1 ? f.participants[1].name : ""),
-            homeScore: homeScore,
-            awayScore: awayScore,
-            venueName: f.hasVenue ? f.venue.name : "",
-            statusShort: f.statusShort,
-            elapsedMinutes: f.hasElapsed ? Int(f.elapsed) : nil,
-            statusKind: mapFixtureStatus(f),
-            status: f.statusShort,
-            date: f.startingAt,
-            league: f.hasLeague ? f.league.name : "",
-            round: f.roundName
-        )
+        return list.pages.map(mapWebPage)
     }
 
-    private func mapFixtureStatus(_ fixture: LivescoreFixture) -> WasmClient.FixtureStatus {
-        switch fixture.status {
-        case .notStarted, .tbd:
-            return .notStarted
-        case .firstHalf, .secondHalf:
-            return .live
-        case .halftime:
-            return .halfTime
-        case .fullTime, .afterExtraTime, .afterPenalties:
-            return .finished
-        case .extraTime, .extraTimeBreak:
-            return .extraTime
-        case .penalties:
-            return .penalties
-        case .postponed:
-            return .postponed
-        case .cancelled:
-            return .cancelled
-        case .suspended, .interrupted, .abandoned, .walkover, .delayed:
-            return .suspended
-        case .awarded:
-            return .finished
-        case .unspecified:
-            return .other(fixture.statusShort)
-        case .UNRECOGNIZED(_):
-            return .other(fixture.statusShort)
+    // MARK: - Upcoming
+
+    func upcoming() async throws -> [WasmClient.UpcomingMatch] {
+        let instance = try await readyEngine()
+        let action = try await instance.action(for: WasmClient.ActionID.lsUpcoming.rawValue, strategy: .roundRobin)
+        let args: [String: Google_Protobuf_Value] = [:]
+        let task = try await instance.create(action: action, args: args)
+        let taskStatus = task.status
+        guard taskStatus == .completed, task.hasValue else {
+            throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
         }
+        let list: LivescoreUpcomingMatchList
+        do {
+            list = try LivescoreUpcomingMatchList(unpackingAny: task.value)
+        } catch {
+            logger("lsUpcoming unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreUpcomingMatchList.protoMessageName) error=\(error)")
+            throw error
+        }
+        return list.matches.map(mapUpcoming)
     }
 
-    private func mapLeague(_ l: LivescoreLeague) -> WasmClient.League {
-        WasmClient.League(
-            id: l.id,
-            name: l.name,
-            country: l.hasCountry ? l.country.name : "",
-            logo: l.logoURL,
-            type: "\(l.type)"
+    private func mapUpcoming(_ m: LivescoreUpcomingMatch) -> WasmClient.UpcomingMatch {
+        WasmClient.UpcomingMatch(
+            id: String(m.id),
+            homeTeam: m.team1Name, awayTeam: m.team2Name,
+            homeLogoURL: m.team1Logo, awayLogoURL: m.team2Logo,
+            kickoff: Date(timeIntervalSince1970: TimeInterval(m.datetime)),
+            competitionID: String(m.competitionID),
+            homeScore: Int(m.score1), awayScore: Int(m.score2),
+            status: m.status, embedURL: m.url
         )
     }
 
-    private func mapTeam(_ t: LivescoreTeam) -> WasmClient.Team {
-        WasmClient.Team(
-            id: t.id,
-            name: t.name,
-            logo: t.logoURL,
-            country: t.hasCountry ? t.country.name : t.countryName
-        )
-    }
-
-    private func mapStanding(_ s: LivescoreStanding) -> WasmClient.Standing {
-        WasmClient.Standing(
-            rank: Int(s.position),
-            teamID: s.participantID,
-            teamName: s.hasParticipant ? s.participant.name : "",
-            points: Int(s.points),
-            played: s.hasAll ? Int(s.all.played) : 0,
-            won: s.hasAll ? Int(s.all.win) : 0,
-            drawn: s.hasAll ? Int(s.all.draw) : 0,
-            lost: s.hasAll ? Int(s.all.lose) : 0,
-            goalsFor: s.hasAll ? Int(s.all.goalsFor) : 0,
-            goalsAgainst: s.hasAll ? Int(s.all.goalsAgainst) : 0
-        )
-    }
-
-    private func mapPlayer(_ p: LivescorePlayer) -> WasmClient.Player {
-        WasmClient.Player(
-            id: p.id,
-            name: p.displayName.isEmpty ? p.name : p.displayName,
-            position: "\(p.position)",
-            nationality: p.nationality,
-            photo: p.photoURL
-        )
-    }
-
-    private func mapHighlight(_ h: LivescoreScorebatVideoFeed) -> WasmClient.Highlight {
-        WasmClient.Highlight(
-            title: h.title,
-            videoURL: h.matchviewURL,
-            thumbnailURL: h.thumbnail,
-            competition: h.competition,
-            date: h.date,
-            clips: h.videos.map {
-                WasmClient.HighlightClip(id: $0.id, title: $0.title, embed: $0.embed)
-            }
+    private func mapWebPage(_ p: LivescoreWebPage) -> WasmClient.WebPage {
+        WasmClient.WebPage(
+            id: p.id, image: p.image, title: p.title,
+            subtitle: p.subtitle, url: p.url
         )
     }
 }

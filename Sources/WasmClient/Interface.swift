@@ -12,7 +12,7 @@ import Foundation
 /// ```swift
 /// @Dependency(\.wasm) var wasm
 /// try await wasm.start()
-/// let fixtures = try await wasm.livescores("all")
+/// let pages = try await wasm.webpageLeagues()
 /// ```
 @DependencyClient
 public struct WasmClient: Sendable {
@@ -280,61 +280,27 @@ public struct WasmClient: Sendable {
     /// Poll try-on task status.
     public var tryOnStatus: @Sendable (_ taskID: String) async throws -> WasmClient.TryOnResult
 
-    // MARK: - Livescore
+    // MARK: - Livescore Webpage
 
-    /// Fetch live scores.
-    public var livescores: @Sendable (_ type: String) async throws -> [WasmClient.Fixture]
+    /// Fetch the leagues directory as web pages (lsWebpage type=1).
+    public var webpageLeagues: @Sendable () async throws -> [WasmClient.WebPage]
 
-    /// Fetch fixtures for a date.
-    public var fixtures: @Sendable (_ date: String) async throws -> [WasmClient.Fixture]
+    /// Fetch the competitions directory as web pages (lsWebpage type=2).
+    public var webpageCompetitions: @Sendable () async throws -> [WasmClient.WebPage]
 
-    /// Fetch a single fixture by ID.
-    public var fixture: @Sendable (_ id: String) async throws -> [WasmClient.Fixture]
+    /// Fetch the teams directory as web pages (lsWebpage type=3).
+    public var webpageTeams: @Sendable () async throws -> [WasmClient.WebPage]
 
-    /// Head-to-head between two teams.
-    public var headToHead: @Sendable (_ team1: String, _ team2: String) async throws -> [WasmClient.Fixture]
+    /// Fetch a specific URL via lsWebpage (type=4).
+    public var webpage: @Sendable (_ url: String) async throws -> [WasmClient.WebPage]
 
-    /// List all leagues.
-    public var leagues: @Sendable () async throws -> [WasmClient.League]
+    /// Fetch highlight pages (Scorebat-backed). Optional filters: competition,
+    /// team, feed. Backed by `lsHighlights` action returning `LivescoreWebPageList`.
+    public var highlightPages: @Sendable (
+        _ competition: String?, _ team: String?, _ feed: String?
+    ) async throws -> [WasmClient.WebPage]
 
-    /// Search leagues by query.
-    public var searchLeagues: @Sendable (_ query: String) async throws -> [WasmClient.League]
-
-    /// Standings for a season.
-    public var standings: @Sendable (_ seasonID: String) async throws -> [WasmClient.Standing]
-
-    /// Search teams by query.
-    public var searchTeams: @Sendable (_ query: String) async throws -> [WasmClient.Team]
-
-    /// Fetch team by ID.
-    public var team: @Sendable (_ id: String) async throws -> [WasmClient.Team]
-
-    /// Search players.
-    public var searchPlayers: @Sendable (_ query: String) async throws -> [WasmClient.Player]
-
-    /// Fetch player by ID.
-    public var player: @Sendable (_ id: String) async throws -> [WasmClient.Player]
-
-    /// Fetch league by ID.
-    public var league: @Sendable (_ id: String) async throws -> [WasmClient.League]
-
-    /// Topscorers for a season.
-    public var topscorers: @Sendable (_ seasonID: String) async throws -> [WasmClient.Player]
-
-    /// Predictions for a fixture.
-    public var predictions: @Sendable (_ fixtureID: String) async throws -> Data
-
-    /// Odds for a fixture.
-    public var odds: @Sendable (_ fixtureID: String, _ type: String) async throws -> Data
-
-    /// Expected goals (xG) for a fixture.
-    public var expectedGoals: @Sendable (_ fixtureID: String, _ type: String) async throws -> Data
-
-    /// News for a season.
-    public var news: @Sendable (_ seasonID: String, _ type: String) async throws -> Data
-
-    /// Fetch highlights.
-    public var highlights: @Sendable (
-        _ competition: String?, _ team: String?
-    ) async throws -> [WasmClient.Highlight]
+    /// Fetch the global upcoming-matches feed (no date arg).
+    /// Backed by `lsUpcoming` action returning `LivescoreUpcomingMatchList`.
+    public var upcoming: @Sendable () async throws -> [WasmClient.UpcomingMatch]
 }
