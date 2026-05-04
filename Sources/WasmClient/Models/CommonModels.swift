@@ -56,6 +56,8 @@ extension WasmClient {
         case lsWebpage = "b2d4f6a8-3c5e-4b7d-9f1a-2c3d4e5f6a7b"
         case lsHighlights = "e7a9c1d3-8f0b-4ea2-adf3-7e8f9a0b1c2d"
         case lsUpcoming = "c3e5a7b9-4d6f-4c8e-a0b2-3d4e5f6a7b8c"
+        // Surveys
+        case submitSurvey = "e7c3a1d0-8b4f-5d2e-9a1c-3f6e8d2b4a0c"
 
         public static let homedecorCases: [ActionID] = [
             .interiorDesign, .exteriorDesign, .gardenDesign,

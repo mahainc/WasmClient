@@ -164,6 +164,9 @@ extension WasmClient: DependencyKey {
             },
             upcoming: {
                 try await actor.upcoming()
+            },
+            submitSurvey: { questions, answers in
+                try await actor.submitSurvey(questions: questions, answers: answers)
             }
         )
     }()

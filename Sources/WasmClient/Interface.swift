@@ -306,4 +306,15 @@ public struct WasmClient: Sendable {
     /// Fetch the global upcoming-matches feed (no date arg).
     /// Backed by `lsUpcoming` action returning `LivescoreUpcomingMatchList`.
     public var upcoming: @Sendable () async throws -> [WasmClient.UpcomingMatch]
+
+    // MARK: - Survey
+
+    /// Submit a completed survey. Builds the `qa_json` payload (a flat
+    /// `{ qid: { question, answer } }` JSON string) from the questions +
+    /// answers and stamps `completed_at` with the current ISO-8601 timestamp.
+    /// Multi-select answers should be passed comma-joined in the answers map.
+    /// Returns when the engine acknowledges the submission.
+    public var submitSurvey: @Sendable (
+        _ questions: [WasmClient.SurveyQuestion], _ answers: [String: String]
+    ) async throws -> Void
 }

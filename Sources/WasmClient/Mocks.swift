@@ -298,6 +298,9 @@ extension WasmClient {
                     status: "-", embedURL: ""
                 )
             ]
+        },
+        submitSurvey: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
         }
     )
 }
