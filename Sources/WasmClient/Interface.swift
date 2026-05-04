@@ -294,6 +294,9 @@ public struct WasmClient: Sendable {
     /// Fetch a specific URL via lsWebpage (type=4).
     public var webpage: @Sendable (_ url: String) async throws -> [WasmClient.WebPage]
 
+    /// Fetch the discover feed as web pages (lsWebpage type=5).
+    public var webpageDiscovers: @Sendable () async throws -> [WasmClient.WebPage]
+
     /// Fetch highlight pages (Scorebat-backed). Optional filters: competition,
     /// team, feed. Backed by `lsHighlights` action returning `LivescoreWebPageList`.
     public var highlightPages: @Sendable (

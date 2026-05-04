@@ -156,6 +156,9 @@ extension WasmClient: DependencyKey {
             webpage: { url in
                 try await actor.webpage(url: url)
             },
+            webpageDiscovers: {
+                try await actor.webpageDiscovers()
+            },
             highlightPages: { competition, team, feed in
                 try await actor.highlightPages(competition: competition, team: team, feed: feed)
             },

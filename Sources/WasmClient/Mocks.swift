@@ -280,6 +280,9 @@ extension WasmClient {
         webpage: { _ in
             [WebPage(id: "page/example", title: "Example Page", url: "https://example.com")]
         },
+        webpageDiscovers: {
+            [WebPage(id: "discover/featured", title: "Featured", subtitle: "Discover")]
+        },
         highlightPages: { _, _, _ in
             [WebPage(id: "highlight/example", title: "Example Highlight", subtitle: "Premier League")]
         },

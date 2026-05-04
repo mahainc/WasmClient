@@ -49,6 +49,10 @@ extension WasmActor {
         try await webpageList(type: 4, url: url)
     }
 
+    func webpageDiscovers() async throws -> [WasmClient.WebPage] {
+        try await webpageList(type: 5)
+    }
+
     // MARK: - Highlights
 
     func highlightPages(
