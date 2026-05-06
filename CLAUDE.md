@@ -4,9 +4,9 @@ This file provides guidance to Claude Code when working with the WasmClient pack
 
 ## Overview
 
-WasmClient wraps FlowKit's WASM engine as a TCA dependency client. Two products:
+WasmClient wraps FlowKit's WASM engine as a dependency client using [swift-dependencies](https://github.com/pointfreeco/swift-dependencies). Two products:
 
-- **WasmClient** — Pure Swift interface with models, `@DependencyClient` struct, and mocks. No FlowKit dependency.
+- **WasmClient** — Pure Swift interface with models, `@DependencyClient` struct, and mocks. Depends only on `Dependencies` + `DependenciesMacros`.
 - **WasmClientLive** — Live implementation using FlowKit. Provides `DependencyKey` conformance (`liveValue`).
 
 ## Build
@@ -27,6 +27,7 @@ WasmClientLive requires a build plugin (`MergeFlowKitModules`) that merges FlowK
 - iOS 17.0 / macOS 14.0 minimum
 - All public types are `Sendable` and `Equatable`
 - Do NOT add a separate `swift-protobuf` SPM dependency — SwiftProtobuf is provided by FlowKit's merged modules. Adding it causes duplicate ObjC class registrations.
+- Do NOT depend on `swift-composable-architecture` — only `swift-dependencies` is needed.
 
 ## LLDB / Debugger Incompatibility
 
