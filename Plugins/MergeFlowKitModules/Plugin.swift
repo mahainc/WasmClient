@@ -5,7 +5,7 @@ import PackagePlugin
 struct MergeFlowKitModulesPlugin: BuildToolPlugin {
     func createBuildCommands(context: PluginContext, target: Target) throws -> [Command] {
         let packageDir = context.package.directoryURL
-        let script = packageDir.appending(path: "scripts/merge-flowkit-modules.sh")
+        let script = packageDir.appending(path: "Scripts/merge-flowkit-modules.sh")
         // Write to /tmp — allowed by Xcode's sandbox for build plugins.
         // The -I flag in Package.swift points here too.
         let mergedDir = "/tmp/wasmclient-flowkit-modules"

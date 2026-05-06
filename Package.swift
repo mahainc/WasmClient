@@ -18,13 +18,9 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/pointfreeco/swift-composable-architecture.git",
-            branch: "main"
+            url: "https://github.com/pointfreeco/swift-dependencies.git",
+            from: "1.9.0"
         ),
-        // SwiftProtobuf is provided by FlowKit.xcframework's merged modules.
-        // Do NOT add a separate swift-protobuf SPM dependency — it creates
-        // duplicate ObjC class registrations that silently break protobuf
-        // arg passing to FlowKit when Xcode builds with a debug dylib.
     ],
     targets: [
         .binaryTarget(
@@ -40,14 +36,14 @@ let package = Package(
         .target(
             name: "WasmClient",
             dependencies: [
-                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+                .product(name: "Dependencies", package: "swift-dependencies"),
+                .product(name: "DependenciesMacros", package: "swift-dependencies"),
             ]
         ),
         .target(
             name: "WasmClientLive",
             dependencies: [
-                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
-                // SwiftProtobuf comes from FlowKit.xcframework via merged modules
+                .product(name: "Dependencies", package: "swift-dependencies"),
                 "FlowKit",
                 "FlowKitCModules",
                 "WasmClient",

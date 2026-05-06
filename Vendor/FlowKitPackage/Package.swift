@@ -1,7 +1,7 @@
 // swift-tools-version: 5.10
 import PackageDescription
 
-// Switch FlowKit artifact version with: scripts/use-flowkit-xcode.sh <26.1.1>
+// Switch FlowKit artifact version with: Scripts/use-flowkit-xcode.sh <26.1.1>
 let package = Package(
     name: "FlowKitPackage",
     platforms: [.macOS(.v14), .iOS(.v15)],
