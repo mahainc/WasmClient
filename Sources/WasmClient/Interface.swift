@@ -108,12 +108,14 @@ public struct WasmClient: Sendable {
     // MARK: - Chat (OpenAI-compatible)
 
     /// Fetch chat models via the standalone `listModels` action.
-    /// Supports pagination (`offset` / `limit`) and an optional `keyword`
-    /// filter. Each row is stamped with its source provider so callers can
-    /// route subsequent chat requests correctly. Returns the page of rows
-    /// plus the backend-reported `total` (drives "load more" logic).
+    /// Supports pagination (`offset` / `limit`), free-text `keyword`
+    /// filtering, and a backend `category` filter (e.g. `"anime"`,
+    /// `"assistant"`). Each row is stamped with its source provider so
+    /// callers can route subsequent chat requests correctly. Returns the
+    /// page of rows plus the backend-reported `total` (drives "load more"
+    /// logic).
     public var chatModels: @Sendable (
-        _ offset: Int, _ limit: Int, _ keyword: String?
+        _ offset: Int, _ limit: Int, _ keyword: String?, _ category: String?
     ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int)
 
     /// Send a single chat message and get the full response.

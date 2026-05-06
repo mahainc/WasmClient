@@ -135,13 +135,15 @@ extension WasmActor {
     }
 
     /// Fetch chat models via the standalone `listModels` action with
-    /// `offset` / `limit` / optional `keyword`. Each model row is stamped
-    /// with its source provider (resolved from the row's
-    /// `metadata.provider_id` against the registered chat providers).
+    /// `offset` / `limit` / optional `keyword` / optional `category`.
+    /// Each model row is stamped with its source provider (resolved from
+    /// the row's `metadata.provider_id` against the registered chat
+    /// providers).
     func chatModels(
         offset: Int,
         limit: Int,
-        keyword: String?
+        keyword: String?,
+        category: String?
     ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int) {
         let instance = try await readyEngine()
 
@@ -176,6 +178,10 @@ extension WasmActor {
         if let trimmed = keyword?.trimmingCharacters(in: .whitespaces),
            !trimmed.isEmpty {
             args["keyword"] = Google_Protobuf_Value(stringValue: trimmed)
+        }
+        if let trimmedCategory = category?.trimmingCharacters(in: .whitespaces),
+           !trimmedCategory.isEmpty {
+            args["category"] = Google_Protobuf_Value(stringValue: trimmedCategory)
         }
 
         let task = try await instance.create(action: listAction, args: args)

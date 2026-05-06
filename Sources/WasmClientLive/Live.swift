@@ -57,8 +57,10 @@ extension WasmClient: DependencyKey {
             uploadFile: { filePath, filename in
                 try await actor.uploadFile(filePath: filePath, filename: filename)
             },
-            chatModels: { offset, limit, keyword in
-                try await actor.chatModels(offset: offset, limit: limit, keyword: keyword)
+            chatModels: { offset, limit, keyword, category in
+                try await actor.chatModels(
+                    offset: offset, limit: limit, keyword: keyword, category: category
+                )
             },
             chatSend: { config, messages in
                 try await actor.chatSend(config: config, messages: messages)

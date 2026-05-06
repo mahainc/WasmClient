@@ -50,7 +50,7 @@ extension WasmClient {
         shopping: { _, _ in [] },
         uploadImage: { _ in "" },
         uploadFile: { _, _ in "" },
-        chatModels: { _, _, _ in ([], 0) },
+        chatModels: { _, _, _, _ in ([], 0) },
         chatSend: { _, _ in ChatMessage(role: .assistant, content: "") },
         chatStream: { _, _ in
             AsyncThrowingStream { $0.finish() }
@@ -166,7 +166,7 @@ extension WasmClient {
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return "https://example.com/mock-file.jpg"
         },
-        chatModels: { offset, limit, keyword in
+        chatModels: { offset, limit, keyword, category in
             let all: [ChatModelInfo] = [
                 ChatModelInfo(
                     modelId: "gpt-4o-mini", name: "GPT-4o mini",
@@ -187,15 +187,18 @@ extension WasmClient {
                     providerId: "anthropic", providerName: "Anthropic"
                 ),
             ]
-            let filtered: [ChatModelInfo] = {
-                guard let kw = keyword?.trimmingCharacters(in: .whitespaces),
-                      !kw.isEmpty else { return all }
+            var filtered = all
+            if let kw = keyword?.trimmingCharacters(in: .whitespaces), !kw.isEmpty {
                 let lower = kw.lowercased()
-                return all.filter {
+                filtered = filtered.filter {
                     $0.modelId.lowercased().contains(lower)
                         || $0.name.lowercased().contains(lower)
                 }
-            }()
+            }
+            if let cat = category?.trimmingCharacters(in: .whitespaces), !cat.isEmpty {
+                let lower = cat.lowercased()
+                filtered = filtered.filter { $0.ownedBy.lowercased() == lower }
+            }
             let start = max(0, min(offset, filtered.count))
             let end = max(start, min(start + limit, filtered.count))
             return (Array(filtered[start..<end]), filtered.count)
