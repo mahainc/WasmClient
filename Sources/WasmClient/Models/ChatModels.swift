@@ -120,27 +120,51 @@ extension WasmClient {
         }
     }
 
-    /// Describes a single AI model available from a chat provider.
-    /// Parsed from the WASM action's `model_infos` metadata.
+    /// Describes a single AI model row returned by the `listModels` action.
+    /// `id` disambiguates by provider — different providers may expose the
+    /// same `modelId` (e.g. OpenAI default and a relay both expose
+    /// `gpt-4o-mini`).
     public struct ChatModelInfo: Sendable, Equatable, Identifiable {
-        public let id: String
+        public var id: String { "\(providerId)::\(modelId)" }
+        public let modelId: String
         public let name: String
+        public let ownedBy: String
         public let isPro: Bool
-        public let imageSupport: Bool
-        public let enumId: Int
+        public let vision: Bool
+        public let voices: [String]
+        public let greetings: [String]
+        public let image: String
+        public let interactions: Int
+        public let description: String
+        public let providerId: String
+        public let providerName: String
 
         public init(
-            id: String,
+            modelId: String,
             name: String = "",
+            ownedBy: String = "",
             isPro: Bool = false,
-            imageSupport: Bool = true,
-            enumId: Int = 0
+            vision: Bool = false,
+            voices: [String] = [],
+            greetings: [String] = [],
+            image: String = "",
+            interactions: Int = 0,
+            description: String = "",
+            providerId: String = "",
+            providerName: String = ""
         ) {
-            self.id = id
-            self.name = name.isEmpty ? id : name
+            self.modelId = modelId
+            self.name = name.isEmpty ? modelId : name
+            self.ownedBy = ownedBy
             self.isPro = isPro
-            self.imageSupport = imageSupport
-            self.enumId = enumId
+            self.vision = vision
+            self.voices = voices
+            self.greetings = greetings
+            self.image = image
+            self.interactions = interactions
+            self.description = description
+            self.providerId = providerId
+            self.providerName = providerName
         }
     }
 

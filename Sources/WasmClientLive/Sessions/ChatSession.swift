@@ -134,50 +134,155 @@ extension WasmActor {
         }
     }
 
-    /// Available chat models parsed from the chat action's metadata.
-    /// Tries each provider for the chat action until one with model metadata is found.
-    func chatModels() async throws -> (models: [WasmClient.ChatModelInfo], defaultEnumId: Int) {
-        _ = try await readyEngine()
-        let actions = try await delegate.resolveAllActions(actionID: WasmClient.ActionID.chat.rawValue, logger: logger)
+    /// Fetch chat models via the standalone `listModels` action with
+    /// `offset` / `limit` / optional `keyword`. Each model row is stamped
+    /// with its source provider (resolved from the row's
+    /// `metadata.provider_id` against the registered chat providers).
+    func chatModels(
+        offset: Int,
+        limit: Int,
+        keyword: String?
+    ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int) {
+        let instance = try await readyEngine()
 
-        for action in actions {
-            // Try both "model_infos" (legacy) and "models" (current) metadata keys.
-            let list = action.metadata.fields["model_infos"]?.listValue
-                ?? action.metadata.fields["models"]?.listValue
-            guard let list, !list.values.isEmpty else { continue }
+        // Resolve listModels action — standalone, not tied to a chat provider.
+        let listAction: WaTAction
+        do {
+            listAction = try await delegate.resolveAction(
+                actionID: WasmClient.ActionID.listModels.rawValue,
+                logger: logger
+            )
+        } catch {
+            return ([], 0)
+        }
 
-            let models: [WasmClient.ChatModelInfo] = list.values.enumerated().compactMap { idx, val in
-                // Case 1: Value is a struct with field keys (legacy format).
-                let fields = val.structValue.fields
-                if !fields.isEmpty {
-                    let stringId = fields["string_id"]?.stringValue
-                        ?? fields["model"]?.stringValue
-                        ?? fields["id"]?.stringValue
-                    guard let stringId, !stringId.isEmpty else { return nil }
-                    return WasmClient.ChatModelInfo(
-                        id: stringId,
-                        name: fields["name"]?.stringValue ?? stringId,
-                        isPro: fields["is_pro"]?.boolValue ?? false,
-                        imageSupport: fields["image_support"]?.boolValue ?? true,
-                        enumId: Int(fields["id"]?.numberValue ?? 0)
-                    )
-                }
-                // Case 2: Value is a plain string (just the model ID).
-                let str = val.stringValue
-                if !str.isEmpty {
-                    return WasmClient.ChatModelInfo(
-                        id: str, name: str, isPro: false, imageSupport: true, enumId: idx
-                    )
-                }
-                return nil
-            }
-            if !models.isEmpty {
-                let defaultEnumId = Int(action.metadata.fields["default_model"]?.numberValue ?? 0)
-                return (models, defaultEnumId)
+        // Build a map from ciphered chat-provider id → display name so each
+        // model row can be stamped with the human-readable provider name.
+        var providerNames: [String: String] = [:]
+        if let chatActions = try? await delegate.resolveAllActions(
+            actionID: WasmClient.ActionID.chat.rawValue,
+            logger: logger
+        ) {
+            for action in chatActions {
+                let name = action.metadata.fields["provider_name"]?.stringValue ?? ""
+                providerNames[action.provider] = name
             }
         }
 
-        return ([], 0)
+        var args: [String: Google_Protobuf_Value] = [
+            "offset": Google_Protobuf_Value(numberValue: Double(offset)),
+            "limit": Google_Protobuf_Value(numberValue: Double(limit)),
+        ]
+        if let trimmed = keyword?.trimmingCharacters(in: .whitespaces),
+           !trimmed.isEmpty {
+            args["keyword"] = Google_Protobuf_Value(stringValue: trimmed)
+        }
+
+        let task = try await instance.create(action: listAction, args: args)
+        guard task.status == .completed else {
+            throw WasmClient.Error.taskFailed(status: "\(task.status)")
+        }
+        guard task.hasValue else {
+            throw WasmClient.Error.missingValue
+        }
+        guard let payload = try? Google_Protobuf_Struct(unpackingAny: task.value) else {
+            throw WasmClient.Error.unexpectedResponseFormat
+        }
+
+        var models: [WasmClient.ChatModelInfo] = []
+        if case .listValue(let list)? = payload.fields["data"]?.kind {
+            for value in list.values {
+                guard case .structValue(let row)? = value.kind else { continue }
+                guard let model = Self.mapModelRow(row.fields, providerNames: providerNames) else {
+                    continue
+                }
+                models.append(model)
+            }
+        }
+
+        let total: Int = {
+            if case .numberValue(let t)? = payload.fields["total"]?.kind {
+                return Int(t)
+            }
+            return models.count
+        }()
+
+        return (models, total)
+    }
+
+    private static func mapModelRow(
+        _ fields: [String: Google_Protobuf_Value],
+        providerNames: [String: String]
+    ) -> WasmClient.ChatModelInfo? {
+        guard case .stringValue(let modelId)? = fields["id"]?.kind, !modelId.isEmpty else {
+            return nil
+        }
+        let name: String = {
+            if case .stringValue(let n)? = fields["name"]?.kind, !n.isEmpty { return n }
+            return modelId
+        }()
+        let ownedBy: String = {
+            if case .stringValue(let s)? = fields["owned_by"]?.kind { return s }
+            return ""
+        }()
+        let meta: [String: Google_Protobuf_Value] = {
+            if case .structValue(let s)? = fields["metadata"]?.kind { return s.fields }
+            return [:]
+        }()
+        let isPro: Bool = {
+            if case .boolValue(let b)? = meta["is_pro"]?.kind { return b }
+            return false
+        }()
+        let vision: Bool = {
+            if case .boolValue(let b)? = meta["vision"]?.kind { return b }
+            return false
+        }()
+        let voices: [String] = {
+            guard case .listValue(let l)? = meta["voices"]?.kind else { return [] }
+            return l.values.compactMap { v in
+                if case .stringValue(let s) = v.kind { return s }
+                return nil
+            }
+        }()
+        let greetings: [String] = {
+            guard case .listValue(let l)? = meta["greetings"]?.kind else { return [] }
+            return l.values.compactMap { v in
+                if case .stringValue(let s) = v.kind { return s }
+                return nil
+            }
+        }()
+        let image: String = {
+            if case .stringValue(let s)? = meta["image"]?.kind { return s }
+            return ""
+        }()
+        let interactions: Int = {
+            if case .numberValue(let n)? = meta["interactions"]?.kind { return Int(n) }
+            return 0
+        }()
+        let description: String = {
+            if case .stringValue(let s)? = meta["description"]?.kind { return s }
+            return ""
+        }()
+        let providerId: String = {
+            if case .stringValue(let s)? = meta["provider_id"]?.kind { return s }
+            return ""
+        }()
+        let providerName = providerNames[providerId] ?? ""
+
+        return WasmClient.ChatModelInfo(
+            modelId: modelId,
+            name: name,
+            ownedBy: ownedBy,
+            isPro: isPro,
+            vision: vision,
+            voices: voices,
+            greetings: greetings,
+            image: image,
+            interactions: interactions,
+            description: description,
+            providerId: providerId,
+            providerName: providerName
+        )
     }
 
     // MARK: - Private Chat Helpers

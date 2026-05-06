@@ -107,9 +107,14 @@ public struct WasmClient: Sendable {
 
     // MARK: - Chat (OpenAI-compatible)
 
-    /// Available chat models from the engine's action metadata.
-    /// Returns models for the chat action's provider, plus the default model's enum ID.
-    public var chatModels: @Sendable () async throws -> (models: [WasmClient.ChatModelInfo], defaultEnumId: Int)
+    /// Fetch chat models via the standalone `listModels` action.
+    /// Supports pagination (`offset` / `limit`) and an optional `keyword`
+    /// filter. Each row is stamped with its source provider so callers can
+    /// route subsequent chat requests correctly. Returns the page of rows
+    /// plus the backend-reported `total` (drives "load more" logic).
+    public var chatModels: @Sendable (
+        _ offset: Int, _ limit: Int, _ keyword: String?
+    ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int)
 
     /// Send a single chat message and get the full response.
     /// Stateless — does not maintain conversation history.

@@ -50,7 +50,7 @@ extension WasmClient {
         shopping: { _, _ in [] },
         uploadImage: { _ in "" },
         uploadFile: { _, _ in "" },
-        chatModels: { ([], 0) },
+        chatModels: { _, _, _ in ([], 0) },
         chatSend: { _, _ in ChatMessage(role: .assistant, content: "") },
         chatStream: { _, _ in
             AsyncThrowingStream { $0.finish() }
@@ -166,15 +166,39 @@ extension WasmClient {
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return "https://example.com/mock-file.jpg"
         },
-        chatModels: {
-            (
-                models: [
-                    ChatModelInfo(id: "gpt-4o-mini", name: "GPT-4o mini", enumId: 1),
-                    ChatModelInfo(id: "gpt-4o", name: "GPT-4o", isPro: true, enumId: 2),
-                    ChatModelInfo(id: "gpt-4.1", name: "GPT-4.1", isPro: true, enumId: 3),
-                ],
-                defaultEnumId: 1
-            )
+        chatModels: { offset, limit, keyword in
+            let all: [ChatModelInfo] = [
+                ChatModelInfo(
+                    modelId: "gpt-4o-mini", name: "GPT-4o mini",
+                    ownedBy: "openai", vision: true,
+                    description: "Fast, affordable multimodal model.",
+                    providerId: "openai", providerName: "OpenAI"
+                ),
+                ChatModelInfo(
+                    modelId: "gpt-4o", name: "GPT-4o",
+                    ownedBy: "openai", isPro: true, vision: true,
+                    description: "Flagship multimodal model.",
+                    providerId: "openai", providerName: "OpenAI"
+                ),
+                ChatModelInfo(
+                    modelId: "claude-sonnet-4-6", name: "Claude Sonnet 4.6",
+                    ownedBy: "anthropic", isPro: true, vision: true,
+                    description: "Anthropic's balanced model.",
+                    providerId: "anthropic", providerName: "Anthropic"
+                ),
+            ]
+            let filtered: [ChatModelInfo] = {
+                guard let kw = keyword?.trimmingCharacters(in: .whitespaces),
+                      !kw.isEmpty else { return all }
+                let lower = kw.lowercased()
+                return all.filter {
+                    $0.modelId.lowercased().contains(lower)
+                        || $0.name.lowercased().contains(lower)
+                }
+            }()
+            let start = max(0, min(offset, filtered.count))
+            let end = max(start, min(start + limit, filtered.count))
+            return (Array(filtered[start..<end]), filtered.count)
         },
         chatSend: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
