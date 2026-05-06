@@ -4,9 +4,10 @@ import Foundation
 
 /// General-purpose TCA dependency client wrapping FlowKit's WASM engine.
 ///
-/// Exposes all WASM domains (chat, inpaint, livescore, blobstore) as
+/// Exposes all WASM domains (chat, vision/scan, blobstore, music, suggest,
+/// AI art, visual/media, home decor, inpaint, livescore, survey) as
 /// `@Sendable` async closures. The interface target has no FlowKit dependency —
-/// all FlowKit types are mapped to pure Swift models.
+/// all FlowKit types are mapped to pure Swift models nested under `WasmClient`.
 ///
 /// Usage:
 /// ```swift
@@ -25,7 +26,7 @@ public struct WasmClient: Sendable {
     public var start: @Sendable () async throws -> Void
 
     /// Observe engine state changes as an async stream.
-    /// Emits `.stopped`, `.starting`, `.running`, `.failed(String)`.
+    /// Emits `.stopped`, `.starting`, `.updating(Double)`, `.running`, `.failed(String)`.
     /// Use this to drive loading UI (progress → content → error/retry).
     public var observeEngineState: @Sendable () async -> AsyncStream<WasmClient.EngineState> = { AsyncStream { _ in } }
 

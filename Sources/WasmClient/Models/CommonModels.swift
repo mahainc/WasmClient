@@ -58,12 +58,6 @@ extension WasmClient {
         case lsUpcoming = "c3e5a7b9-4d6f-4c8e-a0b2-3d4e5f6a7b8c"
         // Surveys
         case submitSurvey = "e7c3a1d0-8b4f-5d2e-9a1c-3f6e8d2b4a0c"
-
-        public static let homedecorCases: [ActionID] = [
-            .interiorDesign, .exteriorDesign, .gardenDesign,
-            .paintRoom, .replaceObjects, .floorRestyle, .referenceStyle,
-            .roomStaging, .declutterRoom, .floorPlan, .planToImage,
-        ]
     }
 }
 
@@ -80,8 +74,6 @@ extension WasmClient {
         case missingValue
         case uploadFailed(String)
         case unexpectedResponseFormat
-        case chatActionNotFound
-        case decodingFailed(String)
 
         public var errorDescription: String? {
             switch self {
@@ -101,10 +93,6 @@ extension WasmClient {
                 "Upload failed: \(reason)"
             case .unexpectedResponseFormat:
                 "Unexpected response data format"
-            case .chatActionNotFound:
-                "Chat action not found"
-            case .decodingFailed(let reason):
-                "Decoding failed: \(reason)"
             }
         }
     }

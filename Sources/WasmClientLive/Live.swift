@@ -28,7 +28,7 @@ extension WasmClient: DependencyKey {
                 await actor.resetDownloads()
             },
             setExpectedVersionProvider: { provider in
-                Task { await actor.setExpectedVersionProvider(provider) }
+                actor.setExpectedVersionProvider(provider)
             },
             warmUp: {
                 await actor.warmUp()

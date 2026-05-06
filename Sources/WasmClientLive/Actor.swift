@@ -34,10 +34,17 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     /// Consulted inside `ensureStarted` before `TaskWasm.default()`; a mismatch
     /// with `AsyncifyWasm.currentVersionID` triggers `AsyncifyWasm.resetDownloads()`.
     /// Persists across `resetEngine()` — registered once at app launch.
-    private var expectedVersionProvider: (@Sendable () async throws -> String?)?
+    /// Lock-protected so a nonisolated setter can race-free coexist with the
+    /// actor-context reader inside `ensureStarted`.
+    private var _expectedVersionProvider: (@Sendable () async throws -> String?)?
+    private let providerLock = NSLock()
 
     func setExpectedVersionProvider(_ provider: (@Sendable () async throws -> String?)?) {
-        expectedVersionProvider = provider
+        providerLock.withLock { _expectedVersionProvider = provider }
+    }
+
+    private func currentExpectedVersionProvider() -> (@Sendable () async throws -> String?)? {
+        providerLock.withLock { _expectedVersionProvider }
     }
 
     private func markRunning() {
@@ -90,6 +97,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         case .updating(let progress):
             mapped = .updating(progress)
         default:
+            logger?("Unmapped FlowKit state \(state) — defaulting to .stopped")
             mapped = .stopped
         }
         yieldState(mapped)
@@ -128,7 +136,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
 
             // Ask the host for the expected wasm version. nil / throw = no-op policy.
             var expectedID: String? = nil
-            if let provider = expectedVersionProvider {
+            if let provider = currentExpectedVersionProvider() {
                 do {
                     expectedID = try await provider()
                 } catch {
@@ -388,7 +396,10 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
 /// Plain actor that manages WASM engine lifecycle and business logic via the delegate.
 /// All methods are serialized by the actor — no concurrent WASM engine access.
 actor WasmActor {
-    let delegate = WasmDelegate()
+    /// Nonisolated so `setExpectedVersionProvider` can write race-free from any
+    /// context. The delegate's own state remains accessed only from actor
+    /// methods, except for `_expectedVersionProvider` which is lock-guarded.
+    nonisolated let delegate = WasmDelegate()
     let logger: @Sendable (String) -> Void
 
     // MARK: - Init
@@ -442,7 +453,7 @@ actor WasmActor {
         AsyncifyWasm.resetDownloads()
     }
 
-    func setExpectedVersionProvider(_ provider: (@Sendable () async throws -> String?)?) {
+    nonisolated func setExpectedVersionProvider(_ provider: (@Sendable () async throws -> String?)?) {
         delegate.setExpectedVersionProvider(provider)
     }
 

@@ -29,6 +29,66 @@ private enum MockConstants {
 // MARK: - Mock Implementations
 
 extension WasmClient {
+    /// Inert mock — every operation returns immediately with empty/default
+    /// values and streams finish without emitting. Use as a baseline in tests
+    /// and override only the operations exercised by the test under
+    /// `withDependencies { $0.wasm = .noop; $0.wasm.scan = { ... } }`.
+    public static let noop = Self(
+        start: { },
+        observeEngineState: { AsyncStream { $0.finish() } },
+        reset: { },
+        restart: { },
+        engineVersion: { nil },
+        resetDownloads: { },
+        setExpectedVersionProvider: { _ in },
+        warmUp: { },
+        availableActions: { [] },
+        refreshActions: { },
+        scan: { _, _, _ in ScanResult() },
+        describe: { _, _, _, _ in ScanResult() },
+        visualSearch: { _, _ in [] },
+        shopping: { _, _ in [] },
+        uploadImage: { _ in "" },
+        uploadFile: { _, _ in "" },
+        chatModels: { ([], 0) },
+        chatSend: { _, _ in ChatMessage(role: .assistant, content: "") },
+        chatStream: { _, _ in
+            AsyncThrowingStream { $0.finish() }
+        },
+        musicDiscover: { _, _ in MusicTrackList() },
+        musicDetails: { _ in MusicTrackDetail() },
+        musicTracks: { _, _ in MusicTrackList() },
+        musicSearch: { _, _ in MusicTrackList() },
+        musicLyrics: { _ in [] },
+        musicRelated: { _, _ in MusicTrackList() },
+        musicSuggestions: { _ in [] },
+        suggest: { _, _ in [] },
+        aiartGenerate: { _, _ in AiartResult() },
+        aiartStyles: { _ in [] },
+        searchPhotos: { _, _, _, _ in PhotoSearchResult() },
+        photoVisualSearch: { _, _, _, _ in PhotoSearchResult() },
+        listMedia: { _, _, _, _ in PhotoSearchResult() },
+        homeDesign: { _, _ in HomedecorResult() },
+        homeDesignStatus: { _, _ in HomedecorResult() },
+        autoSuggestion: { _, _ in ObjectSegments() },
+        enhance: { _, _, _ in ObjectSegments() },
+        removeBackground: { _, _ in Segment() },
+        erase: { _, _, _, _, _ in EraseResult() },
+        skinBeauty: { _, _ in ObjectSegments() },
+        sky: { _, _ in Segment() },
+        categorizeClothes: { _, _ in ObjectSegments() },
+        tryOn: { _, _, _, _, _ in TryOnResult() },
+        tryOnStatus: { _ in TryOnResult() },
+        webpageLeagues: { [] },
+        webpageCompetitions: { [] },
+        webpageTeams: { [] },
+        webpage: { _ in [] },
+        webpageDiscovers: { [] },
+        highlightPages: { _, _, _ in [] },
+        upcoming: { [] },
+        submitSurvey: { _, _ in }
+    )
+
     public static let happy = Self(
         start: {
             try? await Task.sleep(nanoseconds: MockConstants.warmUpDelay)
