@@ -23,6 +23,12 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     private var logger: (@Sendable (String) -> Void)?
     /// Continuations for all active engine state observers.
     private var stateContinuations: [UUID: AsyncStream<WasmClient.EngineState>.Continuation] = [:]
+    /// Last state we yielded, replayed to new subscribers so callers that
+    /// observe `observeEngineState()` AFTER the engine has already reached
+    /// `.running` still see it (otherwise the stream stays silent until the
+    /// next state change and consumers wait forever).
+    private var lastState: WasmClient.EngineState = .stopped
+    private let stateLock = NSLock()
     /// Continuation waiting for the engine to reach .running state.
     private var startContinuation: CheckedContinuation<Void, Swift.Error>?
     /// Timeout task for start continuation — cancelled on success.
@@ -60,15 +66,25 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     }
 
     func addStateContinuation(id: UUID, _ continuation: AsyncStream<WasmClient.EngineState>.Continuation) {
-        stateContinuations[id] = continuation
+        let replay: WasmClient.EngineState = stateLock.withLock {
+            stateContinuations[id] = continuation
+            return lastState
+        }
+        continuation.yield(replay)
     }
 
     func removeStateContinuation(id: UUID) {
-        stateContinuations.removeValue(forKey: id)
+        stateLock.withLock {
+            _ = stateContinuations.removeValue(forKey: id)
+        }
     }
 
     private func yieldState(_ state: WasmClient.EngineState) {
-        for continuation in stateContinuations.values {
+        let snapshot: [AsyncStream<WasmClient.EngineState>.Continuation] = stateLock.withLock {
+            lastState = state
+            return Array(stateContinuations.values)
+        }
+        for continuation in snapshot {
             continuation.yield(state)
         }
     }
