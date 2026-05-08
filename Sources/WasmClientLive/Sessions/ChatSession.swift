@@ -273,6 +273,55 @@ extension WasmActor {
         throw WasmClient.Error.missingValue
     }
 
+    /// Pre-flight init for chat providers — invokes the `providerInit`
+    /// action with `metadata: { name: <userName> }`. CAI uses this to
+    /// register the user; default providers no-op. When `providerId` is
+    /// empty the call fans out across every provider that exposes
+    /// providerInit. Failures per provider are swallowed (best-effort)
+    /// so a single unreachable provider can't block downstream work.
+    func initializeChatProvider(
+        providerId: String,
+        userName: String
+    ) async throws {
+        let instance = try await readyEngine()
+        let actions: [WaTAction]
+        do {
+            if providerId.isEmpty {
+                actions = try await delegate.resolveAllActions(
+                    actionID: WasmClient.ActionID.providerInit.rawValue,
+                    logger: logger
+                )
+            } else {
+                let action = try await delegate.resolveAction(
+                    actionID: WasmClient.ActionID.providerInit.rawValue,
+                    preferredProvider: providerId,
+                    logger: logger
+                )
+                actions = [action]
+            }
+        } catch {
+            // No provider exposes providerInit — nothing to do.
+            return
+        }
+
+        let args: [String: Google_Protobuf_Value] = [
+            "metadata": .init(structValue: .with {
+                $0.fields = [
+                    "name": .init(stringValue: userName),
+                ]
+            }),
+        ]
+
+        for action in actions {
+            do {
+                _ = try await instance.create(action: action, args: args)
+            } catch {
+                // Best-effort per provider — keep going.
+                continue
+            }
+        }
+    }
+
     private static func mapModelRow(
         _ fields: [String: Google_Protobuf_Value],
         providerNames: [String: String]

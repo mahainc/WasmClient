@@ -144,6 +144,18 @@ public struct WasmClient: Sendable {
         _ input: WasmClient.CreateChatModelInput
     ) async throws -> String
 
+    /// Run a chat provider's pre-flight init action. CAI registers the
+    /// user via this call (using `metadata.name` as the display name);
+    /// providers that don't need bootstrap return Completed immediately.
+    /// Call once per provider before any `createChatModel` /
+    /// `chatStream` invocation against that provider — without it CAI
+    /// rejects downstream calls with `unspecified`. Pass an empty
+    /// `providerId` to fan out across every chat-capable provider.
+    public var initializeChatProvider: @Sendable (
+        _ providerId: String,
+        _ userName: String
+    ) async throws -> Void
+
     // MARK: - Music
 
     /// Discover music tracks by category.
@@ -353,4 +365,17 @@ public struct WasmClient: Sendable {
     public var submitSurvey: @Sendable (
         _ questions: [WasmClient.SurveyQuestion], _ answers: [String: String]
     ) async throws -> Void
+
+    // MARK: - Notifications
+
+    /// Register the device with the backend for push notifications.
+    /// Pass an empty `firebaseToken` to deregister, or send `enabled: false` to
+    /// stop delivery while keeping the token on file. `firebaseUID` lets the
+    /// backend correlate device → user across reinstalls.
+    public var setNotification: @Sendable (
+        _ enabled: Bool, _ firebaseToken: String, _ firebaseUID: String?
+    ) async throws -> Void
+
+    /// Fetch current server-side notification settings (enabled + subscribed topics).
+    public var getNotificationSettings: @Sendable () async throws -> WasmClient.NotificationSettings
 }

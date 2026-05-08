@@ -71,6 +71,9 @@ extension WasmClient: DependencyKey {
             createChatModel: { providerId, input in
                 try await actor.createChatModel(providerId: providerId, input: input)
             },
+            initializeChatProvider: { providerId, userName in
+                try await actor.initializeChatProvider(providerId: providerId, userName: userName)
+            },
             musicDiscover: { category, continuation in
                 try await actor.musicDiscover(category: category, continuation: continuation)
             },
@@ -178,6 +181,14 @@ extension WasmClient: DependencyKey {
             },
             submitSurvey: { questions, answers in
                 try await actor.submitSurvey(questions: questions, answers: answers)
+            },
+            setNotification: { enabled, firebaseToken, firebaseUID in
+                try await actor.setNotification(
+                    enabled: enabled, firebaseToken: firebaseToken, firebaseUID: firebaseUID
+                )
+            },
+            getNotificationSettings: {
+                try await actor.getNotificationSettings()
             }
         )
     }()

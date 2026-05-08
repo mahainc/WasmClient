@@ -10,6 +10,12 @@ extension WasmClient {
         case suggest = "b2d4e6f8-1a3c-5e7g-9i0k-2m4o6q8s0u2w"
         case listModels = "c3d5e7f9-2b4d-6e8f-0a1c-3e5f7b9d1c3e"
         case createModel = "d4e5f6a7-b8c9-4d1e-a2f3-4b5c6d7e8f90"
+        /// Pre-flight bootstrap for chat providers that need register
+        /// (e.g. CAI). Default providers are no-ops and return Completed
+        /// immediately. Call once per provider before invoking
+        /// `createChatModel` / `chatStream` against that provider —
+        /// without it CAI rejects subsequent calls with `unspecified`.
+        case providerInit = "f1c8d4a2-3b5e-4d7f-9a1c-6e8b0d2f4a3c"
         // Vision
         case scan = "d4e5f6a7-3b2c-1d0e-9f8a-7b6c5d4e3f2a"
         case visualSearch = "e5f6a7b8-4c3d-2e1f-0a9b-8c7d6e5f4a3b"
@@ -61,6 +67,9 @@ extension WasmClient {
         case lsUpcoming = "c3e5a7b9-4d6f-4c8e-a0b2-3d4e5f6a7b8c"
         // Surveys
         case submitSurvey = "e7c3a1d0-8b4f-5d2e-9a1c-3f6e8d2b4a0c"
+        // Notifications
+        case notificationSettings = "b8f4c2e0-5d7a-6b9f-0e3c-2a1d4f6b8c0e"
+        case getNotificationSettings = "c9a5d3f1-6e8b-4c0d-9f4a-3b5e7d9f1a3c"
     }
 }
 

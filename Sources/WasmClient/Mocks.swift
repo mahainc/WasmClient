@@ -56,6 +56,7 @@ extension WasmClient {
             AsyncThrowingStream { $0.finish() }
         },
         createChatModel: { _, _ in "" },
+        initializeChatProvider: { _, _ in },
         musicDiscover: { _, _ in MusicTrackList() },
         musicDetails: { _ in MusicTrackDetail() },
         musicTracks: { _, _ in MusicTrackList() },
@@ -89,7 +90,9 @@ extension WasmClient {
         webpageDiscovers: { [] },
         highlightPages: { _, _, _ in [] },
         upcoming: { [] },
-        submitSurvey: { _, _ in }
+        submitSurvey: { _, _ in },
+        setNotification: { _, _, _ in },
+        getNotificationSettings: { NotificationSettings(enabled: false, topics: []) }
     )
 
     public static let happy = Self(
@@ -227,6 +230,9 @@ extension WasmClient {
                 .lowercased()
                 .replacingOccurrences(of: " ", with: "-")
             return "mock-model-\(slug)"
+        },
+        initializeChatProvider: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
         },
         musicDiscover: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
@@ -419,6 +425,13 @@ extension WasmClient {
         },
         submitSurvey: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+        },
+        setNotification: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+        },
+        getNotificationSettings: {
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return NotificationSettings(enabled: true, topics: ["live_scores"])
         }
     )
 }
