@@ -168,6 +168,48 @@ extension WasmClient {
         }
     }
 
+    /// Input parameters for `createChatModel`. Only `name`/`title`/
+    /// `description`/`greeting` are mandatory strings; `image`, `gender`,
+    /// `tone`, `categories`, `traits` are optional and omitted from the
+    /// engine call when empty. `visibility` defaults to `"PUBLIC"` and
+    /// must be one of `"PUBLIC" | "PRIVATE" | "UNLISTED"`.
+    public struct CreateChatModelInput: Sendable, Equatable {
+        public let name: String
+        public let title: String
+        public let description: String
+        public let greeting: String
+        public let visibility: String
+        public let image: String
+        public let categories: [String]
+        public let gender: String
+        public let tone: String
+        public let traits: [String]
+
+        public init(
+            name: String,
+            title: String,
+            description: String,
+            greeting: String,
+            visibility: String = "PUBLIC",
+            image: String = "",
+            categories: [String] = [],
+            gender: String = "",
+            tone: String = "",
+            traits: [String] = []
+        ) {
+            self.name = name
+            self.title = title
+            self.description = description
+            self.greeting = greeting
+            self.visibility = visibility
+            self.image = image
+            self.categories = categories
+            self.gender = gender
+            self.tone = tone
+            self.traits = traits
+        }
+    }
+
     /// Configuration for creating a chat session.
     public struct ChatConfig: Sendable, Equatable {
         public let model: String

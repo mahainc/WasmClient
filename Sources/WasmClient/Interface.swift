@@ -132,6 +132,18 @@ public struct WasmClient: Sendable {
         _ messages: [WasmClient.ChatMessage]
     ) async throws -> AsyncThrowingStream<String, Swift.Error>
 
+    /// Create a custom chat model on a specific provider. Returns the
+    /// provider-assigned model id (used as the `modelId` for subsequent
+    /// `chatSend`/`chatStream` calls). Pass empty string for `providerId`
+    /// to use the first available provider that supports `createModel`;
+    /// pass an `ActionInfo.provider` from `availableActions()` to pin a
+    /// specific one. Discover eligible providers by filtering
+    /// `availableActions()` on `ActionID.createModel.rawValue`.
+    public var createChatModel: @Sendable (
+        _ providerId: String,
+        _ input: WasmClient.CreateChatModelInput
+    ) async throws -> String
+
     // MARK: - Music
 
     /// Discover music tracks by category.

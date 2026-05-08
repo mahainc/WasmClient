@@ -55,6 +55,7 @@ extension WasmClient {
         chatStream: { _, _ in
             AsyncThrowingStream { $0.finish() }
         },
+        createChatModel: { _, _ in "" },
         musicDiscover: { _, _ in MusicTrackList() },
         musicDetails: { _ in MusicTrackDetail() },
         musicTracks: { _, _ in MusicTrackList() },
@@ -217,6 +218,13 @@ extension WasmClient {
                     continuation.finish()
                 }
             }
+        },
+        createChatModel: { _, input in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            let slug = input.name
+                .lowercased()
+                .replacingOccurrences(of: " ", with: "-")
+            return "mock-model-\(slug)"
         },
         musicDiscover: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)

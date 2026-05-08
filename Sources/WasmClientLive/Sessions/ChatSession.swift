@@ -216,6 +216,63 @@ extension WasmActor {
         return (models, total)
     }
 
+    /// Create a custom chat model (persona) on a specific provider.
+    /// Returns the provider-assigned model id, used as the `modelId`
+    /// for subsequent `chatSend`/`chatStream` calls.
+    func createChatModel(
+        providerId: String,
+        input: WasmClient.CreateChatModelInput
+    ) async throws -> String {
+        let instance = try await readyEngine()
+        let action = try await delegate.resolveAction(
+            actionID: WasmClient.ActionID.createModel.rawValue,
+            preferredProvider: providerId.isEmpty ? nil : providerId,
+            logger: logger
+        )
+
+        var args: [String: Google_Protobuf_Value] = [
+            "name": .init(stringValue: input.name),
+            "title": .init(stringValue: input.title),
+            "description": .init(stringValue: input.description),
+            "greeting": .init(stringValue: input.greeting),
+            "visibility": .init(stringValue: input.visibility),
+        ]
+        if !input.image.isEmpty {
+            args["image"] = .init(stringValue: input.image)
+        }
+        if !input.categories.isEmpty {
+            args["category"] = .init(listValue: .init(
+                values: input.categories.map { .init(stringValue: $0) }
+            ))
+        }
+        if !input.gender.isEmpty {
+            args["gender"] = .init(stringValue: input.gender)
+        }
+        if !input.tone.isEmpty {
+            args["tone"] = .init(stringValue: input.tone)
+        }
+        if !input.traits.isEmpty {
+            args["traits"] = .init(listValue: .init(
+                values: input.traits.map { .init(stringValue: $0) }
+            ))
+        }
+
+        let task = try await instance.create(action: action, args: args)
+        guard task.status == .completed else {
+            throw WasmClient.Error.taskFailed(status: "\(task.status)")
+        }
+        guard task.hasValue else {
+            throw WasmClient.Error.missingValue
+        }
+        guard let payload = try? Google_Protobuf_Struct(unpackingAny: task.value) else {
+            throw WasmClient.Error.unexpectedResponseFormat
+        }
+        if case .stringValue(let id)? = payload.fields["id"]?.kind, !id.isEmpty {
+            return id
+        }
+        throw WasmClient.Error.missingValue
+    }
+
     private static func mapModelRow(
         _ fields: [String: Google_Protobuf_Value],
         providerNames: [String: String]

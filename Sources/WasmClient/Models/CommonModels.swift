@@ -9,6 +9,7 @@ extension WasmClient {
         case chat = "5e1ab91a-ac32-4269-9e20-4d864df4112d"
         case suggest = "b2d4e6f8-1a3c-5e7g-9i0k-2m4o6q8s0u2w"
         case listModels = "c3d5e7f9-2b4d-6e8f-0a1c-3e5f7b9d1c3e"
+        case createModel = "d4e5f6a7-b8c9-4d1e-a2f3-4b5c6d7e8f90"
         // Vision
         case scan = "d4e5f6a7-3b2c-1d0e-9f8a-7b6c5d4e3f2a"
         case visualSearch = "e5f6a7b8-4c3d-2e1f-0a9b-8c7d6e5f4a3b"
