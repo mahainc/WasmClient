@@ -250,6 +250,110 @@ public struct AiartGenerateResult: Sendable {
   fileprivate var _mode: AiartMode? = nil
 }
 
+/// Result of a video generation pipeline (Character.AI Avatar FX).
+/// RunAction returns this with video_id + task status=Processing.
+/// GetStatus returns updated progress/status until COMPLETED or ERRORED.
+public struct AiartVideoGenerateResult: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Request-level video ID used for polling status
+  public var videoID: String = String()
+
+  /// Final video URL (R2 signed, 7d expiry) — set when status=COMPLETED
+  public var videoURL: String {
+    get {_videoURL ?? String()}
+    set {_videoURL = newValue}
+  }
+  /// Returns true if `videoURL` has been explicitly set.
+  public var hasVideoURL: Bool {self._videoURL != nil}
+  /// Clears the value of `videoURL`. Subsequent reads from it will return its default value.
+  public mutating func clearVideoURL() {self._videoURL = nil}
+
+  /// Pipeline status: QUEUED, PROCESSING, COMPLETED, ERRORED
+  public var status: String {
+    get {_status ?? String()}
+    set {_status = newValue}
+  }
+  /// Returns true if `status` has been explicitly set.
+  public var hasStatus: Bool {self._status != nil}
+  /// Clears the value of `status`. Subsequent reads from it will return its default value.
+  public mutating func clearStatus() {self._status = nil}
+
+  /// Generation progress 0.0–1.0 (updated during PROCESSING)
+  public var progress: Double {
+    get {_progress ?? 0}
+    set {_progress = newValue}
+  }
+  /// Returns true if `progress` has been explicitly set.
+  public var hasProgress: Bool {self._progress != nil}
+  /// Clears the value of `progress`. Subsequent reads from it will return its default value.
+  public mutating func clearProgress() {self._progress = nil}
+
+  /// Auto-generated prompt from image description step
+  public var prompt: String {
+    get {_prompt ?? String()}
+    set {_prompt = newValue}
+  }
+  /// Returns true if `prompt` has been explicitly set.
+  public var hasPrompt: Bool {self._prompt != nil}
+  /// Clears the value of `prompt`. Subsequent reads from it will return its default value.
+  public mutating func clearPrompt() {self._prompt = nil}
+
+  /// Style-transferred image URL produced during pipeline
+  public var styledImageURL: String {
+    get {_styledImageURL ?? String()}
+    set {_styledImageURL = newValue}
+  }
+  /// Returns true if `styledImageURL` has been explicitly set.
+  public var hasStyledImageURL: Bool {self._styledImageURL != nil}
+  /// Clears the value of `styledImageURL`. Subsequent reads from it will return its default value.
+  public mutating func clearStyledImageURL() {self._styledImageURL = nil}
+
+  /// TTS audio URL produced during pipeline
+  public var audioURL: String {
+    get {_audioURL ?? String()}
+    set {_audioURL = newValue}
+  }
+  /// Returns true if `audioURL` has been explicitly set.
+  public var hasAudioURL: Bool {self._audioURL != nil}
+  /// Clears the value of `audioURL`. Subsequent reads from it will return its default value.
+  public mutating func clearAudioURL() {self._audioURL = nil}
+
+  /// Art style applied (e.g. "Ghibli")
+  public var artStyle: String {
+    get {_artStyle ?? String()}
+    set {_artStyle = newValue}
+  }
+  /// Returns true if `artStyle` has been explicitly set.
+  public var hasArtStyle: Bool {self._artStyle != nil}
+  /// Clears the value of `artStyle`. Subsequent reads from it will return its default value.
+  public mutating func clearArtStyle() {self._artStyle = nil}
+
+  public var metadata: SwiftProtobuf.Google_Protobuf_Struct {
+    get {_metadata ?? SwiftProtobuf.Google_Protobuf_Struct()}
+    set {_metadata = newValue}
+  }
+  /// Returns true if `metadata` has been explicitly set.
+  public var hasMetadata: Bool {self._metadata != nil}
+  /// Clears the value of `metadata`. Subsequent reads from it will return its default value.
+  public mutating func clearMetadata() {self._metadata = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _videoURL: String? = nil
+  fileprivate var _status: String? = nil
+  fileprivate var _progress: Double? = nil
+  fileprivate var _prompt: String? = nil
+  fileprivate var _styledImageURL: String? = nil
+  fileprivate var _audioURL: String? = nil
+  fileprivate var _artStyle: String? = nil
+  fileprivate var _metadata: SwiftProtobuf.Google_Protobuf_Struct? = nil
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "asyncify.aiart"
@@ -331,6 +435,80 @@ extension AiartGenerateResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if lhs._width != rhs._width {return false}
     if lhs._height != rhs._height {return false}
     if lhs._mode != rhs._mode {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension AiartVideoGenerateResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".VideoGenerateResult"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}video_url\0\u{1}status\0\u{1}progress\0\u{1}prompt\0\u{3}styled_image_url\0\u{3}audio_url\0\u{3}art_style\0\u{1}metadata\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._videoURL) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._status) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self._progress) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self._prompt) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self._styledImageURL) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self._audioURL) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self._artStyle) }()
+      case 9: try { try decoder.decodeSingularMessageField(value: &self._metadata) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    try { if let v = self._videoURL {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._status {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._progress {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._prompt {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 5)
+    } }()
+    try { if let v = self._styledImageURL {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 6)
+    } }()
+    try { if let v = self._audioURL {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 7)
+    } }()
+    try { if let v = self._artStyle {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 8)
+    } }()
+    try { if let v = self._metadata {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: AiartVideoGenerateResult, rhs: AiartVideoGenerateResult) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs._videoURL != rhs._videoURL {return false}
+    if lhs._status != rhs._status {return false}
+    if lhs._progress != rhs._progress {return false}
+    if lhs._prompt != rhs._prompt {return false}
+    if lhs._styledImageURL != rhs._styledImageURL {return false}
+    if lhs._audioURL != rhs._audioURL {return false}
+    if lhs._artStyle != rhs._artStyle {return false}
+    if lhs._metadata != rhs._metadata {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -58,7 +58,108 @@ extension WasmActor {
         return parsed
     }
 
+    // MARK: - Aiart Video
+
+    /// Submit a video generation task. Returns immediately with the initial
+    /// snapshot — typically `.processing` and a `videoID` to poll. Mirrors
+    /// flow-kit-example's two-phase create+poll pattern.
+    func aiartVideoCreate(args: [String: String]) async throws -> WasmClient.AiartVideoResult {
+        let instance = try await readyEngine()
+        let action = try await delegate.resolveAction(
+            actionID: WasmClient.ActionID.aiartVideo.rawValue,
+            logger: logger
+        )
+
+        var protoArgs: [String: Google_Protobuf_Value] = [:]
+        for (key, value) in args where !value.isEmpty {
+            protoArgs[key] = Google_Protobuf_Value(stringValue: value)
+        }
+
+        let task = try await instance.create(action: action, args: protoArgs)
+        return Self.mapAiartVideoTask(task)
+    }
+
+    /// Poll a video generation task by `videoID`. Reconstructs the WaTTask
+    /// routing fields from the resolved `aiartVideo` action, calls
+    /// `engine.status(task:)`, and maps the response.
+    func aiartVideoStatus(videoID: String) async throws -> WasmClient.AiartVideoResult {
+        let instance = try await readyEngine()
+        let action = try await delegate.resolveAction(
+            actionID: WasmClient.ActionID.aiartVideo.rawValue,
+            logger: logger
+        )
+        guard let engine = instance as? TaskWasmEngine else {
+            throw WasmClient.Error.engineNotReady
+        }
+        var taskRef = WaTTask()
+        taskRef.id = videoID
+        taskRef.provider = action.provider
+        let updated = try await engine.status(task: taskRef)
+        return Self.mapAiartVideoTask(updated)
+    }
+
     // MARK: - Aiart Mapping
+
+    private static func mapAiartVideoTask(_ task: WaTTask) -> WasmClient.AiartVideoResult {
+        var videoID = task.id
+        var videoURL = ""
+        var styledImageURL = ""
+        var audioURL = ""
+        var prompt = ""
+        var artStyle = ""
+        var progress = 0.0
+        var statusString = ""
+        var metadata: [String: String] = [:]
+
+        if task.hasValue, let res = try? AiartVideoGenerateResult(unpackingAny: task.value) {
+            if !res.videoID.isEmpty { videoID = res.videoID }
+            videoURL = res.videoURL
+            styledImageURL = res.styledImageURL
+            audioURL = res.audioURL
+            prompt = res.prompt
+            artStyle = res.artStyle
+            progress = res.progress
+            statusString = res.status
+            if res.hasMetadata {
+                for (key, value) in res.metadata.fields {
+                    if case .stringValue(let s) = value.kind {
+                        metadata[key] = s
+                    }
+                }
+            }
+        }
+
+        for (key, value) in task.metadata.fields {
+            if case .stringValue(let s) = value.kind, metadata[key] == nil {
+                metadata[key] = s
+            }
+        }
+
+        let status: WasmClient.TaskStatus
+        switch task.status {
+        case .completed:
+            status = .completed
+        case .processing:
+            status = .processing
+        default:
+            let errorMsg = metadata["error"]
+                ?? task.metadata.fields["error"]?.stringValue
+                ?? (statusString.isEmpty ? "\(task.status)" : statusString)
+            status = .failed(errorMsg)
+        }
+
+        return WasmClient.AiartVideoResult(
+            status: status,
+            videoID: videoID,
+            videoURL: videoURL,
+            styledImageURL: styledImageURL,
+            audioURL: audioURL,
+            prompt: prompt,
+            artStyle: artStyle,
+            progress: progress,
+            metadata: metadata
+        )
+    }
 
     private func mapAiartResult(_ proto: AiartGenerateResult) -> WasmClient.AiartResult {
         WasmClient.AiartResult(

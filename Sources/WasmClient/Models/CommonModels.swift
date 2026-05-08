@@ -38,6 +38,7 @@ extension WasmClient {
         // Aiart
         case aiartStamp = "b7e5fcb7-4746-4f79-b2b9-a78c7b574001"
         case aiartNormal = "b7e5fcb7-4746-4f79-b2b9-a78c7b574002"
+        case aiartVideo = "b7e5fcb7-4746-4f79-b2b9-a78c7b574004"
         // Visual / Media
         case searchPhotos = "f1a2b3c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
         case photoVisualSearch = "a7b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d"

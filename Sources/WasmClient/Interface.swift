@@ -208,6 +208,22 @@ public struct WasmClient: Sendable {
         _ actionID: String
     ) async throws -> [String]
 
+    /// Submit an AI art video generation task (Character.AI Avatar FX).
+    /// Returns immediately with `.processing` status and the `videoID` used
+    /// for polling via `aiartVideoStatus`. Pass flat string args
+    /// (`image_path`, `audio_path`, `art_style`, `cache_dir`, …).
+    public var aiartVideoCreate: @Sendable (
+        _ args: [String: String]
+    ) async throws -> WasmClient.AiartVideoResult
+
+    /// Poll a video generation task by `videoID`. Returns the latest snapshot
+    /// (`.processing` with progress, `.completed` with `videoURL`, or
+    /// `.failed`). Caller drives the polling cadence — typically every 5s
+    /// until terminal state.
+    public var aiartVideoStatus: @Sendable (
+        _ videoID: String
+    ) async throws -> WasmClient.AiartVideoResult
+
     // MARK: - Visual / Media
 
     /// Search photos by text query.

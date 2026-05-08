@@ -66,6 +66,8 @@ extension WasmClient {
         suggest: { _, _ in [] },
         aiartGenerate: { _, _ in AiartResult() },
         aiartStyles: { _ in [] },
+        aiartVideoCreate: { _ in AiartVideoResult(status: .processing) },
+        aiartVideoStatus: { _ in AiartVideoResult() },
         searchPhotos: { _, _, _, _ in PhotoSearchResult() },
         photoVisualSearch: { _, _, _, _ in PhotoSearchResult() },
         listMedia: { _, _, _, _ in PhotoSearchResult() },
@@ -290,6 +292,27 @@ extension WasmClient {
                 "ANIME", "CYBERPUNK", "WATERCOLOR", "PIXEL_ART", "THREE_D_CARTOON",
                 "FANTASY", "OIL_PAINTING", "LINE_ART", "MINIMAL", "PHOTOREAL",
             ]
+        },
+        aiartVideoCreate: { _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return AiartVideoResult(
+                status: .processing,
+                videoID: "mock-video-\(UUID().uuidString)",
+                progress: 0.05
+            )
+        },
+        aiartVideoStatus: { videoID in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return AiartVideoResult(
+                status: .completed,
+                videoID: videoID,
+                videoURL: "https://example.com/avatar-fx.mp4",
+                styledImageURL: "https://example.com/avatar-fx-styled.png",
+                audioURL: "https://example.com/avatar-fx-audio.mp3",
+                prompt: "A friendly avatar speaking",
+                artStyle: "Ghibli",
+                progress: 1.0
+            )
         },
         searchPhotos: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
