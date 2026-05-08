@@ -98,6 +98,34 @@ extension WasmActor {
         return Self.mapAiartVideoTask(updated)
     }
 
+    /// Drive the video-generation polling loop. On each tick, fetches a
+    /// fresh status snapshot, hands it to `onUpdate` for UI progress
+    /// surfacing, and either returns (on `.completed`) or throws (on
+    /// `.failed`). `Task.checkCancellation` is honoured both around the
+    /// sleep and the network call so callers can cancel by cancelling
+    /// the enclosing task — same pattern as flow-kit-example's
+    /// `aiartVideoPoll`.
+    func aiartVideoPoll(
+        videoID: String,
+        interval: TimeInterval,
+        onUpdate: (@Sendable (WasmClient.AiartVideoResult) -> Void)?
+    ) async throws -> WasmClient.AiartVideoResult {
+        let nanos = UInt64(max(interval, 0.1) * 1_000_000_000)
+        while true {
+            try Task.checkCancellation()
+            let snapshot = try await aiartVideoStatus(videoID: videoID)
+            onUpdate?(snapshot)
+            switch snapshot.status {
+            case .completed:
+                return snapshot
+            case .failed(let message):
+                throw WasmClient.Error.taskFailed(status: message)
+            case .processing:
+                try await Task.sleep(nanoseconds: nanos)
+            }
+        }
+    }
+
     // MARK: - Aiart Mapping
 
     private static func mapAiartVideoTask(_ task: WaTTask) -> WasmClient.AiartVideoResult {

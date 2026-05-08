@@ -236,6 +236,19 @@ public struct WasmClient: Sendable {
         _ videoID: String
     ) async throws -> WasmClient.AiartVideoResult
 
+    /// Drive the polling loop end-to-end: calls `aiartVideoStatus` every
+    /// `interval` seconds, invoking `onUpdate` with the current snapshot
+    /// (so callers can surface progress to the UI), and returns the final
+    /// `.completed` result. Throws `Error.taskFailed` on `.failed`, and
+    /// propagates `CancellationError` so the caller's task can interrupt
+    /// in-flight polls (e.g. when the user backs out of the screen).
+    /// Caller is responsible for upstream `Task` lifetime / timeouts.
+    public var aiartVideoPoll: @Sendable (
+        _ videoID: String,
+        _ interval: TimeInterval,
+        _ onUpdate: (@Sendable (WasmClient.AiartVideoResult) -> Void)?
+    ) async throws -> WasmClient.AiartVideoResult
+
     // MARK: - Visual / Media
 
     /// Search photos by text query.

@@ -69,6 +69,7 @@ extension WasmClient {
         aiartStyles: { _ in [] },
         aiartVideoCreate: { _ in AiartVideoResult(status: .processing) },
         aiartVideoStatus: { _ in AiartVideoResult() },
+        aiartVideoPoll: { _, _, _ in AiartVideoResult() },
         searchPhotos: { _, _, _, _ in PhotoSearchResult() },
         photoVisualSearch: { _, _, _, _ in PhotoSearchResult() },
         listMedia: { _, _, _, _ in PhotoSearchResult() },
@@ -319,6 +320,33 @@ extension WasmClient {
                 artStyle: "Ghibli",
                 progress: 1.0
             )
+        },
+        aiartVideoPoll: { videoID, _, onUpdate in
+            // Stream three progress ticks then resolve, so previews and
+            // tests see the same shape as a real generation.
+            for value in [0.25, 0.55, 0.85] {
+                try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+                onUpdate?(
+                    AiartVideoResult(
+                        status: .processing,
+                        videoID: videoID,
+                        progress: value
+                    )
+                )
+            }
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            let final = AiartVideoResult(
+                status: .completed,
+                videoID: videoID,
+                videoURL: "https://example.com/avatar-fx.mp4",
+                styledImageURL: "https://example.com/avatar-fx-styled.png",
+                audioURL: "https://example.com/avatar-fx-audio.mp3",
+                prompt: "A friendly avatar speaking",
+                artStyle: "Ghibli",
+                progress: 1.0
+            )
+            onUpdate?(final)
+            return final
         },
         searchPhotos: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)

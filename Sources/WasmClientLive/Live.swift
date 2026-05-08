@@ -110,6 +110,13 @@ extension WasmClient: DependencyKey {
             aiartVideoStatus: { videoID in
                 try await actor.aiartVideoStatus(videoID: videoID)
             },
+            aiartVideoPoll: { videoID, interval, onUpdate in
+                try await actor.aiartVideoPoll(
+                    videoID: videoID,
+                    interval: interval,
+                    onUpdate: onUpdate
+                )
+            },
             searchPhotos: { query, provider, page, perPage in
                 try await actor.searchPhotos(query: query, provider: provider, page: page, perPage: perPage)
             },
