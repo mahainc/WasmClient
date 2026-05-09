@@ -15,6 +15,7 @@ let package = Package(
     products: [
         .library(name: "WasmClient", targets: ["WasmClient"]),
         .library(name: "WasmClientLive", targets: ["WasmClientLive"]),
+        .library(name: "WasmClientWebKit", targets: ["WasmClientWebKit"]),
     ],
     dependencies: [
         .package(
@@ -58,6 +59,22 @@ let package = Package(
                 .unsafeFlags([
                     "-I", "\(packageDir)/.build/flowkit-merged-modules",  // local dev
                     "-I", "/tmp/wasmclient-flowkit-modules",              // build plugin
+                ]),
+            ],
+            plugins: [
+                .plugin(name: "MergeFlowKitModules"),
+            ]
+        ),
+        .target(
+            name: "WasmClientWebKit",
+            dependencies: [
+                "FlowKit",
+                "FlowKitCModules",
+            ],
+            swiftSettings: [
+                .unsafeFlags([
+                    "-I", "\(packageDir)/.build/flowkit-merged-modules",
+                    "-I", "/tmp/wasmclient-flowkit-modules",
                 ]),
             ],
             plugins: [

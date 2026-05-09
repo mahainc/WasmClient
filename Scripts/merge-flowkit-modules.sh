@@ -14,6 +14,23 @@ set -euo pipefail
 PACKAGE_DIR="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 OUTPUT_DIR="${2:-$PACKAGE_DIR/.build/flowkit-merged-modules}"
 
+# Serialize concurrent invocations from sibling targets that share OUTPUT_DIR
+# (e.g. WasmClientLive and WasmClientWebKit). macOS has no flock, so use the
+# atomic-`mkdir` pattern. Block until the lock is acquired, release on exit.
+mkdir -p "$(dirname "$OUTPUT_DIR")"
+LOCK_DIR="${OUTPUT_DIR}.lock"
+while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+  sleep 0.1
+done
+trap 'rm -rf "$LOCK_DIR"' EXIT
+
+# If a sibling target already populated the merged tree, no work to do.
+if [ -d "$OUTPUT_DIR" ] && [ -f "$OUTPUT_DIR/.merge-stamp" ] && \
+   find "$OUTPUT_DIR" -mindepth 1 -maxdepth 1 -name '*.swiftmodule' -print -quit | grep -q .; then
+  echo "FlowKit sub-modules already merged at $OUTPUT_DIR"
+  exit 0
+fi
+
 # Modules managed by SPM — MUST be excluded to prevent slice conflicts.
 # SwiftProtobuf is NOT excluded — we use the copy inside FlowKit.xcframework
 # to avoid duplicate ObjC class registrations that cause silent protobuf
@@ -89,4 +106,5 @@ for mod in "$DEVICE"/*.swiftmodule; do
   count=$((count + 1))
 done
 
+touch "$OUTPUT_DIR/.merge-stamp"
 echo "Merged $count sub-modules into $OUTPUT_DIR"
