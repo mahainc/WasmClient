@@ -117,6 +117,18 @@ extension WasmClient: DependencyKey {
                     onUpdate: onUpdate
                 )
             },
+            listPendingTasks: {
+                await actor.listPendingTasks()
+            },
+            observePendingTasks: {
+                await actor.observePendingTasks()
+            },
+            removePendingTask: { taskID in
+                await actor.removePendingTask(taskID: taskID)
+            },
+            clearPendingTasks: {
+                await actor.clearPendingTasks()
+            },
             searchPhotos: { query, provider, page, perPage in
                 try await actor.searchPhotos(query: query, provider: provider, page: page, perPage: perPage)
             },

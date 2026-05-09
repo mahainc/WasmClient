@@ -249,6 +249,34 @@ public struct WasmClient: Sendable {
         _ onUpdate: (@Sendable (WasmClient.AiartVideoResult) -> Void)?
     ) async throws -> WasmClient.AiartVideoResult
 
+    // MARK: - Pending Tasks
+
+    /// Snapshot of every persisted task descriptor (in-flight + recently
+    /// completed) in the engine's default cache directory. Use to drive
+    /// out-of-band progress UI such as the Profile → Videos grid that surfaces
+    /// generations the user kicked off and then dismissed the originating
+    /// screen for. Filter by `actionID` (e.g. `isVideoTask`) for domain-specific
+    /// listings.
+    public var listPendingTasks: @Sendable () async -> [WasmClient.PendingTask] = { [] }
+
+    /// Observe persisted task descriptors as an async stream. The first value
+    /// is the current snapshot; subsequent values are emitted whenever the
+    /// engine's auto-resume loop or any caller mutates a descriptor (status
+    /// change, progress tick, removal). Bridges FlowKit's
+    /// `pendingTasksChanged` Combine subject so SwiftUI/TCA features can
+    /// observe with a single async-for loop. Cancel by terminating the
+    /// stream's iterator (e.g. when the parent Effect is cancelled).
+    public var observePendingTasks: @Sendable () async -> AsyncStream<[WasmClient.PendingTask]> = { AsyncStream { _ in } }
+
+    /// Remove a single persisted task descriptor by ID. Used for swipe-to-
+    /// remove on completed/errored rows; safe to call even when the engine
+    /// hasn't been started yet (no-ops on missing descriptor).
+    public var removePendingTask: @Sendable (_ taskID: String) async -> Void = { _ in }
+
+    /// Remove every persisted task descriptor in the default cache. Used by
+    /// "Clear all" actions on the pending-tasks UI.
+    public var clearPendingTasks: @Sendable () async -> Void = { }
+
     // MARK: - Visual / Media
 
     /// Search photos by text query.

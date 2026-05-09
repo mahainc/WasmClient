@@ -70,6 +70,10 @@ extension WasmClient {
         aiartVideoCreate: { _ in AiartVideoResult(status: .processing) },
         aiartVideoStatus: { _ in AiartVideoResult() },
         aiartVideoPoll: { _, _, _ in AiartVideoResult() },
+        listPendingTasks: { [] },
+        observePendingTasks: { AsyncStream { $0.finish() } },
+        removePendingTask: { _ in },
+        clearPendingTasks: { },
         searchPhotos: { _, _, _, _ in PhotoSearchResult() },
         photoVisualSearch: { _, _, _, _ in PhotoSearchResult() },
         listMedia: { _, _, _, _ in PhotoSearchResult() },
@@ -348,6 +352,15 @@ extension WasmClient {
             onUpdate?(final)
             return final
         },
+        listPendingTasks: { [] },
+        observePendingTasks: {
+            AsyncStream { continuation in
+                continuation.yield([])
+                continuation.finish()
+            }
+        },
+        removePendingTask: { _ in },
+        clearPendingTasks: { },
         searchPhotos: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return PhotoSearchResult(

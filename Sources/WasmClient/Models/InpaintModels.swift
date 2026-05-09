@@ -81,7 +81,7 @@ extension WasmClient {
     }
 
     /// Task processing status.
-    public enum TaskStatus: Sendable, Equatable {
+    public enum TaskStatus: Sendable, Equatable, Hashable {
         case processing
         case completed
         case failed(String)
