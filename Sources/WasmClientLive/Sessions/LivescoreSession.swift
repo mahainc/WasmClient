@@ -9,13 +9,11 @@ extension WasmActor {
 
     // MARK: - Webpage
 
-    /// `LivescoreWebPageType` enum (server side): 1=leagues, 2=competitions,
-    /// 3=teams, 4=page (URL-targeted).
-    private func webpageList(type: Int, url: String? = nil) async throws -> [WasmClient.WebPage] {
+    private func webpageList(type: LivescoreWebPageType, url: String? = nil) async throws -> [WasmClient.WebPage] {
         let instance = try await readyEngine()
         let action = try await instance.action(for: WasmClient.ActionID.lsWebpage.rawValue, strategy: .roundRobin)
         var args: [String: Google_Protobuf_Value] = [
-            "type": Google_Protobuf_Value(numberValue: Double(type)),
+            "type": Google_Protobuf_Value(numberValue: Double(type.rawValue)),
         ]
         if let url { args["url"] = Google_Protobuf_Value(stringValue: url) }
         let task = try await instance.create(action: action, args: args)
@@ -34,23 +32,23 @@ extension WasmActor {
     }
 
     func webpageLeagues() async throws -> [WasmClient.WebPage] {
-        try await webpageList(type: 1)
+        try await webpageList(type: .leagues)
     }
 
     func webpageCompetitions() async throws -> [WasmClient.WebPage] {
-        try await webpageList(type: 2)
+        try await webpageList(type: .competitions)
     }
 
     func webpageTeams() async throws -> [WasmClient.WebPage] {
-        try await webpageList(type: 3)
+        try await webpageList(type: .teams)
     }
 
     func webpage(url: String) async throws -> [WasmClient.WebPage] {
-        try await webpageList(type: 4, url: url)
+        try await webpageList(type: .page, url: url)
     }
 
     func webpageDiscovers() async throws -> [WasmClient.WebPage] {
-        try await webpageList(type: 5)
+        try await webpageList(type: .discovers)
     }
 
     // MARK: - Highlights

@@ -56,6 +56,9 @@ public enum LivescoreEndpoint: SwiftProtobuf.Enum, Swift.CaseIterable {
 
   /// xG: /v3/football/expected/fixtures (separate endpoint, not fixture include)
   case expected // = 13
+
+  /// fetch embed/web page HTML source, returns WebPageList
+  case webPage // = 14
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -78,6 +81,7 @@ public enum LivescoreEndpoint: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 11: self = .h2H
     case 12: self = .meta
     case 13: self = .expected
+    case 14: self = .webPage
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -98,6 +102,7 @@ public enum LivescoreEndpoint: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .h2H: return 11
     case .meta: return 12
     case .expected: return 13
+    case .webPage: return 14
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -118,6 +123,7 @@ public enum LivescoreEndpoint: SwiftProtobuf.Enum, Swift.CaseIterable {
     .h2H,
     .meta,
     .expected,
+    .webPage,
   ]
 
 }
@@ -696,6 +702,67 @@ public enum LivescoreScorePeriod: SwiftProtobuf.Enum, Swift.CaseIterable {
     .fullTime,
     .extraTime,
     .penalties,
+  ]
+
+}
+
+/// Type of content to load in the WebPage action.
+public enum LivescoreWebPageType: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+
+  /// top leagues from backend API (28 entries)
+  case leagues // = 1
+
+  /// HD competitions from IPA bundle (101 entries)
+  case competitions // = 2
+
+  /// top teams from IPA bundle (194 entries)
+  case teams // = 3
+
+  /// fetch embed HTML by URL
+  case page // = 4
+
+  /// home carousel discover items (curated featured content)
+  case discovers // = 5
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .leagues
+    case 2: self = .competitions
+    case 3: self = .teams
+    case 4: self = .page
+    case 5: self = .discovers
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .leagues: return 1
+    case .competitions: return 2
+    case .teams: return 3
+    case .page: return 4
+    case .discovers: return 5
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [LivescoreWebPageType] = [
+    .unspecified,
+    .leagues,
+    .competitions,
+    .teams,
+    .page,
+    .discovers,
   ]
 
 }
@@ -1537,6 +1604,18 @@ public struct LivescoreTeam: @unchecked Sendable {
   public var hasWinner: Bool {_storage._winner != nil}
   /// Clears the value of `winner`. Subsequent reads from it will return its default value.
   public mutating func clearWinner() {_uniqueStorage()._winner = nil}
+
+  /// SM: trophies include (id-only from SM)
+  public var trophies: [LivescoreTrophy] {
+    get {_storage._trophies}
+    set {_uniqueStorage()._trophies = newValue}
+  }
+
+  /// SM: rivals include (lightweight team refs)
+  public var rivals: [LivescoreTeam] {
+    get {_storage._rivals}
+    set {_uniqueStorage()._rivals = newValue}
+  }
 
   public var source: LivescoreDataSource {
     get {_storage._source}
@@ -6532,12 +6611,108 @@ public struct LivescoreExpectedMetricList: Sendable {
   public init() {}
 }
 
+/// A web-based livescore page with metadata for list display.
+/// Swift shows image+title+subtitle in a list; tapping opens url directly in WKWebView.
+public struct LivescoreWebPage: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// thumbnail/logo URL for list display
+  public var image: String = String()
+
+  /// primary label (league name, team name, match title)
+  public var title: String = String()
+
+  /// secondary label (country, date, competition)
+  public var subtitle: String = String()
+
+  /// embed URL loaded directly in WKWebView (no-proxy)
+  public var url: String = String()
+
+  /// slug identifier (e.g. "team/real-madrid", "competition/england-premier-league")
+  public var id: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct LivescoreWebPageList: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var pages: [LivescoreWebPage] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Scorebat upcoming match from /api/upcoming/ — compact match preview
+/// with team IDs mapped to Scorebat CDN logo URLs.
+public struct LivescoreUpcomingMatch: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Scorebat match ID
+  public var id: Int64 = 0
+
+  /// Short team name (e.g., "PSG")
+  public var team1Name: String = String()
+
+  /// Short team name (e.g., "Bayern Munich")
+  public var team2Name: String = String()
+
+  /// Team logo URL: scorebat.com/og/teamlogo/large/{s1Id}.png
+  public var team1Logo: String = String()
+
+  /// Team logo URL: scorebat.com/og/teamlogo/large/{s2Id}.png
+  public var team2Logo: String = String()
+
+  /// UNIX timestamp of match start
+  public var datetime: Int64 = 0
+
+  /// Scorebat competition ID
+  public var competitionID: Int64 = 0
+
+  /// Team 1 score (0 before kickoff)
+  public var score1: Int64 = 0
+
+  /// Team 2 score (0 before kickoff)
+  public var score2: Int64 = 0
+
+  /// Match status ("-" = not started)
+  public var status: String = String()
+
+  /// Embed URL: scorebat.com/embed/matchview/{id}
+  public var url: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct LivescoreUpcomingMatchList: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var matches: [LivescoreUpcomingMatch] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "asyncify.livescore"
 
 extension LivescoreEndpoint: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ENDPOINT_UNSPECIFIED\0\u{1}ENDPOINT_LIVESCORES\0\u{1}ENDPOINT_FIXTURES\0\u{1}ENDPOINT_LEAGUES\0\u{1}ENDPOINT_STANDINGS\0\u{1}ENDPOINT_TEAMS\0\u{1}ENDPOINT_PLAYERS\0\u{1}ENDPOINT_TOPSCORERS\0\u{1}ENDPOINT_PREDICTIONS\0\u{1}ENDPOINT_ODDS\0\u{1}ENDPOINT_NEWS\0\u{1}ENDPOINT_H2H\0\u{1}ENDPOINT_META\0\u{1}ENDPOINT_EXPECTED\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ENDPOINT_UNSPECIFIED\0\u{1}ENDPOINT_LIVESCORES\0\u{1}ENDPOINT_FIXTURES\0\u{1}ENDPOINT_LEAGUES\0\u{1}ENDPOINT_STANDINGS\0\u{1}ENDPOINT_TEAMS\0\u{1}ENDPOINT_PLAYERS\0\u{1}ENDPOINT_TOPSCORERS\0\u{1}ENDPOINT_PREDICTIONS\0\u{1}ENDPOINT_ODDS\0\u{1}ENDPOINT_NEWS\0\u{1}ENDPOINT_H2H\0\u{1}ENDPOINT_META\0\u{1}ENDPOINT_EXPECTED\0\u{1}ENDPOINT_WEB_PAGE\0")
 }
 
 extension LivescoreDataSource: SwiftProtobuf._ProtoNameProviding {
@@ -6570,6 +6745,10 @@ extension LivescoreLeagueType: SwiftProtobuf._ProtoNameProviding {
 
 extension LivescoreScorePeriod: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SCORE_PERIOD_UNSPECIFIED\0\u{1}SCORE_PERIOD_CURRENT\0\u{1}SCORE_PERIOD_FIRST_HALF\0\u{1}SCORE_PERIOD_SECOND_HALF\0\u{1}SCORE_PERIOD_FULL_TIME\0\u{1}SCORE_PERIOD_EXTRA_TIME\0\u{1}SCORE_PERIOD_PENALTIES\0")
+}
+
+extension LivescoreWebPageType: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0WEB_PAGE_TYPE_UNSPECIFIED\0\u{1}WEB_PAGE_TYPE_LEAGUES\0\u{1}WEB_PAGE_TYPE_COMPETITIONS\0\u{1}WEB_PAGE_TYPE_TEAMS\0\u{1}WEB_PAGE_TYPE_PAGE\0\u{1}WEB_PAGE_TYPE_DISCOVERS\0")
 }
 
 extension LivescoreSportMonksResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -7980,7 +8159,7 @@ extension LivescoreGroup: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 
 extension LivescoreTeam: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Team"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}sport_id\0\u{3}country_id\0\u{3}venue_id\0\u{1}gender\0\u{1}name\0\u{3}short_code\0\u{3}logo_url\0\u{1}founded\0\u{1}type\0\u{1}placeholder\0\u{3}last_played_at\0\u{1}national\0\u{3}country_name\0\u{2}\u{6}country\0\u{1}venue\0\u{1}players\0\u{1}coaches\0\u{3}active_seasons\0\u{1}squad\0\u{1}winner\0\u{2}\u{4}source\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}sport_id\0\u{3}country_id\0\u{3}venue_id\0\u{1}gender\0\u{1}name\0\u{3}short_code\0\u{3}logo_url\0\u{1}founded\0\u{1}type\0\u{1}placeholder\0\u{3}last_played_at\0\u{1}national\0\u{3}country_name\0\u{2}\u{6}country\0\u{1}venue\0\u{1}players\0\u{1}coaches\0\u{3}active_seasons\0\u{1}squad\0\u{1}winner\0\u{1}trophies\0\u{1}rivals\0\u{2}\u{2}source\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -8004,6 +8183,8 @@ extension LivescoreTeam: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     var _activeSeasons: [LivescoreSeason] = []
     var _squad: [LivescoreSquadMember] = []
     var _winner: Bool? = nil
+    var _trophies: [LivescoreTrophy] = []
+    var _rivals: [LivescoreTeam] = []
     var _source: LivescoreDataSource = .unspecified
 
       // This property is used as the initial default value for new instances of the type.
@@ -8036,6 +8217,8 @@ extension LivescoreTeam: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       _activeSeasons = source._activeSeasons
       _squad = source._squad
       _winner = source._winner
+      _trophies = source._trophies
+      _rivals = source._rivals
       _source = source._source
     }
   }
@@ -8076,6 +8259,8 @@ extension LivescoreTeam: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
         case 24: try { try decoder.decodeRepeatedMessageField(value: &_storage._activeSeasons) }()
         case 25: try { try decoder.decodeRepeatedMessageField(value: &_storage._squad) }()
         case 26: try { try decoder.decodeSingularBoolField(value: &_storage._winner) }()
+        case 27: try { try decoder.decodeRepeatedMessageField(value: &_storage._trophies) }()
+        case 28: try { try decoder.decodeRepeatedMessageField(value: &_storage._rivals) }()
         case 30: try { try decoder.decodeSingularEnumField(value: &_storage._source) }()
         default: break
         }
@@ -8152,6 +8337,12 @@ extension LivescoreTeam: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       try { if let v = _storage._winner {
         try visitor.visitSingularBoolField(value: v, fieldNumber: 26)
       } }()
+      if !_storage._trophies.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._trophies, fieldNumber: 27)
+      }
+      if !_storage._rivals.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._rivals, fieldNumber: 28)
+      }
       if _storage._source != .unspecified {
         try visitor.visitSingularEnumField(value: _storage._source, fieldNumber: 30)
       }
@@ -8185,6 +8376,8 @@ extension LivescoreTeam: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
         if _storage._activeSeasons != rhs_storage._activeSeasons {return false}
         if _storage._squad != rhs_storage._squad {return false}
         if _storage._winner != rhs_storage._winner {return false}
+        if _storage._trophies != rhs_storage._trophies {return false}
+        if _storage._rivals != rhs_storage._rivals {return false}
         if _storage._source != rhs_storage._source {return false}
         return true
       }
@@ -16100,51 +16293,6 @@ extension LivescoreExpectedMetricList: SwiftProtobuf.Message, SwiftProtobuf._Mes
   }
 }
 
-// MARK: - Manually backported types
-//
-// These messages exist in flow-kit-example's livescore.proto / pb.swift but
-// were missing from this checkout's regenerated copy. Backported verbatim so
-// LivescoreSession.highlightPages / webpageList can decode the WASM action's
-// `LivescoreWebPageList` Any payload. Safe to delete once livescore.proto
-// regenerates with these types included.
-
-public struct LivescoreWebPage: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  /// thumbnail/logo URL for list display
-  public var image: String = String()
-
-  /// primary label (league name, team name, match title)
-  public var title: String = String()
-
-  /// secondary label (country, date, competition)
-  public var subtitle: String = String()
-
-  /// embed URL loaded directly in WKWebView (no-proxy)
-  public var url: String = String()
-
-  /// slug identifier (e.g. "team/real-madrid", "competition/england-premier-league")
-  public var id: String = String()
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-public struct LivescoreWebPageList: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var pages: [LivescoreWebPage] = []
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
 extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WebPage"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}image\0\u{1}title\0\u{1}subtitle\0\u{1}url\0\u{1}id\0")
@@ -16223,69 +16371,6 @@ extension LivescoreWebPageList: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
-}
-
-// MARK: - Manually backported types (LivescoreUpcomingMatch / List)
-//
-// Same situation as LivescoreWebPage above — these messages exist in
-// flow-kit-example's livescore.proto / pb.swift but are missing from this
-// checkout's regenerated copy. Backported verbatim so
-// LivescoreSession.upcoming() can decode the WASM action's
-// 'LivescoreUpcomingMatchList' Any payload.
-
-public struct LivescoreUpcomingMatch: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  /// Scorebat match ID
-  public var id: Int64 = 0
-
-  /// Short team name (e.g., "PSG")
-  public var team1Name: String = String()
-
-  /// Short team name (e.g., "Bayern Munich")
-  public var team2Name: String = String()
-
-  /// Team logo URL: scorebat.com/og/teamlogo/large/{s1Id}.png
-  public var team1Logo: String = String()
-
-  /// Team logo URL: scorebat.com/og/teamlogo/large/{s2Id}.png
-  public var team2Logo: String = String()
-
-  /// UNIX timestamp of match start
-  public var datetime: Int64 = 0
-
-  /// Scorebat competition ID
-  public var competitionID: Int64 = 0
-
-  /// Team 1 score (0 before kickoff)
-  public var score1: Int64 = 0
-
-  /// Team 2 score (0 before kickoff)
-  public var score2: Int64 = 0
-
-  /// Match status ("-" = not started)
-  public var status: String = String()
-
-  /// Embed URL: scorebat.com/embed/matchview/{id}
-  public var url: String = String()
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-public struct LivescoreUpcomingMatchList: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var matches: [LivescoreUpcomingMatch] = []
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
 }
 
 extension LivescoreUpcomingMatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
