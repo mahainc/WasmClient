@@ -417,6 +417,11 @@ actor WasmActor {
     /// methods, except for `_expectedVersionProvider` which is lock-guarded.
     nonisolated let delegate = WasmDelegate()
     let logger: @Sendable (String) -> Void
+    /// True while a `resumePendingTasks` loop is in flight. Prevents
+    /// observers / repeated `aiartVideoCreate` callers from spawning
+    /// duplicate concurrent loops; each one would re-poll every descriptor
+    /// independently, wasting bandwidth.
+    var isResumingPendingTasks: Bool = false
 
     // MARK: - Init
 

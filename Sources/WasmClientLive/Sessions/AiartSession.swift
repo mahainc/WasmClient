@@ -63,6 +63,15 @@ extension WasmActor {
     /// Submit a video generation task. Returns immediately with the initial
     /// snapshot — typically `.processing` and a `videoID` to poll. Mirrors
     /// flow-kit-example's two-phase create+poll pattern.
+    ///
+    /// On `.processing`, kicks a fire-and-forget `resumePendingTasks` so the
+    /// engine actively polls every persisted descriptor (including this one)
+    /// at 5s intervals, rewriting them on each tick and firing
+    /// `pendingTasksChanged`. Observers (e.g. Profile → Videos) react to
+    /// each emission and re-read `listPendingTasks` to surface progress.
+    /// Without this kick the engine's auto-resume loop only sweeps tasks
+    /// persisted before engine boot, so in-session creates would freeze at
+    /// their initial progress.
     func aiartVideoCreate(args: [String: String]) async throws -> WasmClient.AiartVideoResult {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
@@ -76,6 +85,9 @@ extension WasmActor {
         }
 
         let task = try await instance.create(action: action, args: protoArgs)
+        if task.status == .processing {
+            await ensurePendingTasksResumeLoop()
+        }
         return Self.mapAiartVideoTask(task)
     }
 

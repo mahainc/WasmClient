@@ -7,6 +7,34 @@ import WasmClient
 
 extension WasmActor {
 
+    /// Idempotently kick the engine's resume loop for every persisted
+    /// descriptor in `defaultCacheDir`. The engine's own auto-resume only
+    /// runs at boot for descriptors present at that time; this method
+    /// ensures both in-session creates AND descriptors observed after boot
+    /// (e.g. when the user opens Profile → Videos for the first time on a
+    /// fresh launch) start receiving progress updates. Guarded so concurrent
+    /// observers / creates don't fan out duplicate loops.
+    func ensurePendingTasksResumeLoop() async {
+        guard !isResumingPendingTasks else { return }
+        guard let engine = try? await readyEngine() as? TaskWasmEngine else { return }
+        isResumingPendingTasks = true
+        let log = logger
+        Task { [weak self] in
+            let resumed = await engine.resumePendingTasks(
+                cacheDir: nil,
+                interval: 5,
+                timeout: 60 * 30,
+                onUpdate: nil
+            )
+            log("resumePendingTasks finished — \(resumed.count) tasks settled")
+            await self?.clearPendingTasksResumeFlag()
+        }
+    }
+
+    func clearPendingTasksResumeFlag() {
+        isResumingPendingTasks = false
+    }
+
     /// Snapshot every persisted task descriptor in the engine's default cache.
     /// Backed by `TaskWasmEngine.listPendingTasks` — works even before the
     /// engine has started, since descriptors are read off disk.
@@ -17,37 +45,89 @@ extension WasmActor {
         return summaries.map(Self.mapPendingTask)
     }
 
-    /// Bridge `pendingTasksChanged` (Combine `PassthroughSubject<Void, Never>`)
-    /// into an `AsyncStream`. Yields the current snapshot synchronously, then
-    /// re-reads + yields whenever the engine's auto-resume loop or any caller
-    /// mutates a descriptor. Iterating the publisher's `.values` keeps us off
-    /// the main actor and inherits `Task` cancellation.
+    /// Stream descriptor snapshots driven by both the engine's
+    /// `pendingTasksChanged` Combine subject AND a periodic re-read.
+    /// Mirrors flow-kit-example's `PendingTasksView` which does both
+    /// `.onAppear { refresh() }` and `.onReceive(pendingTasksChanged) { refresh() }`.
+    ///
+    /// The periodic poll (every 2s) is the reliable backstop: even if the
+    /// Combine subject misses an emission or the engine doesn't fire it for
+    /// in-session creates, the next tick re-reads the descriptor JSON from
+    /// disk and yields. Each `aiartVideoStatus` / `resumePendingTasks` round
+    /// trip rewrites the descriptor with fresh progress, so the polled
+    /// snapshot picks up live progress.
     func observePendingTasks() async -> AsyncStream<[WasmClient.PendingTask]> {
         AsyncStream { continuation in
             let task = Task { [logger] in
-                let initial = TaskWasmEngine.listPendingTasks(
-                    cacheDir: TaskWasmEngine.defaultCacheDir
-                )
-                continuation.yield(initial.map(Self.mapPendingTask))
+                let snapshot: @Sendable () -> [WasmClient.PendingTask] = {
+                    TaskWasmEngine.listPendingTasks(
+                        cacheDir: TaskWasmEngine.defaultCacheDir
+                    ).map(Self.mapPendingTask)
+                }
 
-                do {
-                    let engine = try await readyEngine()
-                    guard let taskEngine = engine as? TaskWasmEngine else {
-                        logger("observePendingTasks: engine is not TaskWasmEngine — finishing")
-                        continuation.finish()
-                        return
+                logger("observePendingTasks: defaultCacheDir=\(TaskWasmEngine.defaultCacheDir)")
+
+                let initial = snapshot()
+                logger("observePendingTasks: initial snapshot count=\(initial.count)")
+                for (idx, task) in initial.enumerated() {
+                    let statusLabel: String
+                    switch task.status {
+                    case .processing: statusLabel = "processing"
+                    case .completed: statusLabel = "completed"
+                    case .failed(let m): statusLabel = "failed(\(m))"
                     }
+                    logger("  [\(idx)] id=\(task.id.prefix(8))… actionID=\(task.actionID ?? "nil") status=\(statusLabel) progress=\(task.progress) hasURL=\(task.resultURL != nil)")
+                }
+                continuation.yield(initial)
 
+                let engine = try? await readyEngine()
+                let taskEngine = engine as? TaskWasmEngine
+                if let taskEngine {
+                    let postReady = snapshot()
+                    logger("observePendingTasks: post-engine snapshot count=\(postReady.count)")
+                    continuation.yield(postReady)
+                    // Kick the engine's resume loop so previously-persisted
+                    // descriptors start receiving progress updates instead of
+                    // sitting at their last-saved state.
+                    await ensurePendingTasksResumeLoop()
+                } else {
+                    logger("observePendingTasks: engine unavailable — falling back to polling only")
+                }
+
+                // Hot subscription to descriptor change notifications.
+                let combineTask = Task { [taskEngine, logger] in
+                    guard let taskEngine else { return }
                     for await _ in taskEngine.pendingTasksChanged.values {
                         if Task.isCancelled { break }
-                        let snapshot = TaskWasmEngine.listPendingTasks(
-                            cacheDir: TaskWasmEngine.defaultCacheDir
-                        )
-                        continuation.yield(snapshot.map(Self.mapPendingTask))
+                        let next = snapshot()
+                        logger("observePendingTasks: change emission count=\(next.count)")
+                        continuation.yield(next)
                     }
-                } catch {
-                    logger("observePendingTasks: engine start failed — \(error.localizedDescription)")
                 }
+
+                // Periodic backstop: re-read the descriptor JSON every 3s,
+                // and force-poll the live status of every still-processing
+                // video task. The status round-trip rewrites the descriptor
+                // with fresh progress (or terminal state if the task is
+                // stale on the backend), so the next snapshot picks it up.
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(3))
+                    if Task.isCancelled { break }
+                    let next = snapshot()
+                    logger("observePendingTasks: periodic poll count=\(next.count)")
+                    continuation.yield(next)
+
+                    let videoIDs = next.compactMap { task -> String? in
+                        guard task.isVideoTask, case .processing = task.status else { return nil }
+                        return task.id
+                    }
+                    for videoID in videoIDs {
+                        Task { [weak self] in
+                            _ = try? await self?.aiartVideoStatus(videoID: videoID)
+                        }
+                    }
+                }
+                combineTask.cancel()
                 continuation.finish()
             }
             continuation.onTermination = { _ in task.cancel() }
