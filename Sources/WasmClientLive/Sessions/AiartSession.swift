@@ -192,25 +192,25 @@ extension WasmActor {
             status = .processing
         default:
             // The engine returns `.unspecified` for video tasks that are
-            // still queued / partially processing on the server — the
-            // descriptor on disk simultaneously carries non-zero progress
-            // and statusString="PROCESSING". Treat that combination as
-            // processing rather than a hard failure so `aiartVideoPoll`
-            // doesn't terminate prematurely on a transient state. Real
-            // failures arrive with an error message in metadata or a
-            // statusString of "FAILED"/"ERRORED".
+            // still queued / processing on the server — and ships them
+            // with an empty `statusString` and no error metadata. The
+            // descriptor it writes to disk in the same call carries a
+            // monotonically increasing progress. Only treat the response
+            // as a hard failure when there's an explicit failure signal;
+            // otherwise keep polling.
             let upper = statusString.uppercased()
-            if upper == "PROCESSING" || upper == "QUEUED" || (upper.isEmpty && progress > 0) {
-                status = .processing
-            } else if upper == "UNSPECIFIED" && metadata["error"] == nil
-                && task.metadata.fields["error"]?.stringValue == nil
-            {
-                status = .processing
-            } else {
+            let hasError = metadata["error"] != nil
+                || task.metadata.fields["error"]?.stringValue != nil
+            let isExplicitFailure = upper == "FAILED"
+                || upper == "ERRORED"
+                || upper == "ERROR"
+            if hasError || isExplicitFailure {
                 let errorMsg = metadata["error"]
                     ?? task.metadata.fields["error"]?.stringValue
                     ?? (statusString.isEmpty ? "\(task.status)" : statusString)
                 status = .failed(errorMsg)
+            } else {
+                status = .processing
             }
         }
 
