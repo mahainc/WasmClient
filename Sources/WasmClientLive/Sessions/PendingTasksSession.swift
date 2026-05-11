@@ -35,53 +35,6 @@ extension WasmActor {
         isResumingPendingTasks = false
     }
 
-    /// Spawn a background `aiartVideoPoll` for `taskID` if one isn't already
-    /// running. The loop calls `aiartVideoStatus` every `interval` seconds
-    /// (default 5s, matching the engine's resume cadence). Each tick goes
-    /// through `engine.status(task:)`, which rewrites the descriptor on disk
-    /// and fires `pendingTasksChanged` — observers (Profile → Videos, the
-    /// flow-kit-example PendingTasksView) react to that. The poller is
-    /// detached from any `observePendingTasks` subscription, so it keeps
-    /// running even when the user navigates away from the screen that
-    /// kicked it. The loop exits naturally on `.completed` / `.failed`, or
-    /// when `aiartVideoStatus` throws (network / auth) — `clearVideoPoller`
-    /// removes the ID from the active set in either case.
-    func ensureVideoPoll(taskID: String, interval: TimeInterval = 5) {
-        guard !taskID.isEmpty else { return }
-        guard !activeVideoPollers.contains(taskID) else { return }
-        activeVideoPollers.insert(taskID)
-        let log = logger
-        Task { [weak self] in
-            do {
-                _ = try await self?.aiartVideoPoll(
-                    videoID: taskID,
-                    interval: interval,
-                    onUpdate: nil
-                )
-                log("ensureVideoPoll: \(taskID.prefix(8))… settled")
-            } catch is CancellationError {
-                log("ensureVideoPoll: \(taskID.prefix(8))… cancelled")
-            } catch {
-                log("ensureVideoPoll: \(taskID.prefix(8))… exited error=\(error)")
-            }
-            await self?.clearVideoPoller(taskID)
-        }
-    }
-
-    func clearVideoPoller(_ taskID: String) {
-        activeVideoPollers.remove(taskID)
-    }
-
-    /// Convenience used by `observePendingTasks`: walk a snapshot and
-    /// `ensureVideoPoll` every in-flight video task. Idempotent — duplicate
-    /// calls for an already-active task ID are no-ops.
-    func kickVideoPollers(for tasks: [WasmClient.PendingTask]) {
-        for task in tasks where task.isVideoTask {
-            guard case .processing = task.status else { continue }
-            ensureVideoPoll(taskID: task.id)
-        }
-    }
-
     /// Snapshot every persisted task descriptor in the engine's default cache.
     /// Backed by `TaskWasmEngine.listPendingTasks` — works even before the
     /// engine has started, since descriptors are read off disk.
@@ -126,10 +79,6 @@ extension WasmActor {
                     logger("  [\(idx)] id=\(task.id.prefix(8))… actionID=\(task.actionID ?? "nil") status=\(statusLabel) progress=\(task.progress) hasURL=\(task.resultURL != nil)")
                 }
                 continuation.yield(initial)
-                // Kick a per-task poller for every in-flight video found in
-                // the initial snapshot — this is the only place we discover
-                // descriptors persisted by a previous session.
-                await self?.kickVideoPollers(for: initial)
 
                 let engine = try? await self?.readyEngine()
                 let taskEngine = engine as? TaskWasmEngine
@@ -137,7 +86,6 @@ extension WasmActor {
                     let postReady = snapshot()
                     logger("observePendingTasks: post-engine snapshot count=\(postReady.count)")
                     continuation.yield(postReady)
-                    await self?.kickVideoPollers(for: postReady)
                     // Kick the engine's resume loop so previously-persisted
                     // descriptors start receiving progress updates instead of
                     // sitting at their last-saved state.
@@ -158,19 +106,17 @@ extension WasmActor {
                 }
 
                 // Periodic backstop: re-read the descriptor JSON every 3s.
-                // Continuous per-video polling is owned by `ensureVideoPoll`
-                // (kicked from the snapshots above + the create site), so
-                // this loop only needs to surface descriptor changes the
-                // Combine subject might have missed and re-kick any video
-                // poller that exited prematurely while the task was still
-                // processing.
+                // Per-video live polling is owned by the consuming app (the
+                // RoleplayAI client drives it via `VideoCardStore`, mirroring
+                // flow-kit-example's reactive PendingTasksView). This loop
+                // just surfaces descriptor changes the Combine subject might
+                // miss for any reason.
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(3))
                     if Task.isCancelled { break }
                     let next = snapshot()
                     logger("observePendingTasks: periodic poll count=\(next.count)")
                     continuation.yield(next)
-                    await self?.kickVideoPollers(for: next)
                 }
                 combineTask.cancel()
                 continuation.finish()
