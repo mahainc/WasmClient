@@ -191,10 +191,27 @@ extension WasmActor {
         case .processing:
             status = .processing
         default:
-            let errorMsg = metadata["error"]
-                ?? task.metadata.fields["error"]?.stringValue
-                ?? (statusString.isEmpty ? "\(task.status)" : statusString)
-            status = .failed(errorMsg)
+            // The engine returns `.unspecified` for video tasks that are
+            // still queued / partially processing on the server — the
+            // descriptor on disk simultaneously carries non-zero progress
+            // and statusString="PROCESSING". Treat that combination as
+            // processing rather than a hard failure so `aiartVideoPoll`
+            // doesn't terminate prematurely on a transient state. Real
+            // failures arrive with an error message in metadata or a
+            // statusString of "FAILED"/"ERRORED".
+            let upper = statusString.uppercased()
+            if upper == "PROCESSING" || upper == "QUEUED" || (upper.isEmpty && progress > 0) {
+                status = .processing
+            } else if upper == "UNSPECIFIED" && metadata["error"] == nil
+                && task.metadata.fields["error"]?.stringValue == nil
+            {
+                status = .processing
+            } else {
+                let errorMsg = metadata["error"]
+                    ?? task.metadata.fields["error"]?.stringValue
+                    ?? (statusString.isEmpty ? "\(task.status)" : statusString)
+                status = .failed(errorMsg)
+            }
         }
 
         return WasmClient.AiartVideoResult(
