@@ -52,18 +52,12 @@ extension WasmClient {
         }
 
         /// Convenience predicate for filtering Avatar FX video tasks.
-        ///
-        /// Matches the umbrella `aiartVideo` UUID exactly, AND any sibling
-        /// sub-action ID from the same provider family (UUID prefix
-        /// `b7e5fcb7-…-a78c7b5740`). FlowKit persists whichever sub-action
-        /// the engine resolves internally, so an exact equality check is
-        /// fragile — defensive prefix match keeps the predicate from
-        /// silently skipping real video descriptors if the engine ever
-        /// reorganises which sub-action handles a given task.
+        /// Exact match against the umbrella `aiartVideo` UUID — the
+        /// sibling sub-action IDs (`-574001` aiartStamp, `-574002`
+        /// aiartNormal, `-574003`) are *image* generation, not video, and
+        /// `aiartVideoStatus` rejects them with `status="unspecified"`.
         public var isVideoTask: Bool {
-            guard let actionID else { return false }
-            if actionID == ActionID.aiartVideo.rawValue { return true }
-            return actionID.hasPrefix("b7e5fcb7-4746-4f79-b2b9-a78c7b5740")
+            actionID == ActionID.aiartVideo.rawValue
         }
     }
 }
