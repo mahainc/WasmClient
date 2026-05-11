@@ -422,6 +422,12 @@ actor WasmActor {
     /// duplicate concurrent loops; each one would re-poll every descriptor
     /// independently, wasting bandwidth.
     var isResumingPendingTasks: Bool = false
+    /// Task IDs currently being driven by `ensureVideoPoll`. Used to keep at
+    /// most one `aiartVideoPoll` loop per task — concurrent observers + the
+    /// create site would otherwise fan out duplicate loops that each hit
+    /// `engine.status` for the same task and rewrite the descriptor in
+    /// lockstep.
+    var activeVideoPollers: Set<String> = []
 
     // MARK: - Init
 

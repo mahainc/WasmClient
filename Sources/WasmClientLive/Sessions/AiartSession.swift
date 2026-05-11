@@ -85,10 +85,19 @@ extension WasmActor {
         }
 
         let task = try await instance.create(action: action, args: protoArgs)
+        let mapped = Self.mapAiartVideoTask(task)
         if task.status == .processing {
             await ensurePendingTasksResumeLoop()
+            // Drive per-task progress polling immediately so the descriptor
+            // gets rewritten every 5s regardless of whether anyone is
+            // currently subscribed to `observePendingTasks`. The engine's
+            // own resume loop tends to finish quickly ("18 tasks settled"
+            // in seconds) and isn't reliable as the sole driver here.
+            if !mapped.videoID.isEmpty {
+                ensureVideoPoll(taskID: mapped.videoID)
+            }
         }
-        return Self.mapAiartVideoTask(task)
+        return mapped
     }
 
     /// Poll a video generation task by `videoID`. Reconstructs the WaTTask
