@@ -13,7 +13,11 @@ extension WasmActor {
         messages: [WasmClient.ChatMessage]
     ) async throws -> WasmClient.ChatMessage {
         let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(actionID: WasmClient.ActionID.chat.rawValue, logger: logger)
+        let action = try await delegate.resolveAction(
+            actionID: WasmClient.ActionID.chat.rawValue,
+            preferredProvider: config.providerId.isEmpty ? nil : config.providerId,
+            logger: logger
+        )
 
         let bodyData = try Self.buildChatBody(config: config, messages: messages, stream: false)
         let bodyString = String(data: bodyData, encoding: .utf8)!
@@ -70,7 +74,11 @@ extension WasmActor {
             throw WasmClient.Error.engineNotStarted
         }
         logger("chatStream: resolving chat action...")
-        let action = try await delegate.resolveAction(actionID: WasmClient.ActionID.chat.rawValue, logger: logger)
+        let action = try await delegate.resolveAction(
+            actionID: WasmClient.ActionID.chat.rawValue,
+            preferredProvider: config.providerId.isEmpty ? nil : config.providerId,
+            logger: logger
+        )
         logger("chatStream: action resolved — provider: \(action.provider)")
 
         let bodyData = try Self.buildChatBody(config: config, messages: messages, stream: true)

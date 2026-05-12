@@ -217,19 +217,26 @@ extension WasmClient {
         public let apiKey: String
         public let systemPrompt: String
         public let tools: [ChatTool]
+        /// Pin chat to a specific provider — pass `ChatModelInfo.providerId`
+        /// so the chat (and any provider-side state like a CAI replay
+        /// buffer used by `readOutLoud`) lives on the same provider as the
+        /// selected model. Empty string falls back to first-match.
+        public let providerId: String
 
         public init(
             model: String = "gpt-4o-mini",
             endpoint: String = "",
             apiKey: String = "",
             systemPrompt: String = "",
-            tools: [ChatTool] = []
+            tools: [ChatTool] = [],
+            providerId: String = ""
         ) {
             self.model = model
             self.endpoint = endpoint
             self.apiKey = apiKey
             self.systemPrompt = systemPrompt
             self.tools = tools
+            self.providerId = providerId
         }
     }
 }
