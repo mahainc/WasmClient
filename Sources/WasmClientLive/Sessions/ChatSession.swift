@@ -323,26 +323,41 @@ extension WasmActor {
         providerId: String,
         userName: String
     ) async throws {
-        let instance = try await readyEngine()
-        let actions: [WaTAction]
-        do {
-            if providerId.isEmpty {
-                actions = try await delegate.resolveAllActions(
-                    actionID: WasmClient.ActionID.providerInit.rawValue,
-                    logger: logger
-                )
-            } else {
-                let action = try await delegate.resolveAction(
-                    actionID: WasmClient.ActionID.providerInit.rawValue,
-                    preferredProvider: providerId,
-                    logger: logger
-                )
-                actions = [action]
-            }
-        } catch {
-            // No provider exposes providerInit — nothing to do.
+        // Skip work when this specific provider has already been initialized
+        // in this engine session — mirrors flow-kit-example's
+        // `initializedProviders` short-circuit. Fan-out (`providerId == ""`)
+        // intentionally re-checks each resolved provider individually below.
+        if !providerId.isEmpty, delegate.isProviderInitialized(providerId) {
             return
         }
+
+        let instance = try await readyEngine()
+
+        // Resolve every provider that exposes providerInit. We deliberately
+        // avoid `delegate.resolveAction(preferredProvider:)`'s `actions[0]`
+        // fallback here: registering the user on the wrong provider (because
+        // the requested one happens not to expose providerInit) silently
+        // pollutes the wrong account. flow-kit-example uses exact match.
+        let allInitActions = (try? await delegate.resolveAllActions(
+            actionID: WasmClient.ActionID.providerInit.rawValue,
+            logger: logger
+        )) ?? []
+
+        let actions: [WaTAction]
+        if providerId.isEmpty {
+            actions = allInitActions
+        } else if let exact = allInitActions.first(where: { $0.provider == providerId }) {
+            actions = [exact]
+        } else {
+            // Provider doesn't expose providerInit — treat as a no-op success
+            // and mark it so future calls (and `readOutLoud` auto-init)
+            // short-circuit. Matches flow-kit-example's `else { ...
+            // initializedProviders.insert(provider.id); return }` branch.
+            delegate.markProviderInitialized(providerId)
+            return
+        }
+
+        if actions.isEmpty { return }
 
         let args: [String: Google_Protobuf_Value] = [
             "metadata": .init(structValue: .with {
@@ -353,10 +368,17 @@ extension WasmActor {
         ]
 
         for action in actions {
+            // In fan-out mode, skip providers we've already initialized.
+            if providerId.isEmpty, delegate.isProviderInitialized(action.provider) {
+                continue
+            }
             do {
                 _ = try await instance.create(action: action, args: args)
+                delegate.markProviderInitialized(action.provider)
             } catch {
-                // Best-effort per provider — keep going.
+                // Best-effort per provider — mark anyway so we don't retry-loop
+                // (matches flow-kit-example's catch path that inserts on failure).
+                delegate.markProviderInitialized(action.provider)
                 continue
             }
         }

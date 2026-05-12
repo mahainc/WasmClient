@@ -147,10 +147,17 @@ public struct WasmClient: Sendable {
     /// Run a chat provider's pre-flight init action. CAI registers the
     /// user via this call (using `metadata.name` as the display name);
     /// providers that don't need bootstrap return Completed immediately.
-    /// Call once per provider before any `createChatModel` /
-    /// `chatStream` invocation against that provider — without it CAI
-    /// rejects downstream calls with `unspecified`. Pass an empty
-    /// `providerId` to fan out across every chat-capable provider.
+    /// Without it CAI rejects downstream calls with `unspecified`. Pass
+    /// an empty `providerId` to fan out across every chat-capable provider.
+    ///
+    /// Idempotent within an engine session — repeated calls for the same
+    /// `providerId` short-circuit on a per-session cache (cleared by
+    /// `reset()`). Failures are also marked, so a provider that's
+    /// genuinely unreachable doesn't get retry-looped; clear via `reset()`
+    /// to retry. When `providerId` doesn't resolve to a provider that
+    /// exposes `providerInit`, the call is a no-op success (the requested
+    /// provider is marked as "tried" so auto-init from `readOutLoud`
+    /// doesn't waste round-trips).
     public var initializeChatProvider: @Sendable (
         _ providerId: String,
         _ userName: String

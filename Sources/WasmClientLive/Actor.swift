@@ -60,6 +60,22 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         providerLock.withLock { _expectedVersionProvider }
     }
 
+    /// Tracks providerIds that have already completed `providerInit` during this
+    /// engine session. Mirrors flow-kit-example's `ChatView.initializedProviders`
+    /// so repeated calls to `initializeChatProvider` (and the auto-init step in
+    /// `readOutLoud`) short-circuit without firing the underlying action again.
+    /// Cleared in `resetEngine()`.
+    private var initializedProviders: Set<String> = []
+    private let initLock = NSLock()
+
+    func markProviderInitialized(_ providerId: String) {
+        initLock.withLock { _ = initializedProviders.insert(providerId) }
+    }
+
+    func isProviderInitialized(_ providerId: String) -> Bool {
+        initLock.withLock { initializedProviders.contains(providerId) }
+    }
+
     private func markRunning() {
         runningLock.withLock { engineDidReachRunning = true }
     }
@@ -415,6 +431,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         clearRunning()
         actionCache = [:]
         providerRotationIndex = [:]
+        initLock.withLock { initializedProviders.removeAll() }
         let (pending, timeout) = runningLock.withLock {
             let c = startContinuation
             startContinuation = nil
