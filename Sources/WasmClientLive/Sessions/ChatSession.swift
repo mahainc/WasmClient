@@ -55,12 +55,20 @@ extension WasmActor {
     }
 
     /// Stream a chat response, yielding content deltas as they arrive via SSE.
+    ///
+    /// Per-request routing: each call mints a `requestID` and registers a handler
+    /// via `AsyncifyWasmInternal.installSSEChunkHandler(for:)`. FlowKit tags every
+    /// SSE chunk with its originating requestID, so multiple concurrent streams
+    /// (e.g. different chats) never bleed into each other's continuations.
     func chatStream(
         config: WasmClient.ChatConfig,
         messages: [WasmClient.ChatMessage]
     ) async throws -> AsyncThrowingStream<String, Swift.Error> {
         logger("chatStream: acquiring engine...")
         let instance = try await readyEngine()
+        guard let engine = instance as? TaskWasmEngine else {
+            throw WasmClient.Error.engineNotStarted
+        }
         logger("chatStream: resolving chat action...")
         let action = try await delegate.resolveAction(actionID: WasmClient.ActionID.chat.rawValue, logger: logger)
         logger("chatStream: action resolved — provider: \(action.provider)")
@@ -80,33 +88,38 @@ extension WasmActor {
         }
         let args = streamArgs
         let log = logger
+        let requestID = UUID().uuidString
 
         return AsyncThrowingStream { continuation in
+            // Tracks whether any chunk reached the consumer. Read in the
+            // detached task after `create()` returns to decide whether to fall
+            // back to the task value (some providers ship the full response
+            // as the WaTTask result instead of as SSE frames).
+            let didReceiveChunks = ChunkFlag()
+
+            AsyncifyWasmInternal.installSSEChunkHandler(for: requestID) { chunk in
+                guard let data = chunk.data(using: .utf8),
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let choices = json["choices"] as? [[String: Any]],
+                      let delta = choices.first?["delta"] as? [String: Any],
+                      let content = delta["content"] as? String,
+                      !content.isEmpty else { return }
+                didReceiveChunks.set()
+                continuation.yield(content)
+            }
+
             // Use Task.detached to avoid inheriting WasmActor isolation.
             // FlowKit's instance.create() must run on the global executor —
             // running it actor-isolated causes hangs under Xcode's debugger
             // (flow-kit-example avoids this by using a plain class, not an actor).
-            Task.detached {
-                log("chatStream: Task started, setting SSE callback...")
-                var didReceiveChunks = false
-                let prev = AsyncifyWasmInternal.onSSEChunk
-                AsyncifyWasmInternal.onSSEChunk = { _, chunk in
-                    guard let data = chunk.data(using: .utf8),
-                          let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                          let choices = json["choices"] as? [[String: Any]],
-                          let delta = choices.first?["delta"] as? [String: Any],
-                          let content = delta["content"] as? String,
-                          !content.isEmpty else { return }
-                    didReceiveChunks = true
-                    continuation.yield(content)
-                }
-                defer { AsyncifyWasmInternal.onSSEChunk = prev }
+            let streamTask = Task.detached {
+                log("chatStream: Task started (requestID: \(requestID))...")
                 do {
-                    log("chatStream: calling instance.create(action:args:)...")
-                    let task = try await instance.create(action: action, args: args)
-                    log("chatStream: task completed — status: \(task.status), hasValue: \(task.hasValue), didReceiveChunks: \(didReceiveChunks)")
+                    log("chatStream: calling engine.create(action:args:requestID:)...")
+                    let task = try await engine.create(action: action, args: args, requestID: requestID)
+                    log("chatStream: task completed — status: \(task.status), hasValue: \(task.hasValue), didReceiveChunks: \(didReceiveChunks.value)")
                     // If no SSE chunks arrived, fall back to the task result
-                    if !didReceiveChunks,
+                    if !didReceiveChunks.value,
                        task.status == .completed,
                        task.hasValue,
                        let result = try? TypesBytes(unpackingAny: task.value),
@@ -131,7 +144,26 @@ extension WasmActor {
                     continuation.finish(throwing: error)
                 }
             }
+
+            // Termination handler runs when the consumer cancels the stream OR
+            // when `continuation.finish(...)` is called above. Cancels the
+            // underlying detached task (so the WASM-side work stops too) and
+            // removes the per-request SSE handler.
+            continuation.onTermination = { _ in
+                streamTask.cancel()
+                AsyncifyWasmInternal.removeSSEChunkHandler(for: requestID)
+            }
         }
+    }
+
+    /// Thread-safe one-shot flag the SSE handler sets when the first chunk
+    /// arrives. The detached Task reads `.value` after `create()` resolves to
+    /// decide whether to fall back to the task's full value payload.
+    private final class ChunkFlag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var _value = false
+        var value: Bool { lock.withLock { _value } }
+        func set() { lock.withLock { _value = true } }
     }
 
     /// Fetch chat models via the standalone `listModels` action with
