@@ -55,6 +55,15 @@ public struct WasmClient: Sendable {
         _ provider: @escaping @Sendable () async throws -> String?
     ) -> Void = { _ in }
 
+    /// Set the display name used by auto-init paths that invoke `providerInit`
+    /// internally (currently `readOutLoud`). CAI registers the user under this
+    /// name; providers that don't need bootstrap ignore it. Call once at app
+    /// launch (e.g. after sign-in) so callers don't have to thread the name
+    /// through every TTS / chat invocation. The value persists across
+    /// `reset()` / `restart()` because it lives on the same delegate as
+    /// `setExpectedVersionProvider`.
+    public var setUserName: @Sendable (_ name: String) -> Void = { _ in }
+
     /// Pre-warm the WASM engine. Convenience wrapper around `start` that
     /// ignores errors. Call early (e.g. on home screen appear) to avoid cold-start delay.
     public var warmUp: @Sendable () async -> Void = { }
@@ -213,21 +222,47 @@ public struct WasmClient: Sendable {
     /// Synthesize speech (or fetch a provider replay URL) for the given
     /// text via the `tts` action. One-shot, stateless.
     ///
+    /// On first call against a given `providerId` in this engine session,
+    /// runs `providerInit` for that provider as a best-effort step so CAI
+    /// (which rejects `tts` calls before user registration) Just Works.
+    /// The display name comes from whatever the host most recently passed
+    /// to `setUserName` — call that once at launch / after sign-in. If
+    /// `setUserName` has never been called (or was called with an empty
+    /// string), auto-init is skipped so the consumer can still recover
+    /// after setting the name. Subsequent calls within the same session
+    /// short-circuit via the internal `initializedProviders` cache;
+    /// `reset()` clears it.
+    ///
+    /// Pair with `ttsVoices(providerId:modelId:)` to drive a voice picker.
+    ///
     /// - Parameters:
     ///   - text: the message to read.
-    ///   - voice: a voice id from `ChatModelInfo.voices`, or `nil` to let
-    ///     the provider use its default (e.g. OpenAI `alloy`).
+    ///   - voice: a voice id from `ttsVoices(providerId:modelId:)` (or
+    ///     `ChatModelInfo.voices`), or `nil` to let the provider use its
+    ///     default (e.g. OpenAI `alloy`).
     ///   - providerId: pin the TTS call to a specific provider — pass
     ///     `state.selectedModel?.providerId` so the voice list, replay
     ///     endpoint, and credentials match the chat provider the user is
     ///     currently on. Pass empty string to fall back to whichever
-    ///     provider's `tts` action was registered first.
+    ///     provider's `tts` action was registered first (auto-init is
+    ///     skipped in that case — call `initializeChatProvider` first).
     ///
     /// Returns either a streamable URL or raw audio bytes — the consumer
     /// handles playback.
     public var readOutLoud: @Sendable (
         _ text: String, _ voice: String?, _ providerId: String
     ) async throws -> WasmClient.TTSAudio
+
+    /// List the voice presets exposed by a specific chat model on a specific
+    /// provider. Wraps `chatModels` and returns `ChatModelInfo.voices` for
+    /// the matching row, or `[]` if the model is unknown / offers no voices.
+    ///
+    /// Pair with `readOutLoud` to build a voice picker — same data source
+    /// flow-kit-example uses to drive its `confirmationDialog` (each model's
+    /// `metadata.voices` from the `listModels` action).
+    public var ttsVoices: @Sendable (
+        _ providerId: String, _ modelId: String
+    ) async throws -> [String]
 
     // MARK: - AI Art
 

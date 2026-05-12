@@ -30,6 +30,9 @@ extension WasmClient: DependencyKey {
             setExpectedVersionProvider: { provider in
                 actor.setExpectedVersionProvider(provider)
             },
+            setUserName: { name in
+                actor.setUserName(name)
+            },
             warmUp: {
                 await actor.warmUp()
             },
@@ -100,6 +103,9 @@ extension WasmClient: DependencyKey {
             },
             readOutLoud: { text, voice, providerId in
                 try await actor.readOutLoud(text: text, voice: voice, providerId: providerId)
+            },
+            ttsVoices: { providerId, modelId in
+                try await actor.ttsVoices(providerId: providerId, modelId: modelId)
             },
             aiartGenerate: { actionID, args in
                 try await actor.aiartGenerate(actionID: actionID, args: args)

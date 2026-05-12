@@ -76,6 +76,21 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         initLock.withLock { initializedProviders.contains(providerId) }
     }
 
+    /// Display name used by `providerInit` (CAI registers under it). Set by
+    /// the host once via `WasmClient.setUserName` and read by auto-init paths
+    /// that don't want to thread the name through every call. Lock-protected
+    /// so `nonisolated` callers can update it race-free.
+    private var _userName: String = ""
+    private let userNameLock = NSLock()
+
+    func setUserName(_ name: String) {
+        userNameLock.withLock { _userName = name }
+    }
+
+    func userName() -> String {
+        userNameLock.withLock { _userName }
+    }
+
     private func markRunning() {
         runningLock.withLock { engineDidReachRunning = true }
     }
@@ -517,6 +532,13 @@ actor WasmActor {
 
     nonisolated func setExpectedVersionProvider(_ provider: (@Sendable () async throws -> String?)?) {
         delegate.setExpectedVersionProvider(provider)
+    }
+
+    /// Set the display name used by auto-init paths (e.g. `readOutLoud`'s
+    /// implicit `providerInit` for CAI). Forwarded to the delegate so the
+    /// setter remains race-free without crossing the actor boundary.
+    nonisolated func setUserName(_ name: String) {
+        delegate.setUserName(name)
     }
 
     func warmUp() async {

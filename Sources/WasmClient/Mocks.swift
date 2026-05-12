@@ -41,6 +41,7 @@ extension WasmClient {
         engineVersion: { nil },
         resetDownloads: { },
         setExpectedVersionProvider: { _ in },
+        setUserName: { _ in },
         warmUp: { },
         availableActions: { [] },
         refreshActions: { },
@@ -66,6 +67,7 @@ extension WasmClient {
         musicSuggestions: { _ in [] },
         suggest: { _, _ in [] },
         readOutLoud: { _, _, _ in .data(Data(), mime: "") },
+        ttsVoices: { _, _ in [] },
         aiartGenerate: { _, _ in AiartResult() },
         aiartStyles: { _ in [] },
         aiartVideoCreate: { _ in AiartVideoResult(status: .processing) },
@@ -122,6 +124,7 @@ extension WasmClient {
         engineVersion: { "mock-1.2.3" },
         resetDownloads: { },
         setExpectedVersionProvider: { _ in },
+        setUserName: { _ in },
         warmUp: {
             try? await Task.sleep(nanoseconds: MockConstants.warmUpDelay)
         },
@@ -292,6 +295,10 @@ extension WasmClient {
         readOutLoud: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return .url(URL(string: "https://example.com/mock-tts.mp3")!)
+        },
+        ttsVoices: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return ["alloy", "echo", "shimmer"]
         },
         aiartGenerate: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
