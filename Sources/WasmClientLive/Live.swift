@@ -123,6 +123,9 @@ extension WasmClient: DependencyKey {
             observePendingTasks: {
                 await actor.observePendingTasks()
             },
+            observeTaskCreated: {
+                await actor.observeTaskCreated()
+            },
             removePendingTask: { taskID in
                 await actor.removePendingTask(taskID: taskID)
             },

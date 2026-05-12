@@ -3,6 +3,26 @@
 import Foundation
 import WasmClient
 
+// Thread-safe seen-IDs set shared between `observeTaskCreated`'s Combine and
+// polling loops. Returns `true` from `insert` on first sight so the caller
+// can gate emission inline.
+final class SeenIDsBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var ids: Set<String>
+
+    init(initial: [String]) { self.ids = Set(initial) }
+
+    var count: Int {
+        lock.lock(); defer { lock.unlock() }
+        return ids.count
+    }
+
+    func insert(_ id: String) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return ids.insert(id).inserted
+    }
+}
+
 // MARK: - Pending Tasks
 
 extension WasmActor {
@@ -126,6 +146,60 @@ extension WasmActor {
                             _ = try? await self?.aiartVideoStatus(videoID: videoID)
                         }
                     }
+                }
+                combineTask.cancel()
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    /// Stream of newly-appearing task IDs. Seeds an internal `seenIDs` set
+    /// from the snapshot taken at subscribe time, so pre-existing descriptors
+    /// are NOT replayed. Each subsequent snapshot (Combine emission or 3s
+    /// backstop poll) is diffed against `seenIDs`; new entries are yielded
+    /// and added to the set. Multiple subscribers each maintain their own
+    /// seen set, so each sees creations that happened after it attached.
+    func observeTaskCreated() async -> AsyncStream<WasmClient.PendingTask> {
+        AsyncStream { continuation in
+            let task = Task { [logger] in
+                let snapshot: @Sendable () -> [WasmClient.PendingTask] = {
+                    TaskWasmEngine.listPendingTasks(
+                        cacheDir: TaskWasmEngine.defaultCacheDir
+                    ).map(Self.mapPendingTask)
+                }
+
+                let seenBox = SeenIDsBox(initial: snapshot().map(\.id))
+                logger("observeTaskCreated: seeded with \(seenBox.count) existing IDs")
+
+                let engine = try? await readyEngine()
+                let taskEngine = engine as? TaskWasmEngine
+                if taskEngine != nil {
+                    await ensurePendingTasksResumeLoop()
+                }
+
+                let emitNew: @Sendable () -> Void = {
+                    let next = snapshot()
+                    for task in next where seenBox.insert(task.id) {
+                        logger("observeTaskCreated: emitting new id=\(task.id.prefix(8))…")
+                        continuation.yield(task)
+                    }
+                }
+
+                emitNew()
+
+                let combineTask = Task { [taskEngine] in
+                    guard let taskEngine else { return }
+                    for await _ in taskEngine.pendingTasksChanged.values {
+                        if Task.isCancelled { break }
+                        emitNew()
+                    }
+                }
+
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(3))
+                    if Task.isCancelled { break }
+                    emitNew()
                 }
                 combineTask.cancel()
                 continuation.finish()

@@ -268,6 +268,17 @@ public struct WasmClient: Sendable {
     /// stream's iterator (e.g. when the parent Effect is cancelled).
     public var observePendingTasks: @Sendable () async -> AsyncStream<[WasmClient.PendingTask]> = { AsyncStream { _ in } }
 
+    /// Observe newly-created task descriptors as an async stream. Emits one
+    /// `PendingTask` per task ID that appears AFTER the subscriber attaches —
+    /// pre-existing descriptors at subscribe time are seeded into the seen
+    /// set and never replayed. Driven by the same `pendingTasksChanged`
+    /// Combine subject + periodic re-read that powers `observePendingTasks`,
+    /// so creations from any caller (this screen, another screen, the
+    /// engine's own auto-resume) are surfaced uniformly. Each subscriber
+    /// gets its own seen set; multiple subscribers each see the same new
+    /// task exactly once. Cancel by terminating the iterator.
+    public var observeTaskCreated: @Sendable () async -> AsyncStream<WasmClient.PendingTask> = { AsyncStream { $0.finish() } }
+
     /// Remove a single persisted task descriptor by ID. Used for swipe-to-
     /// remove on completed/errored rows; safe to call even when the engine
     /// hasn't been started yet (no-ops on missing descriptor).

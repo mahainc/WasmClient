@@ -72,6 +72,7 @@ extension WasmClient {
         aiartVideoPoll: { _, _, _ in AiartVideoResult() },
         listPendingTasks: { [] },
         observePendingTasks: { AsyncStream { $0.finish() } },
+        observeTaskCreated: { AsyncStream { $0.finish() } },
         removePendingTask: { _ in },
         clearPendingTasks: { },
         searchPhotos: { _, _, _, _ in PhotoSearchResult() },
@@ -359,6 +360,7 @@ extension WasmClient {
                 continuation.finish()
             }
         },
+        observeTaskCreated: { AsyncStream { $0.finish() } },
         removePendingTask: { _ in },
         clearPendingTasks: { },
         searchPhotos: { _, _, _, _ in
