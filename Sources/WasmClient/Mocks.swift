@@ -65,7 +65,7 @@ extension WasmClient {
         musicRelated: { _, _ in MusicTrackList() },
         musicSuggestions: { _ in [] },
         suggest: { _, _ in [] },
-        readOutLoud: { _, _ in .data(Data(), mime: "") },
+        readOutLoud: { _, _, _ in .data(Data(), mime: "") },
         aiartGenerate: { _, _ in AiartResult() },
         aiartStyles: { _ in [] },
         aiartVideoCreate: { _ in AiartVideoResult(status: .processing) },
@@ -289,7 +289,7 @@ extension WasmClient {
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return ["Tell me about this", "What can you help with?", "Explain this image", "Suggest improvements"]
         },
-        readOutLoud: { _, _ in
+        readOutLoud: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return .url(URL(string: "https://example.com/mock-tts.mp3")!)
         },

@@ -10,10 +10,20 @@ extension WasmActor {
     /// Invoke the `tts` action and return a typed audio payload. Mirrors
     /// flow-kit-example's `ChatView.playMessage`, but without playback or
     /// last-assistant-message gating (consumer concerns).
-    func readOutLoud(text: String, voice: String?) async throws -> WasmClient.TTSAudio {
+    ///
+    /// `providerId` pins the call to a specific chat provider (matching
+    /// flow-kit-example's `providerSettings.actions(for: tts).first(where:
+    /// { $0.provider == provider.id })`). Pass empty to fall back to the
+    /// delegate's default first-match resolution.
+    func readOutLoud(
+        text: String,
+        voice: String?,
+        providerId: String
+    ) async throws -> WasmClient.TTSAudio {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.tts.rawValue,
+            preferredProvider: providerId.isEmpty ? nil : providerId,
             logger: logger
         )
 

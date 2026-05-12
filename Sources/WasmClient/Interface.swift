@@ -204,12 +204,22 @@ public struct WasmClient: Sendable {
     // MARK: - Read Out Loud (TTS)
 
     /// Synthesize speech (or fetch a provider replay URL) for the given
-    /// text via the `tts` action. One-shot, stateless. Pass a `voice` from
-    /// `ChatModelInfo.voices` to pick a TTS preset, or `nil` to let the
-    /// provider use its default (e.g. OpenAI `alloy`). Returns either a
-    /// streamable URL or raw audio bytes — the consumer handles playback.
+    /// text via the `tts` action. One-shot, stateless.
+    ///
+    /// - Parameters:
+    ///   - text: the message to read.
+    ///   - voice: a voice id from `ChatModelInfo.voices`, or `nil` to let
+    ///     the provider use its default (e.g. OpenAI `alloy`).
+    ///   - providerId: pin the TTS call to a specific provider — pass
+    ///     `state.selectedModel?.providerId` so the voice list, replay
+    ///     endpoint, and credentials match the chat provider the user is
+    ///     currently on. Pass empty string to fall back to whichever
+    ///     provider's `tts` action was registered first.
+    ///
+    /// Returns either a streamable URL or raw audio bytes — the consumer
+    /// handles playback.
     public var readOutLoud: @Sendable (
-        _ text: String, _ voice: String?
+        _ text: String, _ voice: String?, _ providerId: String
     ) async throws -> WasmClient.TTSAudio
 
     // MARK: - AI Art
