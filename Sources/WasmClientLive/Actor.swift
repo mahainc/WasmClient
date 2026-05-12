@@ -18,6 +18,13 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     private var isStarting = false
     /// Cached actions keyed by action ID — populated after engine stabilises.
     private var actionCache: [String: [WaTAction]] = [:]
+    /// In-flight load task — concurrent callers of `ensureActionsLoaded` await
+    /// this instead of starting their own poll loop. The actor is reentrant on
+    /// `await`, and `actionCache` is only written after `engine.actions()`
+    /// suspends, so without this every concurrent caller passes the empty-cache
+    /// guard and runs a redundant 30s discovery cycle.
+    private var actionsLoadTask: Task<Void, Error>?
+    private let actionsLoadLock = NSLock()
     /// Per-action round-robin counter for `resolveNextAction`.
     private var providerRotationIndex: [String: Int] = [:]
     private var logger: (@Sendable (String) -> Void)?
@@ -218,6 +225,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             // Eagerly discover actions as part of start flow
             try? await ensureActionsLoaded(logger: logger)
 
+            logger("Engine ready")
             return instance
         } catch {
             self.isStarting = false
@@ -228,9 +236,27 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     }
 
     /// Poll the engine for action providers. Called lazily on first
-    /// resolveAction() or explicitly via refreshActions().
+    /// resolveAction() or explicitly via refreshActions(). Coalesces concurrent
+    /// callers onto a single load task so reentrant entry doesn't trigger
+    /// duplicate 30s discovery cycles.
     func ensureActionsLoaded(logger: @escaping @Sendable (String) -> Void) async throws {
-        guard actionCache.isEmpty else { return }
+        if !actionCache.isEmpty { return }
+
+        let task: Task<Void, Error> = actionsLoadLock.withLock {
+            if let existing = actionsLoadTask { return existing }
+            let new = Task<Void, Error> { [weak self] in
+                guard let self else { return }
+                try await self.performActionsLoad(logger: logger)
+            }
+            actionsLoadTask = new
+            return new
+        }
+
+        defer { actionsLoadLock.withLock { actionsLoadTask = nil } }
+        try await task.value
+    }
+
+    private func performActionsLoad(logger: @escaping @Sendable (String) -> Void) async throws {
         guard let engine else { throw WasmClient.Error.engineNotStarted }
 
         logger("Discovering action providers...")
@@ -438,9 +464,7 @@ actor WasmActor {
     // MARK: - Engine Lifecycle
 
     func readyEngine() async throws -> TaskWasmProtocol {
-        let engine = try await delegate.ensureStarted(logger: logger)
-        logger("Engine ready")
-        return engine
+        try await delegate.ensureStarted(logger: logger)
     }
 
     func start() async throws {
