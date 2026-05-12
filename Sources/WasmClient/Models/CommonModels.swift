@@ -16,6 +16,8 @@ extension WasmClient {
         /// `createChatModel` / `chatStream` against that provider —
         /// without it CAI rejects subsequent calls with `unspecified`.
         case providerInit = "f1c8d4a2-3b5e-4d7f-9a1c-6e8b0d2f4a3c"
+        // TTS / Read Out Loud
+        case tts = "e5f6a7b8-c9d0-4e1f-a2b3-4c5d6e7f8091"
         // Vision
         case scan = "d4e5f6a7-3b2c-1d0e-9f8a-7b6c5d4e3f2a"
         case visualSearch = "e5f6a7b8-4c3d-2e1f-0a9b-8c7d6e5f4a3b"

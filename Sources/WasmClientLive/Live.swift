@@ -98,6 +98,9 @@ extension WasmClient: DependencyKey {
             suggest: { systemPrompt, imageURL in
                 try await actor.suggest(systemPrompt: systemPrompt, imageURL: imageURL)
             },
+            readOutLoud: { text, voice in
+                try await actor.readOutLoud(text: text, voice: voice)
+            },
             aiartGenerate: { actionID, args in
                 try await actor.aiartGenerate(actionID: actionID, args: args)
             },
