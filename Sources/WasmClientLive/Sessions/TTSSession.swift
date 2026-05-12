@@ -34,7 +34,15 @@ extension WasmActor {
             args["voice"] = .init(stringValue: voice)
         }
 
-        let task = try await instance.create(action: action, args: args)
+        // Run instance.create on the global executor, matching the
+        // chatStream pattern. FlowKit's `create` blocks on a Rust-side
+        // executor; calling it from this actor's isolation can return the
+        // pending task before it has actually run, surfacing as
+        // `status: .unspecified`.
+        let argsCopy = args
+        let task = try await Task.detached {
+            try await instance.create(action: action, args: argsCopy)
+        }.value
 
         guard task.status == .completed else {
             throw WasmClient.Error.taskFailed(status: "\(task.status)")
