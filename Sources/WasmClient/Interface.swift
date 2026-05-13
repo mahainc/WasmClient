@@ -353,23 +353,33 @@ public struct WasmClient: Sendable {
 
     // MARK: - Visual / Media
 
-    /// Search photos by text query.
+    /// Search photos by text query. Positional closure surface; prefer the
+    /// labelled `searchPhotos(query:provider:page:perPage:)` overload in
+    /// `Visual+Conveniences.swift` (defaults `page = 1`, `perPage = 20`).
     /// Pass empty string for `provider` to use the first available provider;
-    /// pass an `ActionInfo.provider` value (from `availableActions()`) to pin a specific one.
+    /// pass an `ActionInfo.provider` value (from `availableActions()` or
+    /// `searchPhotoProviders()`) to pin a specific one. For an empty-query
+    /// editorial feed, use `listMedia(query: "")` instead.
     public var searchPhotos: @Sendable (
         _ query: String, _ provider: String, _ page: Int, _ perPage: Int
     ) async throws -> WasmClient.PhotoSearchResult
 
-    /// Visual search: find similar photos given an image URL.
+    /// Visual search: find similar photos given an image URL. Positional
+    /// closure surface; prefer the labelled
+    /// `photoVisualSearch(imageURL:provider:page:perPage:)` overload.
     /// Pass empty string for `provider` to use the first available provider;
-    /// pass an `ActionInfo.provider` value (from `availableActions()`) to pin a specific one.
+    /// pass an `ActionInfo.provider` value (from `availableActions()` or
+    /// `photoVisualSearchProviders()`) to pin a specific one.
     public var photoVisualSearch: @Sendable (
         _ imageURL: String, _ provider: String, _ page: Int, _ perPage: Int
     ) async throws -> WasmClient.PhotoSearchResult
 
-    /// List media (editorial/trending). Pass empty query for editorial content.
+    /// List media (editorial/trending). Positional closure surface; prefer
+    /// the labelled `listMedia(query:provider:page:perPage:)` overload.
+    /// Pass empty query for the provider's default editorial feed.
     /// Pass empty string for `provider` to use the first available provider;
-    /// pass an `ActionInfo.provider` value (from `availableActions()`) to pin a specific one.
+    /// pass an `ActionInfo.provider` value (from `availableActions()` or
+    /// `listMediaProviders()`) to pin a specific one.
     public var listMedia: @Sendable (
         _ query: String, _ provider: String, _ page: Int, _ perPage: Int
     ) async throws -> WasmClient.PhotoSearchResult
