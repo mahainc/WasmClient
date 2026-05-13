@@ -81,8 +81,14 @@ extension WasmClient {
         searchPhotos: { _, _, _, _ in PhotoSearchResult() },
         photoVisualSearch: { _, _, _, _ in PhotoSearchResult() },
         listMedia: { _, _, _, _ in PhotoSearchResult() },
-        homeDesign: { _, _ in HomedecorResult() },
-        homeDesignStatus: { _, _ in HomedecorResult() },
+        homeDesign: { _, _ in HomeDecor.Result() },
+        homeDesignStatus: { _, _ in HomeDecor.Result() },
+        homeDesignRequest: { _, _ in HomeDecor.Result() },
+        homeDecorStyles: { _ in [] },
+        homeDecorRoomTypes: { _ in [] },
+        homeDecorColorPalettes: { _ in [] },
+        homeDecorSurfaceTypes: { _ in [] },
+        homeDecorStyleSelections: { _ in [] },
         autoSuggestion: { _, _ in ObjectSegments() },
         enhance: { _, _, _ in ObjectSegments() },
         removeBackground: { _, _ in Segment() },
@@ -400,18 +406,43 @@ extension WasmClient {
         },
         homeDesign: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
-            return HomedecorResult(
+            return HomeDecor.Result(
                 imageURL: "https://example.com/redesigned-room.jpg",
                 inputImageURL: "https://example.com/original-room.jpg",
                 taskID: "mock-task-id"
             )
         },
         homeDesignStatus: { _, _ in
-            HomedecorResult(
+            HomeDecor.Result(
                 imageURL: "https://example.com/redesigned-room.jpg",
                 taskID: "mock-task-id"
             )
         },
+        homeDesignRequest: { request, onProgress in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            await onProgress?(0.25)
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            await onProgress?(0.75)
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            await onProgress?(1.0)
+            return HomeDecor.Result(
+                status: .completed,
+                imageURL: "https://example.com/redesigned-room.jpg",
+                inputImageURL: request.file.isEmpty ? "https://example.com/original-room.jpg" : request.file,
+                taskID: "mock-task-id",
+                metadata: ["progress": "1.0"],
+                processType: request.processType,
+                roomStyle: request.roomStyle,
+                roomType: request.roomType,
+                progress: 1.0,
+                provider: "mock"
+            )
+        },
+        homeDecorStyles: { _ in [.modern, .minimalist, .scandinavian, .japandi, .cozy] },
+        homeDecorRoomTypes: { _ in [.livingRoom, .bedroom, .kitchen, .bathroom, .office] },
+        homeDecorColorPalettes: { _ in [.millennialGray, .neonSunset, .forestHues, .pastelBreeze] },
+        homeDecorSurfaceTypes: { _ in [.wall, .ceiling, .floorSurface] },
+        homeDecorStyleSelections: { _ in [.structuralPreservation, .renovationDesign] },
         autoSuggestion: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return ObjectSegments(sessionID: "mock-session")

@@ -218,9 +218,8 @@ extension WasmActor {
 
     /// Parse a regex alternation pattern of the form `^(A|B|C)$` into its
     /// individual alternatives. Returns nil if the pattern doesn't match
-    /// the expected shape. This matches the format used by aiart action
-    /// schema validators.
-    private static func parseRegexAlternatives(_ pattern: String) -> [String]? {
+    /// the expected shape. Shared by aiart and homedecor schema helpers.
+    static func parseRegexAlternatives(_ pattern: String) -> [String]? {
         guard pattern.hasPrefix("^("), pattern.hasSuffix(")$") else { return nil }
         let inner = String(pattern.dropFirst(2).dropLast(2))
         let values = inner.components(separatedBy: "|")

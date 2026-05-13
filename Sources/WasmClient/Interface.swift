@@ -382,12 +382,53 @@ public struct WasmClient: Sendable {
     /// May return `.processing` status — poll via `homeDesignStatus`.
     public var homeDesign: @Sendable (
         _ actionID: String, _ args: [String: String]
-    ) async throws -> WasmClient.HomedecorResult
+    ) async throws -> WasmClient.HomeDecor.Result
 
     /// Poll a home decor task by ID. Pass the same actionID used for `homeDesign`.
     public var homeDesignStatus: @Sendable (
         _ taskID: String, _ actionID: String
-    ) async throws -> WasmClient.HomedecorResult
+    ) async throws -> WasmClient.HomeDecor.Result
+
+    /// Submit a typed home-decor request. Resolves the `ActionID` from
+    /// `request.processType`, builds wire args via `HomeDecor.Request.toWireArgs()`,
+    /// polls until terminal, and returns the enriched `HomeDecor.Result`.
+    /// `onProgress` is invoked between polls when the engine reports a progress
+    /// fraction in `task.metadata.fields["progress"]`.
+    public var homeDesignRequest: @Sendable (
+        _ request: WasmClient.HomeDecor.Request,
+        _ onProgress: (@Sendable (Double) async -> Void)?
+    ) async throws -> WasmClient.HomeDecor.Result
+
+    /// Available room styles for a process type, parsed from the active
+    /// provider's `action.args["room_style"].validator.regex`. Returns `[]`
+    /// when the provider does not expose this arg. Mirrors `aiartStyles`.
+    public var homeDecorStyles: @Sendable (
+        _ processType: WasmClient.HomeDecor.ProcessType
+    ) async throws -> [WasmClient.HomeDecor.RoomStyle]
+
+    /// Available room types for a process type, parsed from the active
+    /// provider's `action.args["room_type"].validator.regex`.
+    public var homeDecorRoomTypes: @Sendable (
+        _ processType: WasmClient.HomeDecor.ProcessType
+    ) async throws -> [WasmClient.HomeDecor.RoomType]
+
+    /// Available color palettes for a process type (paint), parsed from the
+    /// active provider's `action.args["color"].validator.regex`.
+    public var homeDecorColorPalettes: @Sendable (
+        _ processType: WasmClient.HomeDecor.ProcessType
+    ) async throws -> [WasmClient.HomeDecor.ColorPalette]
+
+    /// Available surface types for a process type (paint), parsed from the
+    /// active provider's `action.args["surface_type"].validator.regex`.
+    public var homeDecorSurfaceTypes: @Sendable (
+        _ processType: WasmClient.HomeDecor.ProcessType
+    ) async throws -> [WasmClient.HomeDecor.SurfaceType]
+
+    /// Available style selections for a process type, parsed from the active
+    /// provider's `action.args["style_selection"].validator.regex`.
+    public var homeDecorStyleSelections: @Sendable (
+        _ processType: WasmClient.HomeDecor.ProcessType
+    ) async throws -> [WasmClient.HomeDecor.StyleSelection]
 
     // MARK: - Inpaint
 

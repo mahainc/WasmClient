@@ -156,6 +156,24 @@ extension WasmClient: DependencyKey {
             homeDesignStatus: { taskID, actionID in
                 try await actor.homeDesignStatus(taskID: taskID, actionID: actionID)
             },
+            homeDesignRequest: { request, onProgress in
+                try await actor.homeDesignRequest(request, onProgress: onProgress)
+            },
+            homeDecorStyles: { processType in
+                try await actor.homeDecorStyles(processType: processType)
+            },
+            homeDecorRoomTypes: { processType in
+                try await actor.homeDecorRoomTypes(processType: processType)
+            },
+            homeDecorColorPalettes: { processType in
+                try await actor.homeDecorColorPalettes(processType: processType)
+            },
+            homeDecorSurfaceTypes: { processType in
+                try await actor.homeDecorSurfaceTypes(processType: processType)
+            },
+            homeDecorStyleSelections: { processType in
+                try await actor.homeDecorStyleSelections(processType: processType)
+            },
             autoSuggestion: { image, cacheDir in
                 try await actor.autoSuggestion(image: image, cacheDir: cacheDir)
             },
