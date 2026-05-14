@@ -63,15 +63,20 @@ extension WasmClient {
         case declutterRoom = "6e9ba966-b677-4de4-acab-327115870532"
         case floorPlan = "6e9ba966-b677-4de4-acab-327115870533"
         case planToImage = "6e9ba966-b677-4de4-acab-327115870534"
-        // Livescore
+        // Livescore — the single livescore action discriminates rows via
+        // `type` (WebPageType: 1=leagues, 2=competitions, 3=teams, 4=page,
+        // 5=discovers, 6=videos, 7=news). Videos and news used to live on
+        // separate UUIDs (`lsHighlights`, `lsNews`) which the server has
+        // since retired.
         case lsWebpage = "b2d4f6a8-3c5e-4b7d-9f1a-2c3d4e5f6a7b"
-        case lsHighlights = "e7a9c1d3-8f0b-4ea2-adf3-7e8f9a0b1c2d"
         case lsUpcoming = "c3e5a7b9-4d6f-4c8e-a0b2-3d4e5f6a7b8c"
+        case lsScores = "d4f6a8b0-5e7f-4d9a-b1c3-4e5f6a7b8c9d"
         // Surveys
         case submitSurvey = "e7c3a1d0-8b4f-5d2e-9a1c-3f6e8d2b4a0c"
         // Notifications
         case notificationSettings = "b8f4c2e0-5d7a-6b9f-0e3c-2a1d4f6b8c0e"
         case getNotificationSettings = "c9a5d3f1-6e8b-4c0d-9f4a-3b5e7d9f1a3c"
+        case notificationSubscribe = "f8c2b4e0-1d5a-4e7c-9b3f-2a4d6e8c0b1a"
     }
 }
 

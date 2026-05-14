@@ -35,6 +35,31 @@ extension WasmActor {
         }
     }
 
+    /// Subscribe (or unsubscribe) the device from notifications for an
+    /// `(entity, id)` pair. `enabled` MUST be sent as the literal string
+    /// `"true"` / `"false"` — the Rust task-validator reads args via
+    /// `string_for_field`, and boolean/number protobuf values are treated
+    /// as missing, failing the required-arg check.
+    func notificationSubscribe(
+        entity: String,
+        id: String,
+        enabled: Bool
+    ) async throws {
+        let instance = try await readyEngine()
+        let action = try await delegate.resolveAction(
+            actionID: WasmClient.ActionID.notificationSubscribe.rawValue, logger: logger
+        )
+        let args: [String: Google_Protobuf_Value] = [
+            "entity": Google_Protobuf_Value(stringValue: entity),
+            "id": Google_Protobuf_Value(stringValue: id),
+            "enabled": Google_Protobuf_Value(stringValue: enabled ? "true" : "false"),
+        ]
+        let task = try await instance.create(action: action, args: args)
+        guard task.status == .completed else {
+            throw WasmClient.Error.taskFailed(status: "\(task.status)")
+        }
+    }
+
     /// Fetch current server-side notification settings.
     /// Wraps the `get_notification_settings` action.
     func getNotificationSettings() async throws -> WasmClient.NotificationSettings {

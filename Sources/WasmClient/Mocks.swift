@@ -103,11 +103,14 @@ extension WasmClient {
         webpageTeams: { [] },
         webpage: { _ in [] },
         webpageDiscovers: { [] },
-        highlightPages: { _, _, _ in [] },
+        webpageVideos: { _, _, _, _, _, _ in [] },
+        webpageNews: { _, _, _ in [] },
         upcoming: { [] },
+        scoresByDate: { _ in [] },
         submitSurvey: { _, _ in },
         setNotification: { _, _, _ in },
-        getNotificationSettings: { NotificationSettings(enabled: false, topics: []) }
+        getNotificationSettings: { NotificationSettings(enabled: false, topics: []) },
+        notificationSubscribe: { _, _, _ in }
     )
 
     public static let happy = Self(
@@ -493,8 +496,18 @@ extension WasmClient {
         webpageDiscovers: {
             [WebPage(id: "discover/featured", title: "Featured", subtitle: "Discover")]
         },
-        highlightPages: { _, _, _ in
-            [WebPage(id: "highlight/example", title: "Example Highlight", subtitle: "Premier League")]
+        webpageVideos: { _, _, _, _, _, _ in
+            [WebPage(id: "video/example", title: "Example Highlight", subtitle: "Premier League")]
+        },
+        webpageNews: { _, _, _ in
+            [
+                WebPage(
+                    id: "news/example",
+                    title: "Example Headline",
+                    subtitle: "livescore · Mock Author",
+                    url: "https://example.com/news/1"
+                )
+            ]
         },
         upcoming: {
             [
@@ -505,7 +518,23 @@ extension WasmClient {
                     kickoff: Date().addingTimeInterval(3600),
                     competitionID: "0",
                     homeScore: 0, awayScore: 0,
-                    status: "-", embedURL: ""
+                    status: .notStarted, embedURL: ""
+                )
+            ]
+        },
+        scoresByDate: { _ in
+            [
+                UpcomingMatch(
+                    id: "2",
+                    homeTeam: "Arsenal", awayTeam: "Chelsea",
+                    homeLogoURL: "", awayLogoURL: "",
+                    kickoff: Date(),
+                    competitionID: "1",
+                    homeScore: 1, awayScore: 1,
+                    status: .secondHalf, embedURL: "",
+                    competitionImage: "",
+                    competitionName: "ENGLAND: Premier League",
+                    competitionRegion: "England"
                 )
             ]
         },
@@ -518,6 +547,9 @@ extension WasmClient {
         getNotificationSettings: {
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
             return NotificationSettings(enabled: true, topics: ["live_scores"])
+        },
+        notificationSubscribe: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
         }
     )
 }

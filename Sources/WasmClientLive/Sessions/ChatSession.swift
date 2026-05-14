@@ -437,6 +437,13 @@ extension WasmActor {
             if case .stringValue(let s)? = meta["description"]?.kind { return s }
             return ""
         }()
+        let tags: [String] = {
+            guard case .listValue(let l)? = meta["tags"]?.kind else { return [] }
+            return l.values.compactMap {
+                if case .stringValue(let s) = $0.kind { return s }
+                return nil
+            }
+        }()
         let providerId: String = {
             if case .stringValue(let s)? = meta["provider_id"]?.kind { return s }
             return ""
@@ -454,6 +461,7 @@ extension WasmActor {
             image: image,
             interactions: interactions,
             description: description,
+            tags: tags,
             providerId: providerId,
             providerName: providerName
         )

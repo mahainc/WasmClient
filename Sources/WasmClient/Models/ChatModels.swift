@@ -136,6 +136,9 @@ extension WasmClient {
         public let image: String
         public let interactions: Int
         public let description: String
+        /// Backend-supplied category tags. Drives the category-chip filter
+        /// in consumer UIs without rebuilding the list locally.
+        public let tags: [String]
         public let providerId: String
         public let providerName: String
 
@@ -150,6 +153,7 @@ extension WasmClient {
             image: String = "",
             interactions: Int = 0,
             description: String = "",
+            tags: [String] = [],
             providerId: String = "",
             providerName: String = ""
         ) {
@@ -163,6 +167,7 @@ extension WasmClient {
             self.image = image
             self.interactions = interactions
             self.description = description
+            self.tags = tags
             self.providerId = providerId
             self.providerName = providerName
         }

@@ -222,11 +222,24 @@ extension WasmClient: DependencyKey {
             webpageDiscovers: {
                 try await actor.webpageDiscovers()
             },
-            highlightPages: { competition, team, feed in
-                try await actor.highlightPages(competition: competition, team: team, feed: feed)
+            webpageVideos: { videoType, competitionID, teamID, q, page, pageSize in
+                try await actor.webpageVideos(
+                    videoType: videoType,
+                    competitionID: competitionID,
+                    teamID: teamID,
+                    q: q,
+                    page: page,
+                    pageSize: pageSize
+                )
+            },
+            webpageNews: { limit, offset, q in
+                try await actor.webpageNews(limit: limit, offset: offset, q: q)
             },
             upcoming: {
                 try await actor.upcoming()
+            },
+            scoresByDate: { date in
+                try await actor.scoresByDate(date: date)
             },
             submitSurvey: { questions, answers in
                 try await actor.submitSurvey(questions: questions, answers: answers)
@@ -238,6 +251,9 @@ extension WasmClient: DependencyKey {
             },
             getNotificationSettings: {
                 try await actor.getNotificationSettings()
+            },
+            notificationSubscribe: { entity, id, enabled in
+                try await actor.notificationSubscribe(entity: entity, id: id, enabled: enabled)
             }
         )
     }()

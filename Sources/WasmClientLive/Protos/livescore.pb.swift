@@ -725,6 +725,27 @@ public enum LivescoreWebPageType: SwiftProtobuf.Enum, Swift.CaseIterable {
 
   /// home carousel discover items (curated featured content)
   case discovers // = 5
+
+  /// Scorebat video highlight rows from the backend `/soccer/videos`
+  /// mirror (postgres table `mobile.videos`). Each item lands in a
+  /// `WebPage` with image=thumbnail, title=match headline,
+  /// subtitle=competition name, url=Scorebat matchview URL,
+  /// id=stable FNV hash, datetime=match kickoff (UNIX seconds).
+  /// Accepts the extra filter args `video_type` (featured|livestream),
+  /// `competition_id`, `team_id`, `q`, `page`, `page_size`.
+  case videos // = 6
+
+  /// Soccer news rows from the backend `/soccer/news` postgres feed
+  /// (table `mobile.news`). Each article lands in a `WebPage` with
+  /// image=image_url, title=headline, subtitle=source · author,
+  /// url=canonical article URL, id=ingester-supplied article slug,
+  /// datetime=`published_at` (RFC 3339 UTC) parsed to UNIX seconds.
+  /// Pagination is offset-based: pass `limit` (default 30, clamp
+  /// [1, 100]) and `offset` (default 0); the server-side `next_offset`
+  /// cursor is collapsed away — callers detect end-of-feed when the
+  /// returned row count drops below `limit`. Also accepts `q` (the
+  /// existing full-text arg) for postgres `plainto_tsquery` filtering.
+  case news // = 7
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -739,6 +760,8 @@ public enum LivescoreWebPageType: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 3: self = .teams
     case 4: self = .page
     case 5: self = .discovers
+    case 6: self = .videos
+    case 7: self = .news
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -751,6 +774,8 @@ public enum LivescoreWebPageType: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .teams: return 3
     case .page: return 4
     case .discovers: return 5
+    case .videos: return 6
+    case .news: return 7
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -763,6 +788,8 @@ public enum LivescoreWebPageType: SwiftProtobuf.Enum, Swift.CaseIterable {
     .teams,
     .page,
     .discovers,
+    .videos,
+    .news,
   ]
 
 }
@@ -6633,6 +6660,9 @@ public struct LivescoreWebPage: Sendable {
   /// slug identifier (e.g. "team/real-madrid", "competition/england-premier-league")
   public var id: String = String()
 
+  /// UNIX timestamp; populated for Highlights items (from Scorebat feed `date` ISO string)
+  public var datetime: Int64 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -6652,6 +6682,11 @@ public struct LivescoreWebPageList: Sendable {
 
 /// Scorebat upcoming match from /api/upcoming/ — compact match preview
 /// with team IDs mapped to Scorebat CDN logo URLs.
+///
+/// The backend `/serverless/mobile/scores` endpoint additionally enriches
+/// each match with competition_{name,image,region}; the Scorebat
+/// /api/upcoming/ feed leaves those three fields empty (only the numeric
+/// competition_id is supplied).
 public struct LivescoreUpcomingMatch: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -6684,11 +6719,20 @@ public struct LivescoreUpcomingMatch: Sendable {
   /// Team 2 score (0 before kickoff)
   public var score2: Int64 = 0
 
-  /// Match status ("-" = not started)
-  public var status: String = String()
+  /// Typed match state (NOT_STARTED, FIRST_HALF, HALFTIME, FULL_TIME, ...)
+  public var status: LivescoreMatchStatus = .unspecified
 
   /// Embed URL: scorebat.com/embed/matchview/{id}
   public var url: String = String()
+
+  /// Competition flag URL (cloudfront flag); empty for raw Scorebat upcoming
+  public var competitionImage: String = String()
+
+  /// Full competition name (e.g., "RUSSIA: Premier League"); empty for raw Scorebat upcoming
+  public var competitionName: String = String()
+
+  /// Competition region (e.g., "Russia"); empty for raw Scorebat upcoming
+  public var competitionRegion: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -6748,7 +6792,7 @@ extension LivescoreScorePeriod: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension LivescoreWebPageType: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0WEB_PAGE_TYPE_UNSPECIFIED\0\u{1}WEB_PAGE_TYPE_LEAGUES\0\u{1}WEB_PAGE_TYPE_COMPETITIONS\0\u{1}WEB_PAGE_TYPE_TEAMS\0\u{1}WEB_PAGE_TYPE_PAGE\0\u{1}WEB_PAGE_TYPE_DISCOVERS\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0WEB_PAGE_TYPE_UNSPECIFIED\0\u{1}WEB_PAGE_TYPE_LEAGUES\0\u{1}WEB_PAGE_TYPE_COMPETITIONS\0\u{1}WEB_PAGE_TYPE_TEAMS\0\u{1}WEB_PAGE_TYPE_PAGE\0\u{1}WEB_PAGE_TYPE_DISCOVERS\0\u{1}WEB_PAGE_TYPE_VIDEOS\0\u{1}WEB_PAGE_TYPE_NEWS\0")
 }
 
 extension LivescoreSportMonksResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -16295,7 +16339,7 @@ extension LivescoreExpectedMetricList: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
 extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WebPage"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}image\0\u{1}title\0\u{1}subtitle\0\u{1}url\0\u{1}id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}image\0\u{1}title\0\u{1}subtitle\0\u{1}url\0\u{1}id\0\u{1}datetime\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -16308,6 +16352,7 @@ extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       case 3: try { try decoder.decodeSingularStringField(value: &self.subtitle) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.url) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 6: try { try decoder.decodeSingularInt64Field(value: &self.datetime) }()
       default: break
       }
     }
@@ -16329,6 +16374,9 @@ extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if !self.id.isEmpty {
       try visitor.visitSingularStringField(value: self.id, fieldNumber: 5)
     }
+    if self.datetime != 0 {
+      try visitor.visitSingularInt64Field(value: self.datetime, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -16338,6 +16386,7 @@ extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if lhs.subtitle != rhs.subtitle {return false}
     if lhs.url != rhs.url {return false}
     if lhs.id != rhs.id {return false}
+    if lhs.datetime != rhs.datetime {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -16375,7 +16424,7 @@ extension LivescoreWebPageList: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension LivescoreUpcomingMatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UpcomingMatch"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}team1_name\0\u{3}team2_name\0\u{3}team1_logo\0\u{3}team2_logo\0\u{1}datetime\0\u{3}competition_id\0\u{1}score1\0\u{1}score2\0\u{1}status\0\u{1}url\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}team1_name\0\u{3}team2_name\0\u{3}team1_logo\0\u{3}team2_logo\0\u{1}datetime\0\u{3}competition_id\0\u{1}score1\0\u{1}score2\0\u{1}status\0\u{1}url\0\u{3}competition_image\0\u{3}competition_name\0\u{3}competition_region\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -16392,8 +16441,11 @@ extension LivescoreUpcomingMatch: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       case 7: try { try decoder.decodeSingularInt64Field(value: &self.competitionID) }()
       case 8: try { try decoder.decodeSingularInt64Field(value: &self.score1) }()
       case 9: try { try decoder.decodeSingularInt64Field(value: &self.score2) }()
-      case 10: try { try decoder.decodeSingularStringField(value: &self.status) }()
+      case 10: try { try decoder.decodeSingularEnumField(value: &self.status) }()
       case 11: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 12: try { try decoder.decodeSingularStringField(value: &self.competitionImage) }()
+      case 13: try { try decoder.decodeSingularStringField(value: &self.competitionName) }()
+      case 14: try { try decoder.decodeSingularStringField(value: &self.competitionRegion) }()
       default: break
       }
     }
@@ -16427,11 +16479,20 @@ extension LivescoreUpcomingMatch: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     if self.score2 != 0 {
       try visitor.visitSingularInt64Field(value: self.score2, fieldNumber: 9)
     }
-    if !self.status.isEmpty {
-      try visitor.visitSingularStringField(value: self.status, fieldNumber: 10)
+    if self.status != .unspecified {
+      try visitor.visitSingularEnumField(value: self.status, fieldNumber: 10)
     }
     if !self.url.isEmpty {
       try visitor.visitSingularStringField(value: self.url, fieldNumber: 11)
+    }
+    if !self.competitionImage.isEmpty {
+      try visitor.visitSingularStringField(value: self.competitionImage, fieldNumber: 12)
+    }
+    if !self.competitionName.isEmpty {
+      try visitor.visitSingularStringField(value: self.competitionName, fieldNumber: 13)
+    }
+    if !self.competitionRegion.isEmpty {
+      try visitor.visitSingularStringField(value: self.competitionRegion, fieldNumber: 14)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -16448,6 +16509,9 @@ extension LivescoreUpcomingMatch: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     if lhs.score2 != rhs.score2 {return false}
     if lhs.status != rhs.status {return false}
     if lhs.url != rhs.url {return false}
+    if lhs.competitionImage != rhs.competitionImage {return false}
+    if lhs.competitionName != rhs.competitionName {return false}
+    if lhs.competitionRegion != rhs.competitionRegion {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

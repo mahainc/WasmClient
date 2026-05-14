@@ -511,15 +511,40 @@ public struct WasmClient: Sendable {
     /// Fetch the discover feed as web pages (lsWebpage type=5).
     public var webpageDiscovers: @Sendable () async throws -> [WasmClient.WebPage]
 
-    /// Fetch highlight pages (Scorebat-backed). Optional filters: competition,
-    /// team, feed. Backed by `lsHighlights` action returning `LivescoreWebPageList`.
-    public var highlightPages: @Sendable (
-        _ competition: String?, _ team: String?, _ feed: String?
+    /// Fetch Scorebat highlight videos (lsWebpage type=6). All filters are
+    /// optional. `videoType` is the bucket tag (`"featured"` or `"livestream"`,
+    /// `nil` = all). `competitionID` and `teamID` are mutually exclusive on
+    /// the server side. `page` is 1-based; `pageSize` is clamped server-side
+    /// to `[1, 60]` (default 20).
+    public var webpageVideos: @Sendable (
+        _ videoType: String?,
+        _ competitionID: Int64?,
+        _ teamID: Int64?,
+        _ q: String?,
+        _ page: Int64?,
+        _ pageSize: Int64?
+    ) async throws -> [WasmClient.WebPage]
+
+    /// Fetch soccer news articles (lsWebpage type=7). Offset-based
+    /// pagination — caller computes "has more" by comparing the returned
+    /// count to `limit` (rows < limit ⇒ end of feed). `limit` is clamped
+    /// server-side to `[1, 100]` (default 30); `q` is full-text search
+    /// (≤200 chars).
+    public var webpageNews: @Sendable (
+        _ limit: Int64?, _ offset: Int64?, _ q: String?
     ) async throws -> [WasmClient.WebPage]
 
     /// Fetch the global upcoming-matches feed (no date arg).
     /// Backed by `lsUpcoming` action returning `LivescoreUpcomingMatchList`.
     public var upcoming: @Sendable () async throws -> [WasmClient.UpcomingMatch]
+
+    /// Fetch matches for the given date (YYYY-MM-DD). Pass `nil` for "today" —
+    /// the backend resolves it from the JWT `tz` claim (set in flowOptions
+    /// from the device's current `TimeZone`). Rows are enriched with
+    /// `competition{Image,Name,Region}` server-side.
+    public var scoresByDate: @Sendable (
+        _ date: String?
+    ) async throws -> [WasmClient.UpcomingMatch]
 
     // MARK: - Survey
 
@@ -544,4 +569,14 @@ public struct WasmClient: Sendable {
 
     /// Fetch current server-side notification settings (enabled + subscribed topics).
     public var getNotificationSettings: @Sendable () async throws -> WasmClient.NotificationSettings
+
+    /// Subscribe (or unsubscribe) the device from notifications for an
+    /// `(entity, id)` pair. `entity` is a free-form namespace string (e.g.
+    /// `"competition"`, `"team"`); the backend keys (bundle_id, device_id,
+    /// entity, id) and fans out push notifications without knowing about
+    /// the originating feature. Consumer code that wants a typed entity
+    /// enum can wrap this with its own `RawRepresentable where RawValue == String`.
+    public var notificationSubscribe: @Sendable (
+        _ entity: String, _ id: String, _ enabled: Bool
+    ) async throws -> Void
 }
