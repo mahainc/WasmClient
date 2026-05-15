@@ -104,12 +104,22 @@ extension WasmActor {
             // back to the task value (some providers ship the full response
             // as the WaTTask result instead of as SSE frames).
             let didReceiveChunks = ChunkFlag()
+            // Tracks the timestamp of the last SSE frame plus an explicit
+            // `finish_reason:"stop"` signal. Used by the post-`create()` wait
+            // loop to short-circuit on WS-streaming providers (CAI) that
+            // resolve `create()` early and keep emitting frames.
+            let lastChunkAt = LastChunkTime()
 
             AsyncifyWasmInternal.installSSEChunkHandler(for: requestID) { chunk in
                 guard let data = chunk.data(using: .utf8),
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let choices = json["choices"] as? [[String: Any]],
-                      let delta = choices.first?["delta"] as? [String: Any],
+                      let choices = json["choices"] as? [[String: Any]] else { return }
+                lastChunkAt.touch()
+                if let finish = choices.first?["finish_reason"] as? String, finish == "stop" {
+                    lastChunkAt.markFinished()
+                    return
+                }
+                guard let delta = choices.first?["delta"] as? [String: Any],
                       let content = delta["content"] as? String,
                       !content.isEmpty else { return }
                 didReceiveChunks.set()
@@ -125,7 +135,31 @@ extension WasmActor {
                 do {
                     log("chatStream: calling engine.create(action:args:requestID:)...")
                     let task = try await engine.create(action: action, args: args, requestID: requestID)
-                    log("chatStream: task completed — status: \(task.status), hasValue: \(task.hasValue), didReceiveChunks: \(didReceiveChunks.value)")
+                    log("chatStream: task returned — status: \(task.status), hasValue: \(task.hasValue), didReceiveChunks: \(didReceiveChunks.value)")
+
+                    // For WS-streaming providers (CAI), `engine.create()` resolves
+                    // on the first partial Task while frames keep arriving via the
+                    // SSE handler. Wait for an explicit `finish_reason:"stop"` or a
+                    // quiet window of no chunks before treating the response as
+                    // complete. Mirrors flow-kit-example's `sendViaWasm` poll loop.
+                    if task.status != .completed {
+                        let deadline = Date().addingTimeInterval(60)
+                        let quietWindow: TimeInterval = 2.5
+                        log("chatStream: entering WS-stream wait (60s deadline, 2.5s quiet window)")
+                        while Date() < deadline {
+                            try await Task.sleep(nanoseconds: 200_000_000)
+                            if lastChunkAt.finished {
+                                log("chatStream: saw finish_reason:'stop', exiting wait")
+                                break
+                            }
+                            if !didReceiveChunks.value { continue }
+                            if Date().timeIntervalSince(lastChunkAt.value) >= quietWindow {
+                                log("chatStream: quiet window elapsed, exiting wait")
+                                break
+                            }
+                        }
+                    }
+
                     // If no SSE chunks arrived, fall back to the task result
                     if !didReceiveChunks.value,
                        task.status == .completed,
@@ -172,6 +206,19 @@ extension WasmActor {
         private var _value = false
         var value: Bool { lock.withLock { _value } }
         func set() { lock.withLock { _value = true } }
+    }
+
+    /// Thread-safe tracker for the last SSE frame timestamp and the
+    /// `finish_reason:"stop"` signal. Used by the post-`create()` wait loop
+    /// to short-circuit on WS-streaming providers that resolve early.
+    private final class LastChunkTime: @unchecked Sendable {
+        private let lock = NSLock()
+        private var _value: Date = .distantPast
+        private var _finished = false
+        var value: Date { lock.withLock { _value } }
+        var finished: Bool { lock.withLock { _finished } }
+        func touch() { lock.withLock { _value = Date() } }
+        func markFinished() { lock.withLock { _finished = true } }
     }
 
     /// Fetch chat models via the standalone `listModels` action with
