@@ -68,9 +68,18 @@ if [ -z "$XCFW" ]; then
 fi
 
 DEVICE="$XCFW/ios-arm64/FlowKit.framework/Modules"
-SIMULATOR="$XCFW/ios-arm64_x86_64-simulator/FlowKit.framework/Modules"
+# Simulator slice naming changed in FlowKit 1.2.43-ffi (arm64-only, no x86_64).
+# Pick whichever slice this xcframework actually ships.
+SIMULATOR=""
+for sim in "$XCFW/ios-arm64-simulator/FlowKit.framework/Modules" \
+           "$XCFW/ios-arm64_x86_64-simulator/FlowKit.framework/Modules"; do
+  if [ -d "$sim" ]; then
+    SIMULATOR="$sim"
+    break
+  fi
+done
 
-if [ ! -d "$DEVICE" ] || [ ! -d "$SIMULATOR" ]; then
+if [ ! -d "$DEVICE" ] || [ -z "$SIMULATOR" ]; then
   echo "warning: FlowKit framework slices missing — sub-modules will not be available." >&2
   mkdir -p "$OUTPUT_DIR"
   exit 0

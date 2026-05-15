@@ -2,8 +2,8 @@
 import PackageDescription
 
 let packageDir = Context.packageDirectory
-let flowKitVersion = "1.2.33-26.1.1"
-let flowKitChecksum = "4ab6dee9bf08fe90346635bc29711f91c889acfad0412be0757b2538320dce5e"
+let flowKitVersion = "1.2.43-26.1.1-ffi"
+let flowKitChecksum = "8870545e95d1d930c65b2a4e4445441f52842b8a23720479fef39e16452e8085"
 let flowKitURL = "https://github.com/mahainc/flow-kit/releases/download/\(flowKitVersion)/FlowKit.xcframework.zip"
 
 let package = Package(
@@ -34,6 +34,15 @@ let package = Package(
             path: "Vendor/FlowKitPackage/Sources/CModules",
             publicHeadersPath: "."
         ),
+        // C shim that exposes the uniffi-generated `asyncify_wasmFFI` Clang
+        // module that FlowKit's `MobileFFI.swiftmodule` links against. The
+        // FFI symbols themselves live in the FlowKit binary; this target only
+        // ships headers + modulemap. Mirrors mahainc/flow-kit's Package.swift.
+        .target(
+            name: "asyncify_wasmFFI",
+            path: "Vendor/FlowKitFFI/asyncify_wasmFFI",
+            publicHeadersPath: "."
+        ),
         .target(
             name: "WasmClient",
             dependencies: [
@@ -47,6 +56,7 @@ let package = Package(
                 .product(name: "Dependencies", package: "swift-dependencies"),
                 "FlowKit",
                 "FlowKitCModules",
+                "asyncify_wasmFFI",
                 "WasmClient",
             ],
             resources: [
@@ -70,6 +80,7 @@ let package = Package(
             dependencies: [
                 "FlowKit",
                 "FlowKitCModules",
+                "asyncify_wasmFFI",
             ],
             swiftSettings: [
                 .unsafeFlags([
