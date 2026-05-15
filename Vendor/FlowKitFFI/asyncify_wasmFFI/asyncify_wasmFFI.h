@@ -307,6 +307,13 @@ typedef void (*UniffiCallbackInterfaceAsyncifyWasmProviderMethod7)(uint64_t, Rus
     );
 
 #endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_ASYNCIFY_WASM_PROVIDER_METHOD8
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_ASYNCIFY_WASM_PROVIDER_METHOD8
+typedef void (*UniffiCallbackInterfaceAsyncifyWasmProviderMethod8)(uint64_t, RustBuffer, RustBuffer* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
 #ifndef UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_ASYNCIFY_WASM_PROVIDER
 #define UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_ASYNCIFY_WASM_PROVIDER
 typedef struct UniffiVTableCallbackInterfaceAsyncifyWasmProvider {
@@ -318,6 +325,7 @@ typedef struct UniffiVTableCallbackInterfaceAsyncifyWasmProvider {
     UniffiCallbackInterfaceAsyncifyWasmProviderMethod5 _Nonnull tryToHandle;
     UniffiCallbackInterfaceAsyncifyWasmProviderMethod6 _Nonnull sseChunk;
     UniffiCallbackInterfaceAsyncifyWasmProviderMethod7 _Nonnull tryToHandleWs;
+    UniffiCallbackInterfaceAsyncifyWasmProviderMethod8 _Nonnull tryToHandleHttp;
     UniffiCallbackInterfaceFree _Nonnull uniffiFree;
 } UniffiVTableCallbackInterfaceAsyncifyWasmProvider;
 
@@ -406,6 +414,11 @@ void uniffi_asyncify_wasm_fn_method_asyncifywasmprovider_sse_chunk(void*_Nonnull
 #ifndef UNIFFI_FFIDEF_UNIFFI_ASYNCIFY_WASM_FN_METHOD_ASYNCIFYWASMPROVIDER_TRY_TO_HANDLE_WS
 #define UNIFFI_FFIDEF_UNIFFI_ASYNCIFY_WASM_FN_METHOD_ASYNCIFYWASMPROVIDER_TRY_TO_HANDLE_WS
 RustBuffer uniffi_asyncify_wasm_fn_method_asyncifywasmprovider_try_to_handle_ws(void*_Nonnull ptr, RustBuffer req, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_ASYNCIFY_WASM_FN_METHOD_ASYNCIFYWASMPROVIDER_TRY_TO_HANDLE_HTTP
+#define UNIFFI_FFIDEF_UNIFFI_ASYNCIFY_WASM_FN_METHOD_ASYNCIFYWASMPROVIDER_TRY_TO_HANDLE_HTTP
+RustBuffer uniffi_asyncify_wasm_fn_method_asyncifywasmprovider_try_to_handle_http(void*_Nonnull ptr, RustBuffer req, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_FFI_ASYNCIFY_WASM_RUSTBUFFER_ALLOC
@@ -751,6 +764,12 @@ uint16_t uniffi_asyncify_wasm_checksum_method_asyncifywasmprovider_sse_chunk(voi
 #ifndef UNIFFI_FFIDEF_UNIFFI_ASYNCIFY_WASM_CHECKSUM_METHOD_ASYNCIFYWASMPROVIDER_TRY_TO_HANDLE_WS
 #define UNIFFI_FFIDEF_UNIFFI_ASYNCIFY_WASM_CHECKSUM_METHOD_ASYNCIFYWASMPROVIDER_TRY_TO_HANDLE_WS
 uint16_t uniffi_asyncify_wasm_checksum_method_asyncifywasmprovider_try_to_handle_ws(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_ASYNCIFY_WASM_CHECKSUM_METHOD_ASYNCIFYWASMPROVIDER_TRY_TO_HANDLE_HTTP
+#define UNIFFI_FFIDEF_UNIFFI_ASYNCIFY_WASM_CHECKSUM_METHOD_ASYNCIFYWASMPROVIDER_TRY_TO_HANDLE_HTTP
+uint16_t uniffi_asyncify_wasm_checksum_method_asyncifywasmprovider_try_to_handle_http(void
     
 );
 #endif
