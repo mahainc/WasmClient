@@ -147,7 +147,14 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             timeout?.cancel()
             continuation?.resume()
         case .reload:
-            mapped = .starting
+            // After `.updating(1.0)` FlowKit fires `.reload` to swap the
+            // freshly downloaded wasm into the engine, then emits `.running`.
+            // Surfacing this as `.starting` makes consumers reset progress
+            // to 0% for the reload window — the user sees the boot bar snap
+            // 100 → 0 → 100 right before crossfade. Skip the yield;
+            // `lastState` still holds the prior `.updating(p)` snapshot for
+            // late subscribers.
+            return
         case .updating(let progress):
             mapped = .updating(progress)
         default:
