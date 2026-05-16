@@ -441,25 +441,28 @@ public struct WasmClient: Sendable {
     ) async throws -> [WasmClient.HomeDecor.StyleSelection]
 
     // MARK: - Inpaint
+    //
+    // Rust derives the inpaint cache subdir internally from `TaskWasm.create()`,
+    // so callers no longer pass a `cacheDir`. Mirrors flow-kit-example's
+    // `Sources/InpaintSession.swift` post-1.2.47-26.1.1-ffi shape.
 
     /// Auto-detect objects in an image for removal suggestions.
     public var autoSuggestion: @Sendable (
-        _ image: String, _ cacheDir: String
+        _ image: String
     ) async throws -> WasmClient.ObjectSegments
 
     /// Enhance (upscale) an image.
     public var enhance: @Sendable (
-        _ image: String, _ cacheDir: String, _ zoomFactor: Int
+        _ image: String, _ zoomFactor: Int
     ) async throws -> WasmClient.ObjectSegments
 
     /// Remove background from an image.
     public var removeBackground: @Sendable (
-        _ image: String, _ cacheDir: String
+        _ image: String
     ) async throws -> WasmClient.Segment
 
     /// Erase selected objects from an image.
     public var erase: @Sendable (
-        _ cacheDir: String,
         _ image: String?,
         _ sessionId: String?,
         _ maskBrush: String?,
@@ -468,31 +471,25 @@ public struct WasmClient: Sendable {
 
     /// Skin beauty filter.
     public var skinBeauty: @Sendable (
-        _ image: String, _ cacheDir: String
+        _ image: String
     ) async throws -> WasmClient.ObjectSegments
 
     /// Sky segmentation.
     public var sky: @Sendable (
-        _ image: String, _ cacheDir: String
+        _ image: String
     ) async throws -> WasmClient.Segment
 
     /// Categorize clothes from an image for virtual try-on.
-    /// Returns an async task — clothing type segments detected in the image.
     public var categorizeClothes: @Sendable (
-        _ image: String, _ cacheDir: String
-    ) async throws -> WasmClient.ObjectSegments
+        _ image: String
+    ) async throws -> WasmClient.Segment
 
-    /// Virtual try-on. Returns initial result (may be `.processing` — poll via `tryOnStatus`).
+    /// Virtual try-on. Runs the full flow on the engine side (model/cloth
+    /// checks → create → poll-to-done) and returns the finished image URL.
     public var tryOn: @Sendable (
-        _ cacheDir: String,
-        _ image: String?,
-        _ modelId: String?,
-        _ clothType: String,
-        _ clothId: String
-    ) async throws -> WasmClient.TryOnResult
-
-    /// Poll try-on task status.
-    public var tryOnStatus: @Sendable (_ taskID: String) async throws -> WasmClient.TryOnResult
+        _ modelImage: String,
+        _ clothImage: String
+    ) async throws -> String
 
     // MARK: - Livescore Webpage
 

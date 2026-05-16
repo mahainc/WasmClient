@@ -67,19 +67,6 @@ extension WasmClient {
         }
     }
 
-    /// Result of a try-on operation (may be processing).
-    public struct TryOnResult: Sendable, Equatable {
-        public let status: TaskStatus
-        public let imageURL: String
-        public let progress: Double
-
-        public init(status: TaskStatus = .completed, imageURL: String = "", progress: Double = 1.0) {
-            self.status = status
-            self.imageURL = imageURL
-            self.progress = progress
-        }
-    }
-
     /// Task processing status.
     public enum TaskStatus: Sendable, Equatable, Hashable {
         case processing

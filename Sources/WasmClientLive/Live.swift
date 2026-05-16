@@ -174,38 +174,32 @@ extension WasmClient: DependencyKey {
             homeDecorStyleSelections: { processType in
                 try await actor.homeDecorStyleSelections(processType: processType)
             },
-            autoSuggestion: { image, cacheDir in
-                try await actor.autoSuggestion(image: image, cacheDir: cacheDir)
+            autoSuggestion: { image in
+                try await actor.autoSuggestion(image: image)
             },
-            enhance: { image, cacheDir, zoomFactor in
-                try await actor.enhance(image: image, cacheDir: cacheDir, zoomFactor: zoomFactor)
+            enhance: { image, zoomFactor in
+                try await actor.enhance(image: image, zoomFactor: zoomFactor)
             },
-            removeBackground: { image, cacheDir in
-                try await actor.removeBackground(image: image, cacheDir: cacheDir)
+            removeBackground: { image in
+                try await actor.removeBackground(image: image)
             },
-            erase: { cacheDir, image, sessionId, maskBrush, maskObjects in
+            erase: { image, sessionId, maskBrush, maskObjects in
                 try await actor.erase(
-                    cacheDir: cacheDir, image: image, sessionId: sessionId,
+                    image: image, sessionId: sessionId,
                     maskBrush: maskBrush, maskObjects: maskObjects
                 )
             },
-            skinBeauty: { image, cacheDir in
-                try await actor.skinBeauty(image: image, cacheDir: cacheDir)
+            skinBeauty: { image in
+                try await actor.skinBeauty(image: image)
             },
-            sky: { image, cacheDir in
-                try await actor.sky(image: image, cacheDir: cacheDir)
+            sky: { image in
+                try await actor.sky(image: image)
             },
-            categorizeClothes: { image, cacheDir in
-                try await actor.categorizeClothes(image: image, cacheDir: cacheDir)
+            categorizeClothes: { image in
+                try await actor.categorizeClothes(image: image)
             },
-            tryOn: { cacheDir, image, modelId, clothType, clothId in
-                try await actor.tryOn(
-                    cacheDir: cacheDir, image: image, modelId: modelId,
-                    clothType: clothType, clothId: clothId
-                )
-            },
-            tryOnStatus: { taskID in
-                try await actor.tryOnStatus(taskID: taskID)
+            tryOn: { modelImage, clothImage in
+                try await actor.tryOn(modelImage: modelImage, clothImage: clothImage)
             },
             webpageLeagues: {
                 try await actor.webpageLeagues()

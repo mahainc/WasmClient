@@ -89,15 +89,14 @@ extension WasmClient {
         homeDecorColorPalettes: { _ in [] },
         homeDecorSurfaceTypes: { _ in [] },
         homeDecorStyleSelections: { _ in [] },
-        autoSuggestion: { _, _ in ObjectSegments() },
-        enhance: { _, _, _ in ObjectSegments() },
-        removeBackground: { _, _ in Segment() },
-        erase: { _, _, _, _, _ in EraseResult() },
-        skinBeauty: { _, _ in ObjectSegments() },
-        sky: { _, _ in Segment() },
-        categorizeClothes: { _, _ in ObjectSegments() },
-        tryOn: { _, _, _, _, _ in TryOnResult() },
-        tryOnStatus: { _ in TryOnResult() },
+        autoSuggestion: { _ in ObjectSegments() },
+        enhance: { _, _ in ObjectSegments() },
+        removeBackground: { _ in Segment() },
+        erase: { _, _, _, _ in EraseResult() },
+        skinBeauty: { _ in ObjectSegments() },
+        sky: { _ in Segment() },
+        categorizeClothes: { _ in Segment() },
+        tryOn: { _, _ in "" },
         webpageLeagues: { [] },
         webpageCompetitions: { [] },
         webpageTeams: { [] },
@@ -446,40 +445,37 @@ extension WasmClient {
         homeDecorColorPalettes: { _ in [.millennialGray, .neonSunset, .forestHues, .pastelBreeze] },
         homeDecorSurfaceTypes: { _ in [.wall, .ceiling, .floorSurface] },
         homeDecorStyleSelections: { _ in [.structuralPreservation, .renovationDesign] },
-        autoSuggestion: { _, _ in
+        autoSuggestion: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return ObjectSegments(sessionID: "mock-session")
         },
-        enhance: { _, _, _ in
+        enhance: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
             return ObjectSegments(sessionID: "mock-session")
         },
-        removeBackground: { _, _ in
+        removeBackground: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return Segment(maskURL: "https://example.com/mask.png")
         },
-        erase: { _, _, _, _, _ in
+        erase: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
             return EraseResult(sessionID: "mock-session", imageURL: "https://example.com/erased.jpg")
         },
-        skinBeauty: { _, _ in
+        skinBeauty: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return ObjectSegments(sessionID: "mock-session")
         },
-        sky: { _, _ in
+        sky: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return Segment(maskURL: "https://example.com/sky-mask.png")
         },
-        categorizeClothes: { _, _ in
+        categorizeClothes: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return ObjectSegments(sessionID: "mock-session")
+            return Segment(maskURL: "https://example.com/clothes-mask.png")
         },
-        tryOn: { _, _, _, _, _ in
+        tryOn: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
-            return TryOnResult(status: .completed, imageURL: "https://example.com/tryon.jpg")
-        },
-        tryOnStatus: { _ in
-            TryOnResult(status: .completed, imageURL: "https://example.com/tryon.jpg")
+            return "https://example.com/tryon.jpg"
         },
         webpageLeagues: {
             [WebPage(id: "league/premier-league", title: "Premier League", subtitle: "England")]

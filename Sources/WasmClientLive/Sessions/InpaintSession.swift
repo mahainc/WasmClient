@@ -5,14 +5,18 @@ import SwiftProtobuf
 import WasmClient
 
 // MARK: - Inpaint
+//
+// Mirrors flow-kit-example/Example/Sessions/InpaintSession.swift after
+// FlowKit 1.2.47-26.1.1-ffi removed the `cache_dir` arg from every inpaint
+// action — Rust now derives the inpaint subdir internally from
+// `TaskWasm.create()`.
 
 extension WasmActor {
 
     /// Auto-detect objects in an image for removal suggestions.
-    func autoSuggestion(image: String, cacheDir: String) async throws -> WasmClient.ObjectSegments {
+    func autoSuggestion(image: String) async throws -> WasmClient.ObjectSegments {
         let args: [String: Google_Protobuf_Value] = [
             "image": Google_Protobuf_Value(stringValue: image),
-            "cache_dir": Google_Protobuf_Value(stringValue: cacheDir),
         ]
         let result: InpaintObjectSegments = try await runInpaint(
             actionID: WasmClient.ActionID.autoSuggestion, args: args
@@ -21,10 +25,9 @@ extension WasmActor {
     }
 
     /// Enhance (upscale) an image.
-    func enhance(image: String, cacheDir: String, zoomFactor: Int) async throws -> WasmClient.ObjectSegments {
+    func enhance(image: String, zoomFactor: Int) async throws -> WasmClient.ObjectSegments {
         var args: [String: Google_Protobuf_Value] = [
             "image": Google_Protobuf_Value(stringValue: image),
-            "cache_dir": Google_Protobuf_Value(stringValue: cacheDir),
         ]
         if zoomFactor != 2 {
             args["zoom_factor"] = Google_Protobuf_Value(stringValue: "\(zoomFactor)")
@@ -36,10 +39,9 @@ extension WasmActor {
     }
 
     /// Remove background from an image.
-    func removeBackground(image: String, cacheDir: String) async throws -> WasmClient.Segment {
+    func removeBackground(image: String) async throws -> WasmClient.Segment {
         let args: [String: Google_Protobuf_Value] = [
             "image": Google_Protobuf_Value(stringValue: image),
-            "cache_dir": Google_Protobuf_Value(stringValue: cacheDir),
         ]
         let result: InpaintSegment = try await runInpaint(
             actionID: WasmClient.ActionID.removeBg, args: args
@@ -49,15 +51,12 @@ extension WasmActor {
 
     /// Erase selected objects from an image.
     func erase(
-        cacheDir: String,
         image: String?,
         sessionId: String?,
         maskBrush: String?,
         maskObjects: String?
     ) async throws -> WasmClient.EraseResult {
-        var args: [String: Google_Protobuf_Value] = [
-            "cache_dir": Google_Protobuf_Value(stringValue: cacheDir),
-        ]
+        var args: [String: Google_Protobuf_Value] = [:]
         if let image {
             args["image"] = Google_Protobuf_Value(stringValue: image)
         }
@@ -82,10 +81,9 @@ extension WasmActor {
     }
 
     /// Skin beauty filter.
-    func skinBeauty(image: String, cacheDir: String) async throws -> WasmClient.ObjectSegments {
+    func skinBeauty(image: String) async throws -> WasmClient.ObjectSegments {
         let args: [String: Google_Protobuf_Value] = [
             "image": Google_Protobuf_Value(stringValue: image),
-            "cache_dir": Google_Protobuf_Value(stringValue: cacheDir),
         ]
         let result: InpaintObjectSegments = try await runInpaint(
             actionID: WasmClient.ActionID.skinBeauty, args: args
@@ -94,10 +92,9 @@ extension WasmActor {
     }
 
     /// Sky segmentation.
-    func sky(image: String, cacheDir: String) async throws -> WasmClient.Segment {
+    func sky(image: String) async throws -> WasmClient.Segment {
         let args: [String: Google_Protobuf_Value] = [
             "image": Google_Protobuf_Value(stringValue: image),
-            "cache_dir": Google_Protobuf_Value(stringValue: cacheDir),
         ]
         let result: InpaintSegment = try await runInpaint(
             actionID: WasmClient.ActionID.sky, args: args
@@ -106,65 +103,27 @@ extension WasmActor {
     }
 
     /// Categorize clothes — detects clothing type from an image.
-    func categorizeClothes(image: String, cacheDir: String) async throws -> WasmClient.ObjectSegments {
-        let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(actionID: WasmClient.ActionID.clothes.rawValue, logger: logger)
+    func categorizeClothes(image: String) async throws -> WasmClient.Segment {
         let args: [String: Google_Protobuf_Value] = [
             "image": Google_Protobuf_Value(stringValue: image),
-            "cache_dir": Google_Protobuf_Value(stringValue: cacheDir),
         ]
-        let task = try await instance.create(action: action, args: args)
-        guard task.status == .completed else {
-            throw WasmClient.Error.taskFailed(status: "\(task.status)")
-        }
-        guard task.hasValue else {
-            return WasmClient.ObjectSegments(sessionID: task.id)
-        }
-        if let result = try? InpaintObjectSegments(unpackingAny: task.value) {
-            return mapObjectSegments(result)
-        }
-        if let result = try? InpaintObjectSegments(serializedBytes: task.value.value) {
-            return mapObjectSegments(result)
-        }
-        return WasmClient.ObjectSegments(sessionID: task.id)
+        let result: InpaintSegment = try await runInpaint(
+            actionID: WasmClient.ActionID.clothes, args: args
+        )
+        return mapSegment(result)
     }
 
-    /// Virtual try-on.
-    func tryOn(
-        cacheDir: String,
-        image: String?,
-        modelId: String?,
-        clothType: String,
-        clothId: String
-    ) async throws -> WasmClient.TryOnResult {
-        let instance = try await readyEngine()
-        var args: [String: Google_Protobuf_Value] = [
-            "cache_dir": Google_Protobuf_Value(stringValue: cacheDir),
-            "cloth_type": Google_Protobuf_Value(stringValue: clothType),
-            "cloth_id": Google_Protobuf_Value(stringValue: clothId),
+    /// Virtual try-on. The engine runs the full flow (model/cloth checks →
+    /// create → poll-to-done) and returns the finished image URL.
+    func tryOn(modelImage: String, clothImage: String) async throws -> String {
+        let args: [String: Google_Protobuf_Value] = [
+            "image": Google_Protobuf_Value(stringValue: modelImage),
+            "cloth_image": Google_Protobuf_Value(stringValue: clothImage),
         ]
-        if let image {
-            args["image"] = Google_Protobuf_Value(stringValue: image)
-        }
-        if let modelId {
-            args["model_id"] = Google_Protobuf_Value(stringValue: modelId)
-        }
-        let action = try await delegate.resolveAction(actionID: WasmClient.ActionID.tryOn.rawValue, logger: logger)
-        let task = try await instance.create(action: action, args: args)
-        return mapTryOnResult(task)
-    }
-
-    /// Poll try-on task status.
-    func tryOnStatus(taskID: String) async throws -> WasmClient.TryOnResult {
-        let instance = try await readyEngine()
-        // Build a WaTTask with the task ID to query status
-        var taskRef = WaTTask()
-        taskRef.id = taskID
-        guard let engine = instance as? TaskWasmEngine else {
-            throw WasmClient.Error.engineNotReady
-        }
-        let updated = try await engine.status(task: taskRef)
-        return mapTryOnResult(updated)
+        let result: TypesImage = try await runInpaint(
+            actionID: WasmClient.ActionID.tryOn, args: args
+        )
+        return result.url
     }
 
     // MARK: - Inpaint Helpers
@@ -221,29 +180,5 @@ extension WasmActor {
             }
         }
         return result
-    }
-
-    private func mapTryOnResult(_ task: WaTTask) -> WasmClient.TryOnResult {
-        let status: WasmClient.TaskStatus
-        var imageURL = ""
-        let progress = task.progress ?? 0
-
-        switch task.status {
-        case .completed:
-            status = .completed
-            if task.hasValue, let img = try? TypesImage(unpackingAny: task.value) {
-                imageURL = img.url
-            }
-        case .processing:
-            status = .processing
-        default:
-            status = .failed("\(task.status)")
-        }
-
-        return WasmClient.TryOnResult(
-            status: status,
-            imageURL: imageURL,
-            progress: progress
-        )
     }
 }
