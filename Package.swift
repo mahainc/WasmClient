@@ -69,6 +69,12 @@ let package = Package(
                 .unsafeFlags([
                     "-I", "\(packageDir)/.build/flowkit-merged-modules",  // local dev
                     "-I", "/tmp/wasmclient-flowkit-modules",              // build plugin
+                    // Xcode 26's explicit-modules dependency scanner can't see
+                    // FlowKit xcframework sub-modules (AsyncWasmCore, MobileFFI)
+                    // that are exposed via -I instead of as declared SPM deps.
+                    // Force implicit modules for this target regardless of the
+                    // consumer's SWIFT_ENABLE_EXPLICIT_MODULES setting.
+                    "-no-explicit-module-build",
                 ]),
             ],
             plugins: [
@@ -86,6 +92,7 @@ let package = Package(
                 .unsafeFlags([
                     "-I", "\(packageDir)/.build/flowkit-merged-modules",
                     "-I", "/tmp/wasmclient-flowkit-modules",
+                    "-no-explicit-module-build",
                 ]),
             ],
             plugins: [
