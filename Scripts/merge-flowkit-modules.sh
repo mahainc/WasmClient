@@ -24,13 +24,6 @@ while ! mkdir "$LOCK_DIR" 2>/dev/null; do
 done
 trap 'rm -rf "$LOCK_DIR"' EXIT
 
-# If a sibling target already populated the merged tree, no work to do.
-if [ -d "$OUTPUT_DIR" ] && [ -f "$OUTPUT_DIR/.merge-stamp" ] && \
-   find "$OUTPUT_DIR" -mindepth 1 -maxdepth 1 -name '*.swiftmodule' -print -quit | grep -q .; then
-  echo "FlowKit sub-modules already merged at $OUTPUT_DIR"
-  exit 0
-fi
-
 # Modules managed by SPM — MUST be excluded to prevent slice conflicts.
 # SwiftProtobuf is NOT excluded — we use the copy inside FlowKit.xcframework
 # to avoid duplicate ObjC class registrations that cause silent protobuf
@@ -64,6 +57,24 @@ fi
 if [ -z "$XCFW" ]; then
   echo "warning: FlowKit.xcframework not found — sub-modules will not be available." >&2
   mkdir -p "$OUTPUT_DIR"
+  exit 0
+fi
+
+# Fingerprint the source xcframework so the early-exit check can detect when
+# FlowKit has been bumped and the merged symlinks are stale. The Info.plist
+# changes whenever the version, slices, or available libraries change, which
+# is sufficient to catch the cases the stamp needs to invalidate on.
+FINGERPRINT="$XCFW|$(/usr/bin/shasum -a 256 "$XCFW/Info.plist" 2>/dev/null | awk '{print $1}')"
+
+# If a sibling target already populated the merged tree, no work to do —
+# provided the fingerprint matches and no symlink in the tree is broken.
+# Either condition failing means a FlowKit bump (or cache wipe) left stale
+# links pointing at a previous xcframework layout; re-merge to fix it.
+if [ -d "$OUTPUT_DIR" ] && [ -f "$OUTPUT_DIR/.merge-stamp" ] && \
+   find "$OUTPUT_DIR" -mindepth 1 -maxdepth 1 -name '*.swiftmodule' -print -quit | grep -q . && \
+   [ "$(cat "$OUTPUT_DIR/.merge-stamp" 2>/dev/null)" = "$FINGERPRINT" ] && \
+   ! find -L "$OUTPUT_DIR" -type l -print -quit 2>/dev/null | grep -q .; then
+  echo "FlowKit sub-modules already merged at $OUTPUT_DIR"
   exit 0
 fi
 
@@ -115,5 +126,5 @@ for mod in "$DEVICE"/*.swiftmodule; do
   count=$((count + 1))
 done
 
-touch "$OUTPUT_DIR/.merge-stamp"
+printf '%s' "$FINGERPRINT" > "$OUTPUT_DIR/.merge-stamp"
 echo "Merged $count sub-modules into $OUTPUT_DIR"
