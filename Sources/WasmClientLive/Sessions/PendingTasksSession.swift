@@ -102,7 +102,7 @@ extension WasmActor {
 
                 let engine = try? await readyEngine()
                 let taskEngine = engine as? TaskWasmEngine
-                if let taskEngine {
+                if taskEngine != nil {
                     let postReady = snapshot()
                     logger("observePendingTasks: post-engine snapshot count=\(postReady.count)")
                     continuation.yield(postReady)
