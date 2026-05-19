@@ -99,7 +99,7 @@ extension WasmClient {
         tryOn: { _, _ in "" },
         webpageLeagues: { [] },
         webpageCompetitions: { [] },
-        webpageTeams: { [] },
+        webpageTeams: { _, _, _, _ in [] },
         webpage: { _ in [] },
         webpageDiscovers: { [] },
         webpageCompetition: { _ in nil },
@@ -485,7 +485,7 @@ extension WasmClient {
         webpageCompetitions: {
             [LiveScore.WebPage(id: "competition/champions-league", title: "Champions League", subtitle: "UEFA")]
         },
-        webpageTeams: {
+        webpageTeams: { _, _, _, _ in
             [LiveScore.WebPage(id: "team/arsenal", title: "Arsenal", subtitle: "England")]
         },
         webpage: { _ in

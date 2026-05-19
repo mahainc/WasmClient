@@ -500,7 +500,16 @@ public struct WasmClient: Sendable {
     public var webpageCompetitions: @Sendable () async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch the teams directory as web pages (lsWebpage type=3).
-    public var webpageTeams: @Sendable () async throws -> [WasmClient.LiveScore.WebPage]
+    /// `q` runs a server-side full-text filter; `limit`/`offset` drive
+    /// offset-based pagination — stop when a response returns fewer than
+    /// `limit` rows. `competitionId` narrows to teams that played in the
+    /// given competition (slug-form id, e.g. "competition/england-premier-league").
+    public var webpageTeams: @Sendable (
+        _ q: String?,
+        _ limit: Int64?,
+        _ offset: Int64?,
+        _ competitionId: String?
+    ) async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch a specific URL via lsWebpage (type=4).
     public var webpage: @Sendable (_ url: String) async throws -> [WasmClient.LiveScore.WebPage]

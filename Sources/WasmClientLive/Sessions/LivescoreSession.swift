@@ -43,8 +43,26 @@ extension WasmActor {
         try await webpageList(type: .competitions)
     }
 
-    func webpageTeams() async throws -> [WasmClient.LiveScore.WebPage] {
-        try await webpageList(type: .teams)
+    /// Server-filtered teams catalog. `q` runs a full-text filter on
+    /// name + region; `limit`/`offset` drive offset-based pagination —
+    /// caller should stop when a response returns fewer than `limit`
+    /// rows. `competitionId` narrows the catalog to teams that played
+    /// in the given competition (slug-form id, e.g.
+    /// "competition/england-premier-league").
+    func webpageTeams(
+        q: String? = nil,
+        limit: Int64? = nil,
+        offset: Int64? = nil,
+        competitionId: String? = nil
+    ) async throws -> [WasmClient.LiveScore.WebPage] {
+        var args: [String: Google_Protobuf_Value] = [:]
+        if let q, !q.isEmpty { args["q"] = Google_Protobuf_Value(stringValue: q) }
+        if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
+        if let offset { args["offset"] = Google_Protobuf_Value(numberValue: Double(offset)) }
+        if let competitionId, !competitionId.isEmpty {
+            args["competition_id"] = Google_Protobuf_Value(stringValue: competitionId)
+        }
+        return try await webpageList(type: .teams, extraArgs: args)
     }
 
     func webpage(url: String) async throws -> [WasmClient.LiveScore.WebPage] {

@@ -207,8 +207,10 @@ extension WasmClient: DependencyKey {
             webpageCompetitions: {
                 try await actor.webpageCompetitions()
             },
-            webpageTeams: {
-                try await actor.webpageTeams()
+            webpageTeams: { q, limit, offset, competitionId in
+                try await actor.webpageTeams(
+                    q: q, limit: limit, offset: offset, competitionId: competitionId
+                )
             },
             webpage: { url in
                 try await actor.webpage(url: url)
