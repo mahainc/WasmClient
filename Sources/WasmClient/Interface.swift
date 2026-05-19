@@ -524,13 +524,15 @@ public struct WasmClient: Sendable {
 
     /// Fetch Scorebat highlight videos (lsWebpage type=6). All filters are
     /// optional. `videoType` is the bucket tag (`"featured"` or `"livestream"`,
-    /// `nil` = all). `competitionID` and `teamID` are mutually exclusive on
+    /// `nil` = all). `competitionID` / `teamID` are slug strings from
+    /// `WebPage.id` (e.g. `"team/real-madrid"`,
+    /// `"competition/england-premier-league"`) and are mutually exclusive on
     /// the server side. `page` is 1-based; `pageSize` is clamped server-side
     /// to `[1, 60]` (default 20).
     public var webpageVideos: @Sendable (
         _ videoType: String?,
-        _ competitionID: Int64?,
-        _ teamID: Int64?,
+        _ competitionID: String?,
+        _ teamID: String?,
         _ q: String?,
         _ page: Int64?,
         _ pageSize: Int64?

@@ -79,19 +79,25 @@ extension WasmActor {
 
     func webpageVideos(
         videoType: String? = nil,
-        competitionID: Int64? = nil,
-        teamID: Int64? = nil,
+        competitionID: String? = nil,
+        teamID: String? = nil,
         q: String? = nil,
         page: Int64? = nil,
         pageSize: Int64? = nil
     ) async throws -> [WasmClient.LiveScore.WebPage] {
         var args: [String: Google_Protobuf_Value] = [:]
-        if let videoType { args["video_type"] = Google_Protobuf_Value(stringValue: videoType) }
-        if let competitionID {
-            args["competition_id"] = Google_Protobuf_Value(numberValue: Double(competitionID))
+        if let videoType, !videoType.isEmpty {
+            args["video_type"] = Google_Protobuf_Value(stringValue: videoType)
         }
-        if let teamID { args["team_id"] = Google_Protobuf_Value(numberValue: Double(teamID)) }
-        if let q { args["q"] = Google_Protobuf_Value(stringValue: q) }
+        if let competitionID, !competitionID.isEmpty {
+            args["competition_id"] = Google_Protobuf_Value(stringValue: competitionID)
+        }
+        if let teamID, !teamID.isEmpty {
+            args["team_id"] = Google_Protobuf_Value(stringValue: teamID)
+        }
+        if let q, !q.isEmpty {
+            args["q"] = Google_Protobuf_Value(stringValue: q)
+        }
         if let page { args["page"] = Google_Protobuf_Value(numberValue: Double(page)) }
         if let pageSize {
             args["page_size"] = Google_Protobuf_Value(numberValue: Double(pageSize))
