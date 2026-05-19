@@ -12,7 +12,7 @@ extension WasmActor {
     private func webpageList(
         type: LivescoreWebPageType,
         extraArgs: [String: Google_Protobuf_Value] = [:]
-    ) async throws -> [WasmClient.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.WebPage] {
         let instance = try await readyEngine()
         let action = try await instance.action(for: WasmClient.ActionID.lsWebpage.rawValue, strategy: .roundRobin)
         var args: [String: Google_Protobuf_Value] = [
@@ -34,24 +34,45 @@ extension WasmActor {
         return list.pages.map(mapWebPage)
     }
 
-    func webpageLeagues() async throws -> [WasmClient.WebPage] {
+    func webpageLeagues() async throws -> [WasmClient.LiveScore.WebPage] {
         try await webpageList(type: .leagues)
     }
 
-    func webpageCompetitions() async throws -> [WasmClient.WebPage] {
+    func webpageCompetitions() async throws -> [WasmClient.LiveScore.WebPage] {
         try await webpageList(type: .competitions)
     }
 
-    func webpageTeams() async throws -> [WasmClient.WebPage] {
+    func webpageTeams() async throws -> [WasmClient.LiveScore.WebPage] {
         try await webpageList(type: .teams)
     }
 
-    func webpage(url: String) async throws -> [WasmClient.WebPage] {
+    func webpage(url: String) async throws -> [WasmClient.LiveScore.WebPage] {
         try await webpageList(type: .page, extraArgs: ["url": Google_Protobuf_Value(stringValue: url)])
     }
 
-    func webpageDiscovers() async throws -> [WasmClient.WebPage] {
+    func webpageDiscovers() async throws -> [WasmClient.LiveScore.WebPage] {
         try await webpageList(type: .discovers)
+    }
+
+    // MARK: - Single-item lookups (id-filtered)
+
+    /// Fetch one competition by numeric Scorebat id. Returns the matching
+    /// `WebPage` (with composed embed URL) or nil when the backend doesn't
+    /// know it.
+    func webpageCompetition(id: String) async throws -> WasmClient.LiveScore.WebPage? {
+        try await webpageList(
+            type: .competitions,
+            extraArgs: ["id": Google_Protobuf_Value(stringValue: id)]
+        ).first
+    }
+
+    /// Fetch one team by numeric Scorebat id. Returns the matching
+    /// `WebPage` or nil when the backend doesn't know it.
+    func webpageTeam(id: String) async throws -> WasmClient.LiveScore.WebPage? {
+        try await webpageList(
+            type: .teams,
+            extraArgs: ["id": Google_Protobuf_Value(stringValue: id)]
+        ).first
     }
 
     // MARK: - Videos (Scorebat highlights via WebPageType.videos = 6)
@@ -63,7 +84,7 @@ extension WasmActor {
         q: String? = nil,
         page: Int64? = nil,
         pageSize: Int64? = nil
-    ) async throws -> [WasmClient.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.WebPage] {
         var args: [String: Google_Protobuf_Value] = [:]
         if let videoType { args["video_type"] = Google_Protobuf_Value(stringValue: videoType) }
         if let competitionID {
@@ -84,7 +105,7 @@ extension WasmActor {
         limit: Int64? = nil,
         offset: Int64? = nil,
         q: String? = nil
-    ) async throws -> [WasmClient.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.WebPage] {
         var args: [String: Google_Protobuf_Value] = [:]
         if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
         if let offset { args["offset"] = Google_Protobuf_Value(numberValue: Double(offset)) }
@@ -94,7 +115,7 @@ extension WasmActor {
 
     // MARK: - Upcoming
 
-    func upcoming() async throws -> [WasmClient.UpcomingMatch] {
+    func upcoming() async throws -> [WasmClient.LiveScore.UpcomingMatch] {
         let instance = try await readyEngine()
         let action = try await instance.action(for: WasmClient.ActionID.lsUpcoming.rawValue, strategy: .roundRobin)
         let args: [String: Google_Protobuf_Value] = [:]
@@ -115,7 +136,7 @@ extension WasmActor {
 
     // MARK: - Scores by date
 
-    func scoresByDate(date: String?) async throws -> [WasmClient.UpcomingMatch] {
+    func scoresByDate(date: String?) async throws -> [WasmClient.LiveScore.UpcomingMatch] {
         let instance = try await readyEngine()
         let action = try await instance.action(for: WasmClient.ActionID.lsScores.rawValue, strategy: .roundRobin)
         var args: [String: Google_Protobuf_Value] = [:]
@@ -129,21 +150,21 @@ extension WasmActor {
         do {
             list = try LivescoreUpcomingMatchList(unpackingAny: task.value)
         } catch {
-            logger("lsScores unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreUpcomingMatchList.protoMessageName) error=\(error)")
+            logger("lsScores(date=\(date ?? "nil")) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreUpcomingMatchList.protoMessageName) error=\(error)")
             throw error
         }
         return list.matches.map(mapUpcoming)
     }
 
-    private func mapUpcoming(_ m: LivescoreUpcomingMatch) -> WasmClient.UpcomingMatch {
-        WasmClient.UpcomingMatch(
+    private func mapUpcoming(_ m: LivescoreUpcomingMatch) -> WasmClient.LiveScore.UpcomingMatch {
+        WasmClient.LiveScore.UpcomingMatch(
             id: String(m.id),
             homeTeam: m.team1Name, awayTeam: m.team2Name,
             homeLogoURL: m.team1Logo, awayLogoURL: m.team2Logo,
             kickoff: Date(timeIntervalSince1970: TimeInterval(m.datetime)),
             competitionID: String(m.competitionID),
             homeScore: Int(m.score1), awayScore: Int(m.score2),
-            status: WasmClient.MatchStatus(rawValue: m.status.rawValue) ?? .unspecified,
+            status: WasmClient.LiveScore.MatchStatus(rawValue: m.status.rawValue) ?? .unspecified,
             embedURL: m.url,
             competitionImage: m.competitionImage,
             competitionName: m.competitionName,
@@ -151,8 +172,8 @@ extension WasmActor {
         )
     }
 
-    private func mapWebPage(_ p: LivescoreWebPage) -> WasmClient.WebPage {
-        WasmClient.WebPage(
+    private func mapWebPage(_ p: LivescoreWebPage) -> WasmClient.LiveScore.WebPage {
+        WasmClient.LiveScore.WebPage(
             id: p.id, image: p.image, title: p.title,
             subtitle: p.subtitle, url: p.url
         )

@@ -216,6 +216,12 @@ extension WasmClient: DependencyKey {
             webpageDiscovers: {
                 try await actor.webpageDiscovers()
             },
+            webpageCompetition: { id in
+                try await actor.webpageCompetition(id: id)
+            },
+            webpageTeam: { id in
+                try await actor.webpageTeam(id: id)
+            },
             webpageVideos: { videoType, competitionID, teamID, q, page, pageSize in
                 try await actor.webpageVideos(
                     videoType: videoType,

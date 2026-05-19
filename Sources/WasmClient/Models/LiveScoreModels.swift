@@ -1,8 +1,15 @@
 import Foundation
 
-// MARK: - Match Status
+// MARK: - LiveScore Namespace
 
 extension WasmClient {
+    /// Namespace for Livescore-domain types (lsWebpage / lsUpcoming / lsScores).
+    public enum LiveScore {}
+}
+
+// MARK: - Match Status
+
+extension WasmClient.LiveScore {
     /// Typed match state mirroring FlowKit's `LivescoreMatchStatus` proto.
     /// Raw values match the proto numbers so unknown values from a newer
     /// backend fall back to `.unspecified` via `init(rawValue:)`.
@@ -30,9 +37,36 @@ extension WasmClient {
     }
 }
 
+// MARK: - Livescore Entity
+
+extension WasmClient.LiveScore {
+    /// Typed entity namespace for the livescore favourite/subscribe flow.
+    /// The raw value is what ships on the wire as the OTel event's
+    /// `entity` field — it must stay stable across releases since stored
+    /// favourites and backend records key off it.
+    ///
+    /// Leagues and Competitions share Scorebat's `competition/` id space
+    /// (the Leagues tab is just a curated subset), so both surface as
+    /// `.competition` here. Adding more entities (e.g. `player`, `coach`)
+    /// is additive — never rename or remove an existing case.
+    ///
+    /// `.match` is the per-fixture "Follow match" entity. Unlike
+    /// `.team`/`.competition` (persistent personalization → home feed +
+    /// goal-push topics), a `.match` subscription is the explicit opt-in
+    /// that drives the iOS Live Activity: the backend's scorebat-worker
+    /// fans Live Activity APNs pushes *strictly* to devices that sent
+    /// `entity="match", id=<match_id>`. Backend soft-deletes the row at
+    /// full time, so the client never has to unfollow on match end.
+    public enum Entity: String, CaseIterable, Sendable {
+        case team
+        case competition
+        case match
+    }
+}
+
 // MARK: - Livescore Upcoming
 
-extension WasmClient {
+extension WasmClient.LiveScore {
     /// A single upcoming match returned by `lsUpcoming` / `lsScores`. Mirrors
     /// the `LivescoreUpcomingMatch` proto, with the UNIX `datetime` field
     /// decoded to a `Date` so consumers don't deal with the raw integer.
@@ -94,7 +128,7 @@ extension WasmClient {
 
 // MARK: - Livescore Webpage
 
-extension WasmClient {
+extension WasmClient.LiveScore {
     /// A webpage entry returned by `lsWebpage`. Mirrors `LivescoreWebPage`
     /// proto from FlowKit. The same type backs every `WebPageType` variant
     /// (leagues, competitions, teams, page, discovers, videos, news).

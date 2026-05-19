@@ -102,6 +102,8 @@ extension WasmClient {
         webpageTeams: { [] },
         webpage: { _ in [] },
         webpageDiscovers: { [] },
+        webpageCompetition: { _ in nil },
+        webpageTeam: { _ in nil },
         webpageVideos: { _, _, _, _, _, _ in [] },
         webpageNews: { _, _, _ in [] },
         upcoming: { [] },
@@ -478,26 +480,32 @@ extension WasmClient {
             return "https://example.com/tryon.jpg"
         },
         webpageLeagues: {
-            [WebPage(id: "league/premier-league", title: "Premier League", subtitle: "England")]
+            [LiveScore.WebPage(id: "league/premier-league", title: "Premier League", subtitle: "England")]
         },
         webpageCompetitions: {
-            [WebPage(id: "competition/champions-league", title: "Champions League", subtitle: "UEFA")]
+            [LiveScore.WebPage(id: "competition/champions-league", title: "Champions League", subtitle: "UEFA")]
         },
         webpageTeams: {
-            [WebPage(id: "team/arsenal", title: "Arsenal", subtitle: "England")]
+            [LiveScore.WebPage(id: "team/arsenal", title: "Arsenal", subtitle: "England")]
         },
         webpage: { _ in
-            [WebPage(id: "page/example", title: "Example Page", url: "https://example.com")]
+            [LiveScore.WebPage(id: "page/example", title: "Example Page", url: "https://example.com")]
         },
         webpageDiscovers: {
-            [WebPage(id: "discover/featured", title: "Featured", subtitle: "Discover")]
+            [LiveScore.WebPage(id: "discover/featured", title: "Featured", subtitle: "Discover")]
+        },
+        webpageCompetition: { id in
+            LiveScore.WebPage(id: "competition/\(id)", title: "Mock Competition \(id)", subtitle: "UEFA")
+        },
+        webpageTeam: { id in
+            LiveScore.WebPage(id: "team/\(id)", title: "Mock Team \(id)", subtitle: "England")
         },
         webpageVideos: { _, _, _, _, _, _ in
-            [WebPage(id: "video/example", title: "Example Highlight", subtitle: "Premier League")]
+            [LiveScore.WebPage(id: "video/example", title: "Example Highlight", subtitle: "Premier League")]
         },
         webpageNews: { _, _, _ in
             [
-                WebPage(
+                LiveScore.WebPage(
                     id: "news/example",
                     title: "Example Headline",
                     subtitle: "livescore · Mock Author",
@@ -507,7 +515,7 @@ extension WasmClient {
         },
         upcoming: {
             [
-                UpcomingMatch(
+                LiveScore.UpcomingMatch(
                     id: "1",
                     homeTeam: "PSG", awayTeam: "Bayern Munich",
                     homeLogoURL: "", awayLogoURL: "",
@@ -520,7 +528,7 @@ extension WasmClient {
         },
         scoresByDate: { _ in
             [
-                UpcomingMatch(
+                LiveScore.UpcomingMatch(
                     id: "2",
                     homeTeam: "Arsenal", awayTeam: "Chelsea",
                     homeLogoURL: "", awayLogoURL: "",

@@ -494,19 +494,33 @@ public struct WasmClient: Sendable {
     // MARK: - Livescore Webpage
 
     /// Fetch the leagues directory as web pages (lsWebpage type=1).
-    public var webpageLeagues: @Sendable () async throws -> [WasmClient.WebPage]
+    public var webpageLeagues: @Sendable () async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch the competitions directory as web pages (lsWebpage type=2).
-    public var webpageCompetitions: @Sendable () async throws -> [WasmClient.WebPage]
+    public var webpageCompetitions: @Sendable () async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch the teams directory as web pages (lsWebpage type=3).
-    public var webpageTeams: @Sendable () async throws -> [WasmClient.WebPage]
+    public var webpageTeams: @Sendable () async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch a specific URL via lsWebpage (type=4).
-    public var webpage: @Sendable (_ url: String) async throws -> [WasmClient.WebPage]
+    public var webpage: @Sendable (_ url: String) async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch the discover feed as web pages (lsWebpage type=5).
-    public var webpageDiscovers: @Sendable () async throws -> [WasmClient.WebPage]
+    public var webpageDiscovers: @Sendable () async throws -> [WasmClient.LiveScore.WebPage]
+
+    /// Fetch one competition by numeric Scorebat id. Routes through
+    /// `lsWebpage type=2` with an `id` filter and returns the single
+    /// matching row (or nil when the backend doesn't know the id).
+    public var webpageCompetition: @Sendable (
+        _ id: String
+    ) async throws -> WasmClient.LiveScore.WebPage?
+
+    /// Fetch one team by numeric Scorebat id. Routes through
+    /// `lsWebpage type=3` with an `id` filter and returns the single
+    /// matching row (or nil when the backend doesn't know the id).
+    public var webpageTeam: @Sendable (
+        _ id: String
+    ) async throws -> WasmClient.LiveScore.WebPage?
 
     /// Fetch Scorebat highlight videos (lsWebpage type=6). All filters are
     /// optional. `videoType` is the bucket tag (`"featured"` or `"livestream"`,
@@ -520,7 +534,7 @@ public struct WasmClient: Sendable {
         _ q: String?,
         _ page: Int64?,
         _ pageSize: Int64?
-    ) async throws -> [WasmClient.WebPage]
+    ) async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch soccer news articles (lsWebpage type=7). Offset-based
     /// pagination — caller computes "has more" by comparing the returned
@@ -529,11 +543,11 @@ public struct WasmClient: Sendable {
     /// (≤200 chars).
     public var webpageNews: @Sendable (
         _ limit: Int64?, _ offset: Int64?, _ q: String?
-    ) async throws -> [WasmClient.WebPage]
+    ) async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch the global upcoming-matches feed (no date arg).
     /// Backed by `lsUpcoming` action returning `LivescoreUpcomingMatchList`.
-    public var upcoming: @Sendable () async throws -> [WasmClient.UpcomingMatch]
+    public var upcoming: @Sendable () async throws -> [WasmClient.LiveScore.UpcomingMatch]
 
     /// Fetch matches for the given date (YYYY-MM-DD). Pass `nil` for "today" —
     /// the backend resolves it from the JWT `tz` claim (set in flowOptions
@@ -541,7 +555,7 @@ public struct WasmClient: Sendable {
     /// `competition{Image,Name,Region}` server-side.
     public var scoresByDate: @Sendable (
         _ date: String?
-    ) async throws -> [WasmClient.UpcomingMatch]
+    ) async throws -> [WasmClient.LiveScore.UpcomingMatch]
 
     // MARK: - Survey
 
