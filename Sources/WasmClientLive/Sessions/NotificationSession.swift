@@ -29,7 +29,10 @@ extension WasmActor {
             args["firebase_uid"] = Google_Protobuf_Value(stringValue: uid)
         }
 
-        let task = try await instance.create(action: action, args: args)
+        let argsCopy = args
+        let task = try await Task.detached {
+            try await instance.create(action: action, args: argsCopy)
+        }.value
         guard task.status == .completed else {
             throw WasmClient.Error.taskFailed(status: "\(task.status)")
         }
@@ -54,7 +57,10 @@ extension WasmActor {
             "id": Google_Protobuf_Value(stringValue: id),
             "enabled": Google_Protobuf_Value(stringValue: enabled ? "true" : "false"),
         ]
-        let task = try await instance.create(action: action, args: args)
+        let argsCopy = args
+        let task = try await Task.detached {
+            try await instance.create(action: action, args: argsCopy)
+        }.value
         guard task.status == .completed else {
             throw WasmClient.Error.taskFailed(status: "\(task.status)")
         }
@@ -67,7 +73,9 @@ extension WasmActor {
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.getNotificationSettings.rawValue, logger: logger
         )
-        let task = try await instance.create(action: action, args: [:])
+        let task = try await Task.detached {
+            try await instance.create(action: action, args: [:])
+        }.value
         guard task.status == .completed else {
             throw WasmClient.Error.taskFailed(status: "\(task.status)")
         }

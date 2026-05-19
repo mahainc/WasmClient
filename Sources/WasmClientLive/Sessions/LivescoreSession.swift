@@ -3,8 +3,6 @@ import Foundation
 import SwiftProtobuf
 import WasmClient
 
-// MARK: - Livescore (Webpage only)
-
 extension WasmActor {
 
     // MARK: - Webpage
@@ -19,7 +17,10 @@ extension WasmActor {
             "type": Google_Protobuf_Value(numberValue: Double(type.rawValue)),
         ]
         for (k, v) in extraArgs { args[k] = v }
-        let task = try await instance.create(action: action, args: args)
+        let argsCopy = args
+        let task = try await Task.detached {
+            try await instance.create(action: action, args: argsCopy)
+        }.value
         let taskStatus = task.status
         guard taskStatus == .completed, task.hasValue else {
             throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
@@ -125,7 +126,10 @@ extension WasmActor {
         let instance = try await readyEngine()
         let action = try await instance.action(for: WasmClient.ActionID.lsUpcoming.rawValue, strategy: .roundRobin)
         let args: [String: Google_Protobuf_Value] = [:]
-        let task = try await instance.create(action: action, args: args)
+        let argsCopy = args
+        let task = try await Task.detached {
+            try await instance.create(action: action, args: argsCopy)
+        }.value
         let taskStatus = task.status
         guard taskStatus == .completed, task.hasValue else {
             throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
@@ -147,7 +151,10 @@ extension WasmActor {
         let action = try await instance.action(for: WasmClient.ActionID.lsScores.rawValue, strategy: .roundRobin)
         var args: [String: Google_Protobuf_Value] = [:]
         if let date { args["date"] = Google_Protobuf_Value(stringValue: date) }
-        let task = try await instance.create(action: action, args: args)
+        let argsCopy = args
+        let task = try await Task.detached {
+            try await instance.create(action: action, args: argsCopy)
+        }.value
         let taskStatus = task.status
         guard taskStatus == .completed, task.hasValue else {
             throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
