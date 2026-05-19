@@ -9,7 +9,6 @@ let flowKitURL = "https://github.com/mahainc/flow-kit/releases/download/\(flowKi
 let package = Package(
     name: "WasmClient",
     platforms: [
-        .macOS(.v14),
         .iOS(.v17),
     ],
     products: [
