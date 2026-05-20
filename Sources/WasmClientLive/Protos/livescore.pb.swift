@@ -16546,3 +16546,247 @@ extension LivescoreUpcomingMatchList: SwiftProtobuf.Message, SwiftProtobuf._Mess
     return true
   }
 }
+
+// MARK: - asyncify.livescore.Competition / MatchSummary / MatchSummaryList
+//
+// Backport of three proto types from the canonical livescore schema
+// (see flow-kit-example/Example/Protos/livescore.pb.swift) so the
+// `lsUpcoming` and `lsScores` actions can unpack the nested
+// `MatchSummaryList` shape Rust now returns. The older
+// `UpcomingMatchList` path above is left in place — nothing else
+// references it but removing it would force a bigger schema sync.
+//
+// `LivescoreCompetition` is intentionally minimal: only the five
+// fields LivescoreSession.mapMatchSummary reads (id/name/image/region/
+// url) are decoded. The other wire fields on the Competition message
+// (slug, season_id, country, fixtures, standings, stats, fetched_at)
+// fall through to `unknownFields` and are ignored. Pull them in here
+// when a feature actually needs them.
+
+public struct LivescoreCompetition: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below.
+
+  /// Scorebat competition id (numeric).
+  public var id: Int64 = 0
+
+  public var name: String = String()
+
+  /// Logo URL (proto field 10).
+  public var image: String = String()
+
+  /// Region / country display name (proto field 11).
+  public var region: String = String()
+
+  /// Backend shortlink (`/mobile/c/<id>`) — proto field 12.
+  public var url: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct LivescoreMatchSummary: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below.
+
+  /// Scorebat match id.
+  public var id: Int64 = 0
+
+  /// Home team (Team.id/name/logo_url/slug; the wire field is named
+  /// `image` on newer schemas, but the consumer's LivescoreTeam type
+  /// reads field 8 as `logo_url` — same wire bytes, different Swift
+  /// property name).
+  public var home: LivescoreTeam {
+    get {_home ?? LivescoreTeam()}
+    set {_home = newValue}
+  }
+  public var hasHome: Bool {self._home != nil}
+  public mutating func clearHome() {self._home = nil}
+
+  public var away: LivescoreTeam {
+    get {_away ?? LivescoreTeam()}
+    set {_away = newValue}
+  }
+  public var hasAway: Bool {self._away != nil}
+  public mutating func clearAway() {self._away = nil}
+
+  public var competition: LivescoreCompetition {
+    get {_competition ?? LivescoreCompetition()}
+    set {_competition = newValue}
+  }
+  public var hasCompetition: Bool {self._competition != nil}
+  public mutating func clearCompetition() {self._competition = nil}
+
+  /// UNIX timestamp of match start.
+  public var datetime: Int64 = 0
+
+  public var score1: Int64 = 0
+  public var score2: Int64 = 0
+
+  public var status: LivescoreMatchStatus = .unspecified
+
+  /// matchview URL (rewritten to /mobile/s/<id> shortlink at response time).
+  public var url: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _home: LivescoreTeam? = nil
+  fileprivate var _away: LivescoreTeam? = nil
+  fileprivate var _competition: LivescoreCompetition? = nil
+}
+
+public struct LivescoreMatchSummaryList: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below.
+
+  public var matches: [LivescoreMatchSummary] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+extension LivescoreCompetition: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Competition"
+  // Bytecode covers only the fields we decode; SwiftProtobuf uses
+  // _protobuf_nameMap for text/JSON encoding which we never invoke
+  // for Competition — binary decode is driven entirely by
+  // `decodeMessage`'s switch.
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}image\0\u{1}region\0\u{1}url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 10: try { try decoder.decodeSingularStringField(value: &self.image) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.region) }()
+      case 12: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.id != 0 {
+      try visitor.visitSingularInt64Field(value: self.id, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if !self.image.isEmpty {
+      try visitor.visitSingularStringField(value: self.image, fieldNumber: 10)
+    }
+    if !self.region.isEmpty {
+      try visitor.visitSingularStringField(value: self.region, fieldNumber: 11)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 12)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: LivescoreCompetition, rhs: LivescoreCompetition) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.image != rhs.image {return false}
+    if lhs.region != rhs.region {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreMatchSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MatchSummary"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}home\0\u{1}away\0\u{1}competition\0\u{1}datetime\0\u{1}score1\0\u{1}score2\0\u{1}status\0\u{1}url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._home) }()
+      case 3: try { try decoder.decodeSingularMessageField(value: &self._away) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._competition) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.datetime) }()
+      case 6: try { try decoder.decodeSingularInt64Field(value: &self.score1) }()
+      case 7: try { try decoder.decodeSingularInt64Field(value: &self.score2) }()
+      case 8: try { try decoder.decodeSingularEnumField(value: &self.status) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.id != 0 {
+      try visitor.visitSingularInt64Field(value: self.id, fieldNumber: 1)
+    }
+    try { if let v = self._home {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._away {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._competition {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
+    if self.datetime != 0 {
+      try visitor.visitSingularInt64Field(value: self.datetime, fieldNumber: 5)
+    }
+    if self.score1 != 0 {
+      try visitor.visitSingularInt64Field(value: self.score1, fieldNumber: 6)
+    }
+    if self.score2 != 0 {
+      try visitor.visitSingularInt64Field(value: self.score2, fieldNumber: 7)
+    }
+    if self.status != .unspecified {
+      try visitor.visitSingularEnumField(value: self.status, fieldNumber: 8)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 9)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: LivescoreMatchSummary, rhs: LivescoreMatchSummary) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs._home != rhs._home {return false}
+    if lhs._away != rhs._away {return false}
+    if lhs._competition != rhs._competition {return false}
+    if lhs.datetime != rhs.datetime {return false}
+    if lhs.score1 != rhs.score1 {return false}
+    if lhs.score2 != rhs.score2 {return false}
+    if lhs.status != rhs.status {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreMatchSummaryList: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MatchSummaryList"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}matches\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.matches) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.matches.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.matches, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: LivescoreMatchSummaryList, rhs: LivescoreMatchSummaryList) -> Bool {
+    if lhs.matches != rhs.matches {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}

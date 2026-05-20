@@ -152,14 +152,14 @@ extension WasmActor {
         guard taskStatus == .completed, task.hasValue else {
             throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
         }
-        let list: LivescoreUpcomingMatchList
+        let list: LivescoreMatchSummaryList
         do {
-            list = try LivescoreUpcomingMatchList(unpackingAny: task.value)
+            list = try LivescoreMatchSummaryList(unpackingAny: task.value)
         } catch {
-            logger("lsUpcoming unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreUpcomingMatchList.protoMessageName) error=\(error)")
+            logger("lsUpcoming unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreMatchSummaryList.protoMessageName) error=\(error)")
             throw error
         }
-        return list.matches.map(mapUpcoming)
+        return list.matches.map(mapMatchSummary)
     }
 
     // MARK: - Scores by date
@@ -177,29 +177,34 @@ extension WasmActor {
         guard taskStatus == .completed, task.hasValue else {
             throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
         }
-        let list: LivescoreUpcomingMatchList
+        let list: LivescoreMatchSummaryList
         do {
-            list = try LivescoreUpcomingMatchList(unpackingAny: task.value)
+            list = try LivescoreMatchSummaryList(unpackingAny: task.value)
         } catch {
-            logger("lsScores(date=\(date ?? "nil")) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreUpcomingMatchList.protoMessageName) error=\(error)")
+            logger("lsScores(date=\(date ?? "nil")) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreMatchSummaryList.protoMessageName) error=\(error)")
             throw error
         }
-        return list.matches.map(mapUpcoming)
+        return list.matches.map(mapMatchSummary)
     }
 
-    private func mapUpcoming(_ m: LivescoreUpcomingMatch) -> WasmClient.LiveScore.UpcomingMatch {
+    /// Map the nested `LivescoreMatchSummary` (home/away/competition
+    /// sub-messages) into the public flat `WasmClient.LiveScore.UpcomingMatch`
+    /// shape that consumer features already render. The consumer's
+    /// `LivescoreTeam` reads wire field 8 as `logoURL` (the reference's
+    /// `image`) — same bytes, different Swift property name.
+    private func mapMatchSummary(_ m: LivescoreMatchSummary) -> WasmClient.LiveScore.UpcomingMatch {
         WasmClient.LiveScore.UpcomingMatch(
             id: String(m.id),
-            homeTeam: m.team1Name, awayTeam: m.team2Name,
-            homeLogoURL: m.team1Logo, awayLogoURL: m.team2Logo,
+            homeTeam: m.home.name, awayTeam: m.away.name,
+            homeLogoURL: m.home.logoURL, awayLogoURL: m.away.logoURL,
             kickoff: Date(timeIntervalSince1970: TimeInterval(m.datetime)),
-            competitionID: String(m.competitionID),
+            competitionID: String(m.competition.id),
             homeScore: Int(m.score1), awayScore: Int(m.score2),
             status: WasmClient.LiveScore.MatchStatus(rawValue: m.status.rawValue) ?? .unspecified,
             embedURL: m.url,
-            competitionImage: m.competitionImage,
-            competitionName: m.competitionName,
-            competitionRegion: m.competitionRegion
+            competitionImage: m.competition.image,
+            competitionName: m.competition.name,
+            competitionRegion: m.competition.region
         )
     }
 
