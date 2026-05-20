@@ -9,10 +9,13 @@ extension WasmActor {
 
     /// Register / update the device's push-notification settings on the backend.
     /// Wraps the `notification_settings` action (`ActionID.notificationSettings`).
+    /// `liveActivityToken` carries the device-wide push-to-start token
+    /// (iOS 17.2+); pass `""` when not applicable.
     func setNotification(
         enabled: Bool,
         firebaseToken: String,
-        firebaseUID: String?
+        firebaseUID: String?,
+        liveActivityToken: String
     ) async throws {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
@@ -28,7 +31,37 @@ extension WasmActor {
         if let uid = firebaseUID, !uid.isEmpty {
             args["firebase_uid"] = Google_Protobuf_Value(stringValue: uid)
         }
+        if !liveActivityToken.isEmpty {
+            args["live_activity_token"] = Google_Protobuf_Value(stringValue: liveActivityToken)
+        }
 
+        let argsCopy = args
+        let task = try await Task.detached {
+            try await instance.create(action: action, args: argsCopy)
+        }.value
+        guard task.status == .completed else {
+            throw WasmClient.Error.taskFailed(status: "\(task.status)")
+        }
+    }
+
+    /// Forward an Apple Live Activity APNs push token to the backend.
+    /// Wraps the `live_activity_token` action. `laToken` is lowercase
+    /// hex; pass `""` to retire the row when an activity ends or is
+    /// dismissed.
+    func reportLiveActivityToken(
+        entity: String,
+        entityId: String,
+        laToken: String
+    ) async throws {
+        let instance = try await readyEngine()
+        let action = try await delegate.resolveAction(
+            actionID: WasmClient.ActionID.liveActivityToken.rawValue, logger: logger
+        )
+        let args: [String: Google_Protobuf_Value] = [
+            "entity":    Google_Protobuf_Value(stringValue: entity),
+            "entity_id": Google_Protobuf_Value(stringValue: entityId),
+            "la_token":  Google_Protobuf_Value(stringValue: laToken),
+        ]
         let argsCopy = args
         let task = try await Task.detached {
             try await instance.create(action: action, args: argsCopy)

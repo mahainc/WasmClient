@@ -77,6 +77,11 @@ extension WasmClient {
         case notificationSettings = "b8f4c2e0-5d7a-6b9f-0e3c-2a1d4f6b8c0e"
         case getNotificationSettings = "c9a5d3f1-6e8b-4c0d-9f4a-3b5e7d9f1a3c"
         case notificationSubscribe = "f8c2b4e0-1d5a-4e7c-9b3f-2a4d6e8c0b1a"
+        /// Forwards an Apple Live Activity APNs push token to the
+        /// backend so it can target updates by `(bundle_id, device_id,
+        /// entity, entity_id)`. Send `la_token: ""` to retire the row
+        /// after an activity ends or is dismissed.
+        case liveActivityToken = "a3d9e5c1-7b2f-4e1d-8c4a-9f5e3b7d2c6e"
     }
 }
 

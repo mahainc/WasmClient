@@ -246,9 +246,12 @@ extension WasmClient: DependencyKey {
             submitSurvey: { questions, answers in
                 try await actor.submitSurvey(questions: questions, answers: answers)
             },
-            setNotification: { enabled, firebaseToken, firebaseUID in
+            setNotification: { enabled, firebaseToken, firebaseUID, liveActivityToken in
                 try await actor.setNotification(
-                    enabled: enabled, firebaseToken: firebaseToken, firebaseUID: firebaseUID
+                    enabled: enabled,
+                    firebaseToken: firebaseToken,
+                    firebaseUID: firebaseUID,
+                    liveActivityToken: liveActivityToken
                 )
             },
             getNotificationSettings: {
@@ -256,6 +259,11 @@ extension WasmClient: DependencyKey {
             },
             notificationSubscribe: { entity, id, enabled in
                 try await actor.notificationSubscribe(entity: entity, id: id, enabled: enabled)
+            },
+            reportLiveActivityToken: { entity, entityId, laToken in
+                try await actor.reportLiveActivityToken(
+                    entity: entity, entityId: entityId, laToken: laToken
+                )
             }
         )
     }()

@@ -584,9 +584,11 @@ public struct WasmClient: Sendable {
     /// Register the device with the backend for push notifications.
     /// Pass an empty `firebaseToken` to deregister, or send `enabled: false` to
     /// stop delivery while keeping the token on file. `firebaseUID` lets the
-    /// backend correlate device → user across reinstalls.
+    /// backend correlate device → user across reinstalls. `liveActivityToken`
+    /// is the device-wide push-to-start token (iOS 17.2+); pass `""` when not
+    /// applicable.
     public var setNotification: @Sendable (
-        _ enabled: Bool, _ firebaseToken: String, _ firebaseUID: String?
+        _ enabled: Bool, _ firebaseToken: String, _ firebaseUID: String?, _ liveActivityToken: String
     ) async throws -> Void
 
     /// Fetch current server-side notification settings (enabled + subscribed topics).
@@ -600,5 +602,13 @@ public struct WasmClient: Sendable {
     /// enum can wrap this with its own `RawRepresentable where RawValue == String`.
     public var notificationSubscribe: @Sendable (
         _ entity: String, _ id: String, _ enabled: Bool
+    ) async throws -> Void
+
+    /// Forward an Apple Live Activity APNs push token to the backend.
+    /// `entity` / `entityId` identify what the activity is tracking
+    /// (e.g. `("match", "12345")`); `laToken` is lowercase hex, or `""`
+    /// to retire the row after the activity ends or is dismissed.
+    public var reportLiveActivityToken: @Sendable (
+        _ entity: String, _ entityId: String, _ laToken: String
     ) async throws -> Void
 }

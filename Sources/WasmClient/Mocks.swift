@@ -109,9 +109,10 @@ extension WasmClient {
         upcoming: { [] },
         scoresByDate: { _ in [] },
         submitSurvey: { _, _ in },
-        setNotification: { _, _, _ in },
+        setNotification: { _, _, _, _ in },
         getNotificationSettings: { NotificationSettings(enabled: false, topics: []) },
-        notificationSubscribe: { _, _, _ in }
+        notificationSubscribe: { _, _, _ in },
+        reportLiveActivityToken: { _, _, _ in }
     )
 
     public static let happy = Self(
@@ -545,7 +546,7 @@ extension WasmClient {
         submitSurvey: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
         },
-        setNotification: { _, _, _ in
+        setNotification: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
         },
         getNotificationSettings: {
@@ -553,6 +554,9 @@ extension WasmClient {
             return NotificationSettings(enabled: true, topics: ["live_scores"])
         },
         notificationSubscribe: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+        },
+        reportLiveActivityToken: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
         }
     )
