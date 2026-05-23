@@ -71,6 +71,11 @@ extension WasmClient {
         case lsWebpage = "b2d4f6a8-3c5e-4b7d-9f1a-2c3d4e5f6a7b"
         case lsUpcoming = "c3e5a7b9-4d6f-4c8e-a0b2-3d4e5f6a7b8c"
         case lsScores = "d4f6a8b0-5e7f-4d9a-b1c3-4e5f6a7b8c9d"
+        /// Enriched match detail (events, lineups, statistics, predictions,
+        /// referee, venue, h2h, highlight videos). Returns a `LivescoreMatch`
+        /// proto with the full nested payload — independent of the `lsWebpage`
+        /// catalog flow.
+        case lsMatchDetail = "a7c9d1e3-8192-50ad-e4f6-71829304e5f6"
         // Surveys
         case submitSurvey = "e7c3a1d0-8b4f-5d2e-9a1c-3f6e8d2b4a0c"
         // Notifications

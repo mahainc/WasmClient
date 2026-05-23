@@ -153,3 +153,309 @@ extension WasmClient.LiveScore {
         }
     }
 }
+
+// MARK: - Match Detail Event Types
+
+extension WasmClient.LiveScore {
+    /// In-match incident kind. Raw values mirror the `LivescoreEventType`
+    /// proto so unknown values from a newer backend decay to `.unspecified`.
+    public enum EventType: Int, Sendable, Equatable {
+        case unspecified = 0
+        case goal = 1
+        case ownGoal = 2
+        case penaltyGoal = 3
+        case missedPenalty = 4
+        case yellowCard = 5
+        case redCard = 6
+        case secondYellow = 7
+        case substitution = 8
+        /// Backticked because `var` is a Swift keyword. Mirrors proto field name.
+        case `var` = 9
+    }
+
+    /// Player role used in lineups.
+    public enum PlayerPosition: Int, Sendable, Equatable {
+        case unspecified = 0
+        case goalkeeper = 1
+        case defender = 2
+        case midfielder = 3
+        case forward = 4
+    }
+
+    /// Typed match statistic (`xg`, `possession`, `shot`, …). The `typeName`
+    /// on the parent `FixtureStatistic` carries the backend's raw label for
+    /// stats not yet mapped to a case here.
+    public enum StatType: Int, Sendable, Equatable {
+        case unspecified = 0
+        case xg = 1
+        case possession = 2
+        case bigChance = 3
+        case shot = 4
+        case shotOnGoal = 5
+        case blockedShot = 6
+        case shotInsideBox = 7
+        case shotOutsideBox = 8
+        case woodwork = 9
+        case foul = 10
+        case corner = 11
+        case throwIn = 12
+        case save = 13
+        case freeKick = 14
+        case offside = 15
+        case passesFinalThird = 16
+        case passesFinalThirdCompleted = 17
+        case touchesInOppositionBox = 18
+        case tackle = 19
+        case tackleCompleted = 20
+        case cross = 21
+        case crossCompleted = 22
+        case interception = 23
+        case clearance = 24
+    }
+}
+
+// MARK: - Match Detail
+
+extension WasmClient.LiveScore {
+    /// Enriched match payload returned by `lsMatchDetail`. The `summary`
+    /// mirrors `lsUpcoming` / `lsScores` rows; the rest is fixture-specific.
+    /// Most nested fields can be empty when the backend has nothing — the
+    /// View must tolerate empty arrays / empty strings.
+    public struct Match: Sendable, Equatable, Identifiable {
+        public let summary: UpcomingMatch
+        public let events: [MatchEvent]
+        public let lineups: Lineups
+        public let statistics: [FixtureStatistic]
+        public let refereeName: String
+        public let venue: Venue
+        public let predictions: [Prediction]
+        public let h2h: H2H
+        public let videos: [Video]
+
+        public var id: String { summary.id }
+
+        public init(
+            summary: UpcomingMatch,
+            events: [MatchEvent] = [],
+            lineups: Lineups = Lineups(),
+            statistics: [FixtureStatistic] = [],
+            refereeName: String = "",
+            venue: Venue = Venue(),
+            predictions: [Prediction] = [],
+            h2h: H2H = H2H(),
+            videos: [Video] = []
+        ) {
+            self.summary = summary
+            self.events = events
+            self.lineups = lineups
+            self.statistics = statistics
+            self.refereeName = refereeName
+            self.venue = venue
+            self.predictions = predictions
+            self.h2h = h2h
+            self.videos = videos
+        }
+    }
+
+    public struct MatchEvent: Sendable, Equatable, Identifiable {
+        public let playerID: String
+        public let playerName: String
+        /// "home" / "away" as the backend conventionally reports it.
+        public let participantID: String
+        public let minute: Int
+        public let eventType: EventType
+        /// Raw backend label for events not represented in `EventType` yet.
+        public let typeRaw: String
+        /// Sub-in target (for substitutions) or assist (for goals). Empty otherwise.
+        public let relatedPlayerID: String
+        public let relatedPlayerName: String
+
+        public var id: String { "\(participantID)-\(minute)-\(playerID)-\(eventType.rawValue)" }
+
+        public init(
+            playerID: String = "", playerName: String = "",
+            participantID: String = "", minute: Int = 0,
+            eventType: EventType = .unspecified, typeRaw: String = "",
+            relatedPlayerID: String = "", relatedPlayerName: String = ""
+        ) {
+            self.playerID = playerID; self.playerName = playerName
+            self.participantID = participantID; self.minute = minute
+            self.eventType = eventType; self.typeRaw = typeRaw
+            self.relatedPlayerID = relatedPlayerID
+            self.relatedPlayerName = relatedPlayerName
+        }
+    }
+
+    public struct Lineups: Sendable, Equatable {
+        public let home: TeamLineup
+        public let away: TeamLineup
+
+        public var isEmpty: Bool {
+            home.startXi.isEmpty && away.startXi.isEmpty
+        }
+
+        public init(home: TeamLineup = TeamLineup(), away: TeamLineup = TeamLineup()) {
+            self.home = home; self.away = away
+        }
+    }
+
+    public struct TeamLineup: Sendable, Equatable, Identifiable {
+        public let teamID: String
+        public let teamName: String
+        public let teamLogoURL: String
+        public let formation: String
+        public let startXi: [Lineup]
+        public let substitutes: [Lineup]
+        public let coachName: String
+
+        public var id: String { teamID }
+
+        public init(
+            teamID: String = "", teamName: String = "", teamLogoURL: String = "",
+            formation: String = "", startXi: [Lineup] = [], substitutes: [Lineup] = [],
+            coachName: String = ""
+        ) {
+            self.teamID = teamID; self.teamName = teamName
+            self.teamLogoURL = teamLogoURL; self.formation = formation
+            self.startXi = startXi; self.substitutes = substitutes
+            self.coachName = coachName
+        }
+    }
+
+    public struct Lineup: Sendable, Equatable, Identifiable {
+        public let playerID: String
+        public let playerName: String
+        public let jerseyNumber: Int
+        public let position: PlayerPosition
+        public let isSubstitute: Bool
+
+        public var id: String { playerID.isEmpty ? "\(playerName)-\(jerseyNumber)" : playerID }
+
+        public init(
+            playerID: String = "", playerName: String = "",
+            jerseyNumber: Int = 0, position: PlayerPosition = .unspecified,
+            isSubstitute: Bool = false
+        ) {
+            self.playerID = playerID; self.playerName = playerName
+            self.jerseyNumber = jerseyNumber; self.position = position
+            self.isSubstitute = isSubstitute
+        }
+    }
+
+    /// Typed match statistic. Exactly one of `valueInt` / `valueString`
+    /// is populated for any given backend row; the view chooses which to
+    /// render based on which is non-nil.
+    public struct FixtureStatistic: Sendable, Equatable, Identifiable {
+        /// Raw backend label (e.g. "Expected Goals", "Possession %").
+        public let typeName: String
+        /// "home" or "away" — the side this row represents.
+        public let location: String
+        public let statType: StatType
+        public let valueInt: Int?
+        public let valueString: String?
+
+        public var id: String { "\(statType.rawValue)-\(location)-\(typeName)" }
+
+        public init(
+            typeName: String = "", location: String = "",
+            statType: StatType = .unspecified,
+            valueInt: Int? = nil, valueString: String? = nil
+        ) {
+            self.typeName = typeName; self.location = location
+            self.statType = statType
+            self.valueInt = valueInt; self.valueString = valueString
+        }
+    }
+
+    public struct Venue: Sendable, Equatable {
+        public let id: String
+        public let name: String
+
+        public var isEmpty: Bool { id.isEmpty && name.isEmpty }
+
+        public init(id: String = "", name: String = "") {
+            self.id = id; self.name = name
+        }
+    }
+
+    /// Per-market prediction (e.g. "1X2", "Both Teams To Score"). Percent
+    /// values arrive as strings to preserve backend formatting ("52", "48.5%").
+    public struct Prediction: Sendable, Equatable, Identifiable {
+        public let typeID: String
+        public let typeName: String
+        public let homePercent: String
+        public let drawPercent: String
+        public let awayPercent: String
+
+        public var id: String { typeID }
+
+        public init(
+            typeID: String = "", typeName: String = "",
+            homePercent: String = "", drawPercent: String = "", awayPercent: String = ""
+        ) {
+            self.typeID = typeID; self.typeName = typeName
+            self.homePercent = homePercent
+            self.drawPercent = drawPercent
+            self.awayPercent = awayPercent
+        }
+    }
+
+    public struct H2H: Sendable, Equatable {
+        public let home: TeamH2H
+        public let away: TeamH2H
+        public let between: [UpcomingMatch]
+
+        public var isEmpty: Bool {
+            home.form.isEmpty && away.form.isEmpty && between.isEmpty
+        }
+
+        public init(
+            home: TeamH2H = TeamH2H(), away: TeamH2H = TeamH2H(),
+            between: [UpcomingMatch] = []
+        ) {
+            self.home = home; self.away = away; self.between = between
+        }
+    }
+
+    public struct TeamH2H: Sendable, Equatable, Identifiable {
+        public let teamID: String
+        public let teamName: String
+        public let teamLogoURL: String
+        public let form: [UpcomingMatch]
+        public let recentCoach: String
+
+        public var id: String { teamID }
+
+        public init(
+            teamID: String = "", teamName: String = "", teamLogoURL: String = "",
+            form: [UpcomingMatch] = [], recentCoach: String = ""
+        ) {
+            self.teamID = teamID; self.teamName = teamName
+            self.teamLogoURL = teamLogoURL; self.form = form
+            self.recentCoach = recentCoach
+        }
+    }
+
+    /// Highlight clip attached to a match. `embed` is an iframe-ready URL;
+    /// `sourceURL` (when present) is the direct media URL preferred for
+    /// in-app players.
+    public struct Video: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let title: String
+        public let embed: String
+        public let sourceID: String
+        public let source: String
+        public let sourceURL: String
+        public let image: String
+
+        public init(
+            id: String = "", title: String = "", embed: String = "",
+            sourceID: String = "", source: String = "",
+            sourceURL: String = "", image: String = ""
+        ) {
+            self.id = id; self.title = title; self.embed = embed
+            self.sourceID = sourceID; self.source = source
+            self.sourceURL = sourceURL; self.image = image
+        }
+    }
+}

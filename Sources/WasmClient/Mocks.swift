@@ -108,6 +108,19 @@ extension WasmClient {
         webpageNews: { _, _, _ in [] },
         upcoming: { [] },
         scoresByDate: { _ in [] },
+        matchDetail: { id in
+            WasmClient.LiveScore.Match(
+                summary: WasmClient.LiveScore.UpcomingMatch(
+                    id: id,
+                    homeTeam: "", awayTeam: "",
+                    homeLogoURL: "", awayLogoURL: "",
+                    kickoff: Date(),
+                    competitionID: "",
+                    homeScore: 0, awayScore: 0,
+                    embedURL: ""
+                )
+            )
+        },
         submitSurvey: { _, _ in },
         setNotification: { _, _, _, _ in },
         getNotificationSettings: { NotificationSettings(enabled: false, topics: []) },
@@ -542,6 +555,50 @@ extension WasmClient {
                     competitionRegion: "England"
                 )
             ]
+        },
+        matchDetail: { id in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return LiveScore.Match(
+                summary: LiveScore.UpcomingMatch(
+                    id: id,
+                    homeTeam: "Arsenal", awayTeam: "Chelsea",
+                    homeLogoURL: "", awayLogoURL: "",
+                    kickoff: Date(),
+                    competitionID: "1",
+                    homeScore: 2, awayScore: 1,
+                    status: .secondHalf, embedURL: "",
+                    competitionImage: "",
+                    competitionName: "ENGLAND: Premier League",
+                    competitionRegion: "England"
+                ),
+                events: [
+                    LiveScore.MatchEvent(
+                        playerName: "Saka", participantID: "home",
+                        minute: 23, eventType: .goal
+                    ),
+                    LiveScore.MatchEvent(
+                        playerName: "Sterling", participantID: "away",
+                        minute: 41, eventType: .yellowCard
+                    ),
+                    LiveScore.MatchEvent(
+                        playerName: "Jesus", participantID: "home",
+                        minute: 67, eventType: .goal,
+                        relatedPlayerName: "Ødegaard"
+                    )
+                ],
+                statistics: [
+                    LiveScore.FixtureStatistic(
+                        typeName: "Possession", location: "home",
+                        statType: .possession, valueString: "58"
+                    ),
+                    LiveScore.FixtureStatistic(
+                        typeName: "Possession", location: "away",
+                        statType: .possession, valueString: "42"
+                    )
+                ],
+                refereeName: "Michael Oliver",
+                venue: LiveScore.Venue(id: "9", name: "Emirates Stadium")
+            )
         },
         submitSurvey: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)

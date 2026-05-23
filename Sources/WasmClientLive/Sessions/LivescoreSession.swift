@@ -162,6 +162,161 @@ extension WasmActor {
         return list.matches.map(mapMatchSummary)
     }
 
+    // MARK: - Match Detail
+
+    /// Enriched match payload (events, lineups, statistics, predictions,
+    /// referee, venue, h2h, highlight videos). Backed by `lsMatchDetail` →
+    /// `LivescoreMatch` proto. Independent of the WebPage flow.
+    func matchDetail(id: String) async throws -> WasmClient.LiveScore.Match {
+        let instance = try await readyEngine()
+        let action = try await instance.action(
+            for: WasmClient.ActionID.lsMatchDetail.rawValue,
+            strategy: .roundRobin
+        )
+        let args: [String: Google_Protobuf_Value] = [
+            "id": Google_Protobuf_Value(stringValue: id),
+        ]
+        let argsCopy = args
+        let task = try await Task.detached {
+            try await instance.create(action: action, args: argsCopy)
+        }.value
+        let taskStatus = task.status
+        guard taskStatus == .completed, task.hasValue else {
+            throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
+        }
+        let proto: LivescoreMatch
+        do {
+            proto = try LivescoreMatch(unpackingAny: task.value)
+        } catch {
+            logger("lsMatchDetail(id=\(id)) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreMatch.protoMessageName) error=\(error)")
+            throw error
+        }
+        return mapMatch(proto)
+    }
+
+    private func mapMatch(_ p: LivescoreMatch) -> WasmClient.LiveScore.Match {
+        WasmClient.LiveScore.Match(
+            summary: mapMatchSummary(p.match_),
+            events: p.events.map(mapMatchEvent),
+            lineups: mapLineups(p.lineup),
+            statistics: p.statistics.map(mapStatistic),
+            refereeName: p.referee.name,
+            venue: WasmClient.LiveScore.Venue(id: p.venue.id, name: p.venue.name),
+            predictions: p.predictions.map(mapPrediction),
+            h2h: mapH2H(p.h2H),
+            videos: p.videos.map(mapVideo)
+        )
+    }
+
+    private func mapMatchEvent(_ e: LivescoreMatchEvent) -> WasmClient.LiveScore.MatchEvent {
+        WasmClient.LiveScore.MatchEvent(
+            playerID: e.playerID,
+            playerName: e.playerName,
+            participantID: e.participantID,
+            minute: Int(e.minute),
+            eventType: WasmClient.LiveScore.EventType(rawValue: e.eventType.rawValue) ?? .unspecified,
+            typeRaw: e.typeRaw,
+            relatedPlayerID: e.relatedPlayerID,
+            relatedPlayerName: e.relatedPlayerName
+        )
+    }
+
+    private func mapLineups(_ l: LivescoreLineups) -> WasmClient.LiveScore.Lineups {
+        WasmClient.LiveScore.Lineups(
+            home: mapTeamLineup(l.home),
+            away: mapTeamLineup(l.away)
+        )
+    }
+
+    private func mapTeamLineup(_ t: LivescoreTeamLineup) -> WasmClient.LiveScore.TeamLineup {
+        WasmClient.LiveScore.TeamLineup(
+            teamID: t.team.id,
+            teamName: t.team.name,
+            teamLogoURL: t.team.image,
+            formation: t.formation,
+            startXi: t.startXi.map(mapLineupRow),
+            substitutes: t.substitutes.map(mapLineupRow),
+            coachName: t.coach.name
+        )
+    }
+
+    private func mapLineupRow(_ r: LivescoreLineup) -> WasmClient.LiveScore.Lineup {
+        WasmClient.LiveScore.Lineup(
+            playerID: r.playerID,
+            playerName: r.playerName,
+            jerseyNumber: Int(r.jerseyNumber),
+            position: WasmClient.LiveScore.PlayerPosition(rawValue: r.position.rawValue) ?? .unspecified,
+            isSubstitute: r.isSubstitute
+        )
+    }
+
+    private func mapStatistic(_ s: LivescoreFixtureStatistic) -> WasmClient.LiveScore.FixtureStatistic {
+        WasmClient.LiveScore.FixtureStatistic(
+            typeName: s.typeName,
+            location: s.location,
+            statType: WasmClient.LiveScore.StatType(rawValue: s.statType.rawValue) ?? .unspecified,
+            valueInt: s.hasValueInt ? Int(s.valueInt) : nil,
+            valueString: s.hasValueString ? s.valueString : nil
+        )
+    }
+
+    private func mapPrediction(_ pred: LivescorePrediction) -> WasmClient.LiveScore.Prediction {
+        WasmClient.LiveScore.Prediction(
+            typeID: pred.typeID,
+            typeName: pred.typeName,
+            homePercent: pred.percent.home,
+            drawPercent: pred.percent.draw,
+            awayPercent: pred.percent.away
+        )
+    }
+
+    private func mapH2H(_ h: LivescoreH2H) -> WasmClient.LiveScore.H2H {
+        WasmClient.LiveScore.H2H(
+            home: mapTeamH2H(h.home),
+            away: mapTeamH2H(h.away),
+            between: h.between.map(mapUpcomingMatch)
+        )
+    }
+
+    private func mapTeamH2H(_ t: LivescoreTeamH2H) -> WasmClient.LiveScore.TeamH2H {
+        WasmClient.LiveScore.TeamH2H(
+            teamID: t.team.id,
+            teamName: t.team.name,
+            teamLogoURL: t.team.image,
+            form: t.form.map(mapUpcomingMatch),
+            recentCoach: t.recentCoach
+        )
+    }
+
+    /// Map the standalone `LivescoreUpcomingMatch` proto (used for H2H form
+    /// + previous meetings list rows) into the public `UpcomingMatch` shape.
+    /// `LivescoreUpcomingMatch` has flat fields (team1Name, team1Logo, …)
+    /// rather than the nested `home`/`away`/`competition` sub-messages on
+    /// `LivescoreMatchSummary`, so this mapper differs from `mapMatchSummary`.
+    private func mapUpcomingMatch(_ m: LivescoreUpcomingMatch) -> WasmClient.LiveScore.UpcomingMatch {
+        WasmClient.LiveScore.UpcomingMatch(
+            id: String(m.id),
+            homeTeam: m.team1Name, awayTeam: m.team2Name,
+            homeLogoURL: m.team1Logo, awayLogoURL: m.team2Logo,
+            kickoff: Date(timeIntervalSince1970: TimeInterval(m.datetime)),
+            competitionID: String(m.competitionID),
+            homeScore: Int(m.score1), awayScore: Int(m.score2),
+            status: WasmClient.LiveScore.MatchStatus(rawValue: m.status.rawValue) ?? .unspecified,
+            embedURL: m.url,
+            competitionImage: m.competitionImage,
+            competitionName: m.competitionName,
+            competitionRegion: m.competitionRegion
+        )
+    }
+
+    private func mapVideo(_ v: LivescoreVideo) -> WasmClient.LiveScore.Video {
+        WasmClient.LiveScore.Video(
+            id: v.id, title: v.title, embed: v.embed,
+            sourceID: v.sourceID, source: v.source,
+            sourceURL: v.sourceURL, image: v.image
+        )
+    }
+
     // MARK: - Scores by date
 
     func scoresByDate(date: String?) async throws -> [WasmClient.LiveScore.UpcomingMatch] {
@@ -187,16 +342,11 @@ extension WasmActor {
         return list.matches.map(mapMatchSummary)
     }
 
-    /// Map the nested `LivescoreMatchSummary` (home/away/competition
-    /// sub-messages) into the public flat `WasmClient.LiveScore.UpcomingMatch`
-    /// shape that consumer features already render. The consumer's
-    /// `LivescoreTeam` reads wire field 8 as `logoURL` (the reference's
-    /// `image`) — same bytes, different Swift property name.
     private func mapMatchSummary(_ m: LivescoreMatchSummary) -> WasmClient.LiveScore.UpcomingMatch {
         WasmClient.LiveScore.UpcomingMatch(
             id: String(m.id),
             homeTeam: m.home.name, awayTeam: m.away.name,
-            homeLogoURL: m.home.logoURL, awayLogoURL: m.away.logoURL,
+            homeLogoURL: m.home.image, awayLogoURL: m.away.image,
             kickoff: Date(timeIntervalSince1970: TimeInterval(m.datetime)),
             competitionID: String(m.competition.id),
             homeScore: Int(m.score1), awayScore: Int(m.score2),

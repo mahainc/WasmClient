@@ -568,6 +568,14 @@ public struct WasmClient: Sendable {
         _ date: String?
     ) async throws -> [WasmClient.LiveScore.UpcomingMatch]
 
+    /// Enriched match detail (events, lineups, statistics, predictions,
+    /// referee, venue, h2h, highlight videos). Independent of the `lsWebpage`
+    /// catalog flow — fetch this when opening the match detail screen for
+    /// a single fixture by id.
+    public var matchDetail: @Sendable (
+        _ id: String
+    ) async throws -> WasmClient.LiveScore.Match
+
     // MARK: - Survey
 
     /// Submit a completed survey. Builds the `qa_json` payload (a flat

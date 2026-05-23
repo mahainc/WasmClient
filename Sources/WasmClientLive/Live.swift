@@ -243,6 +243,9 @@ extension WasmClient: DependencyKey {
             scoresByDate: { date in
                 try await actor.scoresByDate(date: date)
             },
+            matchDetail: { id in
+                try await actor.matchDetail(id: id)
+            },
             submitSurvey: { questions, answers in
                 try await actor.submitSurvey(questions: questions, answers: answers)
             },
