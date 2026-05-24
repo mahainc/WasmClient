@@ -497,7 +497,14 @@ public struct WasmClient: Sendable {
     public var webpageLeagues: @Sendable () async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch the competitions directory as web pages (lsWebpage type=2).
-    public var webpageCompetitions: @Sendable () async throws -> [WasmClient.LiveScore.WebPage]
+    /// `q` runs a server-side full-text filter on name + region; `limit`/`offset`
+    /// drive offset-based pagination — stop when a response returns fewer than
+    /// `limit` rows. Backend clamps `limit` to `[1, 100]` (default 30 when nil).
+    public var webpageCompetitions: @Sendable (
+        _ q: String?,
+        _ limit: Int64?,
+        _ offset: Int64?
+    ) async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch the teams directory as web pages (lsWebpage type=3).
     /// `q` runs a server-side full-text filter; `limit`/`offset` drive
@@ -551,9 +558,12 @@ public struct WasmClient: Sendable {
     /// pagination — caller computes "has more" by comparing the returned
     /// count to `limit` (rows < limit ⇒ end of feed). `limit` is clamped
     /// server-side to `[1, 100]` (default 30); `q` is full-text search
-    /// (≤200 chars).
+    /// (≤200 chars). `competitionID` / `teamID` scope the feed to a single
+    /// entity — the backend treats them as mutually exclusive when both
+    /// are passed.
     public var webpageNews: @Sendable (
-        _ limit: Int64?, _ offset: Int64?, _ q: String?
+        _ limit: Int64?, _ offset: Int64?, _ q: String?,
+        _ competitionID: String?, _ teamID: String?
     ) async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch the global upcoming-matches feed (no date arg).
@@ -575,6 +585,32 @@ public struct WasmClient: Sendable {
     public var matchDetail: @Sendable (
         _ id: String
     ) async throws -> WasmClient.LiveScore.Match
+
+    /// Enriched competition detail (standings, stats, fixtures, top
+    /// scorers/assists). `id` is the competition slug (e.g.
+    /// `"competition/england-premier-league"`). Independent of the
+    /// `lsWebpage` catalog flow.
+    public var competitionDetail: @Sendable (
+        _ id: String
+    ) async throws -> WasmClient.LiveScore.Competition
+
+    /// Enriched team detail (aka, fixtures, results, tables). `id` is the
+    /// team slug (e.g. `"team/real-madrid"`). Independent of the `lsWebpage`
+    /// catalog flow.
+    public var teamDetail: @Sendable (
+        _ id: String
+    ) async throws -> WasmClient.LiveScore.Team
+
+    /// Subscribe to the live `/soccer/events` Server-Sent Events stream. Yields
+    /// `.connected` once the upstream connection is open, then `.update(_)` per
+    /// `MatchUpdate` delta (goals, status changes, kickoff, halftime,
+    /// full-time) as it arrives. The `.connected` event lets a consumer clear a
+    /// "reconnecting" banner even during a quiet period with no goals. The
+    /// stream runs until the consumer cancels it — dropping the `AsyncStream`
+    /// (or cancelling the iterating task) tears down the underlying wasm task.
+    /// Open/error paths finish the stream silently rather than throw, matching
+    /// the noop default.
+    public var liveMatchEvents: @Sendable () async -> AsyncStream<WasmClient.LiveScore.LiveEvent> = { AsyncStream { $0.finish() } }
 
     // MARK: - Survey
 

@@ -459,3 +459,348 @@ extension WasmClient.LiveScore {
         }
     }
 }
+
+// MARK: - Competition Detail
+
+extension WasmClient.LiveScore {
+    /// Country metadata attached to a `Competition`.
+    public struct Country: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let name: String
+        /// ISO 3166-1 alpha-2 (e.g. "GB"). Empty when the backend has no mapping.
+        public let iso2: String
+        public let imagePath: String
+
+        public init(
+            id: String = "", name: String = "",
+            iso2: String = "", imagePath: String = ""
+        ) {
+            self.id = id; self.name = name
+            self.iso2 = iso2; self.imagePath = imagePath
+        }
+    }
+
+    /// Minimal player reference (id + display name). Used inside `Topscorer`.
+    public struct Player: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let name: String
+
+        public init(id: String = "", name: String = "") {
+            self.id = id; self.name = name
+        }
+    }
+
+    /// Per-player row in a competition's top-scorers / top-assists list.
+    public struct Topscorer: Sendable, Equatable, Identifiable {
+        public let position: Int
+        public let total: Int
+        public let player: Player
+        public let teamID: String
+        public let teamName: String
+        public let teamLogoURL: String
+
+        public var id: String { "\(position)-\(player.id)" }
+
+        public init(
+            position: Int = 0, total: Int = 0,
+            player: Player = Player(),
+            teamID: String = "", teamName: String = "", teamLogoURL: String = ""
+        ) {
+            self.position = position; self.total = total
+            self.player = player
+            self.teamID = teamID; self.teamName = teamName
+            self.teamLogoURL = teamLogoURL
+        }
+    }
+
+    /// Aggregate W/D/L record for a single team in a standings row.
+    public struct StandingRecord: Sendable, Equatable {
+        public let played: Int
+        public let win: Int
+        public let draw: Int
+        public let loss: Int
+        public let goalsFor: Int
+        public let goalsAgainst: Int
+
+        public init(
+            played: Int = 0, win: Int = 0, draw: Int = 0, loss: Int = 0,
+            goalsFor: Int = 0, goalsAgainst: Int = 0
+        ) {
+            self.played = played; self.win = win; self.draw = draw; self.loss = loss
+            self.goalsFor = goalsFor; self.goalsAgainst = goalsAgainst
+        }
+    }
+
+    /// One row of a competition standings table.
+    public struct Standing: Sendable, Equatable, Identifiable {
+        public let position: Int
+        public let points: Int
+        public let goalsDiff: Int
+        /// Group label (e.g. "Group A"). Empty for league-table competitions.
+        public let groupName: String
+        /// Recent-form streak as a five-character string (e.g. "WWDLW").
+        public let form: String
+        public let teamID: String
+        public let teamName: String
+        public let teamLogoURL: String
+        public let all: StandingRecord
+
+        public var id: String { "\(groupName)-\(position)-\(teamID)" }
+
+        public init(
+            position: Int = 0, points: Int = 0, goalsDiff: Int = 0,
+            groupName: String = "", form: String = "",
+            teamID: String = "", teamName: String = "", teamLogoURL: String = "",
+            all: StandingRecord = StandingRecord()
+        ) {
+            self.position = position; self.points = points
+            self.goalsDiff = goalsDiff; self.groupName = groupName
+            self.form = form
+            self.teamID = teamID; self.teamName = teamName
+            self.teamLogoURL = teamLogoURL
+            self.all = all
+        }
+    }
+
+    /// Repeated `{count, score1, score2}` row in `CompetitionStats.commonScorelines`.
+    public struct CompetitionScoreline: Sendable, Equatable, Identifiable {
+        public let count: Int
+        public let score1: Int
+        public let score2: Int
+
+        public var id: String { "\(score1)-\(score2)" }
+
+        public init(count: Int = 0, score1: Int = 0, score2: Int = 0) {
+            self.count = count; self.score1 = score1; self.score2 = score2
+        }
+    }
+
+    /// Aggregate stats and ranked-player lists for a `Competition`.
+    /// `topScorers` / `topAssists` may be empty when the backend hasn't
+    /// populated them — render gracefully.
+    public struct CompetitionStats: Sendable, Equatable {
+        public let matches: Int
+        public let goals: Int
+        public let homeWins: Int
+        public let awayWins: Int
+        public let draws: Int
+        public let cleanSheets: Int
+        public let biggestWins: [UpcomingMatch]
+        public let commonScorelines: [CompetitionScoreline]
+        public let topScorers: [Topscorer]
+        public let topAssists: [Topscorer]
+
+        public var isEmpty: Bool {
+            matches == 0 && goals == 0
+                && biggestWins.isEmpty && commonScorelines.isEmpty
+                && topScorers.isEmpty && topAssists.isEmpty
+        }
+
+        public init(
+            matches: Int = 0, goals: Int = 0,
+            homeWins: Int = 0, awayWins: Int = 0, draws: Int = 0,
+            cleanSheets: Int = 0,
+            biggestWins: [UpcomingMatch] = [],
+            commonScorelines: [CompetitionScoreline] = [],
+            topScorers: [Topscorer] = [],
+            topAssists: [Topscorer] = []
+        ) {
+            self.matches = matches; self.goals = goals
+            self.homeWins = homeWins; self.awayWins = awayWins
+            self.draws = draws; self.cleanSheets = cleanSheets
+            self.biggestWins = biggestWins
+            self.commonScorelines = commonScorelines
+            self.topScorers = topScorers; self.topAssists = topAssists
+        }
+    }
+
+    /// Enriched competition payload returned by `lsCompetitionDetail`.
+    /// `id` is the stringified Scorebat numeric id; `slug` is the
+    /// `competition/...` form used by webpage / favourite flows.
+    public struct Competition: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let name: String
+        public let image: String
+        public let region: String
+        public let slug: String
+        public let seasonID: Int
+        public let country: Country
+        public let url: String
+        public let fixtures: [UpcomingMatch]
+        public let standings: [Standing]
+        public let stats: CompetitionStats
+        public let fetchedAt: String
+
+        public init(
+            id: String = "", name: String = "",
+            image: String = "", region: String = "",
+            slug: String = "", seasonID: Int = 0,
+            country: Country = Country(),
+            url: String = "",
+            fixtures: [UpcomingMatch] = [],
+            standings: [Standing] = [],
+            stats: CompetitionStats = CompetitionStats(),
+            fetchedAt: String = ""
+        ) {
+            self.id = id; self.name = name
+            self.image = image; self.region = region
+            self.slug = slug; self.seasonID = seasonID
+            self.country = country; self.url = url
+            self.fixtures = fixtures
+            self.standings = standings
+            self.stats = stats
+            self.fetchedAt = fetchedAt
+        }
+    }
+}
+
+// MARK: - Team Detail
+
+extension WasmClient.LiveScore {
+    /// Slim league reference attached to `Team.tables`. Mirrors
+    /// `LivescoreLeague` proto (id, name, countryID).
+    public struct League: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let name: String
+        public let countryID: String
+
+        public init(id: String = "", name: String = "", countryID: String = "") {
+            self.id = id; self.name = name; self.countryID = countryID
+        }
+    }
+
+    /// Enriched team payload returned by `lsTeamDetail`. The same struct
+    /// also fronts the `participant` rows inside `Standing` (with the
+    /// detail-only fields empty).
+    public struct Team: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let name: String
+        public let image: String
+        public let slug: String
+        public let url: String
+        public let countryName: String
+        public let countryID: String
+        public let national: Bool
+        /// Alternative names / nicknames (e.g. "The Gunners").
+        public let aka: [String]
+        public let fixtures: [UpcomingMatch]
+        public let results: [UpcomingMatch]
+        public let tables: [League]
+        public let fetchedAt: String
+
+        public init(
+            id: String = "", name: String = "",
+            image: String = "", slug: String = "",
+            url: String = "",
+            countryName: String = "", countryID: String = "",
+            national: Bool = false,
+            aka: [String] = [],
+            fixtures: [UpcomingMatch] = [],
+            results: [UpcomingMatch] = [],
+            tables: [League] = [],
+            fetchedAt: String = ""
+        ) {
+            self.id = id; self.name = name
+            self.image = image; self.slug = slug
+            self.url = url
+            self.countryName = countryName; self.countryID = countryID
+            self.national = national
+            self.aka = aka
+            self.fixtures = fixtures; self.results = results
+            self.tables = tables
+            self.fetchedAt = fetchedAt
+        }
+    }
+}
+
+// MARK: - Match Update (SSE)
+
+extension WasmClient.LiveScore {
+    /// Lifecycle trigger of a `MatchUpdate` SSE delta. Raw values mirror
+    /// the `LivescoreMatchUpdateType` proto so unknown values from a
+    /// newer backend fall back to `.unspecified`.
+    public enum MatchUpdateType: Int, Sendable, Equatable {
+        case unspecified = 0
+        case matchSoon = 1
+        case matchStart = 2
+        case goal = 3
+        case halftime = 4
+        case matchEnd = 5
+        case statusChange = 6
+    }
+
+    /// One side of a `MatchUpdate` carrying the team identity and the
+    /// score before/after the delta. `oldScore == newScore` for non-goal
+    /// deltas (status changes, kickoff, halftime, full-time).
+    public struct MatchUpdateSide: Sendable, Equatable {
+        public let teamID: String
+        public let teamName: String
+        public let teamLogoURL: String
+        public let oldScore: Int
+        public let newScore: Int
+
+        public init(
+            teamID: String = "", teamName: String = "", teamLogoURL: String = "",
+            oldScore: Int = 0, newScore: Int = 0
+        ) {
+            self.teamID = teamID; self.teamName = teamName
+            self.teamLogoURL = teamLogoURL
+            self.oldScore = oldScore; self.newScore = newScore
+        }
+    }
+
+    /// A single live-events delta surfaced by `liveMatchEvents()`.
+    /// `competition*` fields are flattened the same way `UpcomingMatch`
+    /// flattens them — the full standings/stats payload of the underlying
+    /// proto is intentionally dropped (deltas don't need it).
+    public struct MatchUpdate: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let home: MatchUpdateSide
+        public let away: MatchUpdateSide
+        public let competitionID: String
+        public let competitionName: String
+        public let competitionImage: String
+        public let competitionRegion: String
+        public let oldStatus: MatchStatus
+        public let newStatus: MatchStatus
+        public let eventType: MatchUpdateType
+        public let url: String
+        /// Decoded from the proto's `datetime` (UNIX seconds).
+        public let kickoff: Date
+
+        public init(
+            id: String = "",
+            home: MatchUpdateSide = MatchUpdateSide(),
+            away: MatchUpdateSide = MatchUpdateSide(),
+            competitionID: String = "",
+            competitionName: String = "",
+            competitionImage: String = "",
+            competitionRegion: String = "",
+            oldStatus: MatchStatus = .unspecified,
+            newStatus: MatchStatus = .unspecified,
+            eventType: MatchUpdateType = .unspecified,
+            url: String = "",
+            kickoff: Date = Date(timeIntervalSince1970: 0)
+        ) {
+            self.id = id
+            self.home = home; self.away = away
+            self.competitionID = competitionID
+            self.competitionName = competitionName
+            self.competitionImage = competitionImage
+            self.competitionRegion = competitionRegion
+            self.oldStatus = oldStatus; self.newStatus = newStatus
+            self.eventType = eventType
+            self.url = url; self.kickoff = kickoff
+        }
+    }
+
+    /// Connection-aware payload yielded by `liveMatchEvents()`. Emits
+    /// `.connected` once when the SSE connection opens, then `.update(_)`
+    /// per `match-update` delta. Consumers use `.connected` to clear a
+    /// "reconnecting" banner during a quiet period — an open-but-idle
+    /// stream would otherwise look identical to a still-disconnected one.
+    public enum LiveEvent: Sendable, Equatable {
+        case connected
+        case update(MatchUpdate)
+    }
+}

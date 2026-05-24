@@ -204,8 +204,8 @@ extension WasmClient: DependencyKey {
             webpageLeagues: {
                 try await actor.webpageLeagues()
             },
-            webpageCompetitions: {
-                try await actor.webpageCompetitions()
+            webpageCompetitions: { q, limit, offset in
+                try await actor.webpageCompetitions(q: q, limit: limit, offset: offset)
             },
             webpageTeams: { q, limit, offset, competitionId in
                 try await actor.webpageTeams(
@@ -234,8 +234,11 @@ extension WasmClient: DependencyKey {
                     pageSize: pageSize
                 )
             },
-            webpageNews: { limit, offset, q in
-                try await actor.webpageNews(limit: limit, offset: offset, q: q)
+            webpageNews: { limit, offset, q, competitionID, teamID in
+                try await actor.webpageNews(
+                    limit: limit, offset: offset, q: q,
+                    competitionID: competitionID, teamID: teamID
+                )
             },
             upcoming: {
                 try await actor.upcoming()
@@ -245,6 +248,15 @@ extension WasmClient: DependencyKey {
             },
             matchDetail: { id in
                 try await actor.matchDetail(id: id)
+            },
+            competitionDetail: { id in
+                try await actor.competitionDetail(id: id)
+            },
+            teamDetail: { id in
+                try await actor.teamDetail(id: id)
+            },
+            liveMatchEvents: {
+                await actor.liveMatchEvents()
             },
             submitSurvey: { questions, answers in
                 try await actor.submitSurvey(questions: questions, answers: answers)

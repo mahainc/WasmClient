@@ -76,6 +76,18 @@ extension WasmClient {
         /// proto with the full nested payload — independent of the `lsWebpage`
         /// catalog flow.
         case lsMatchDetail = "a7c9d1e3-8192-50ad-e4f6-71829304e5f6"
+        /// Enriched competition detail (standings, stats, fixtures, top
+        /// scorers/assists). Returns a `LivescoreCompetition` proto. Backed by
+        /// a single synchronous fetch — no WebPage involvement.
+        case lsCompetitionDetail = "e5a7b9c1-6f80-4e0b-c2d4-5f607182c3d4"
+        /// Enriched team detail (aka, fixtures, results, tables). Returns a
+        /// `LivescoreTeam` proto. Backed by a single synchronous fetch — no
+        /// WebPage involvement.
+        case lsTeamDetail = "f6b8c0d2-7081-4f1c-d3e5-60718293d4e5"
+        /// Server-Sent Events stream of `LivescoreMatchUpdate` deltas
+        /// (`/soccer/events`). The stream runs for the life of the wasm task
+        /// — cancel the consumer to close it.
+        case lsLiveEvents = "2417a638-d9a8-4394-9f3a-50add84e12d7"
         // Surveys
         case submitSurvey = "e7c3a1d0-8b4f-5d2e-9a1c-3f6e8d2b4a0c"
         // Notifications

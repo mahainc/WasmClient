@@ -98,14 +98,14 @@ extension WasmClient {
         categorizeClothes: { _ in Segment() },
         tryOn: { _, _ in "" },
         webpageLeagues: { [] },
-        webpageCompetitions: { [] },
+        webpageCompetitions: { _, _, _ in [] },
         webpageTeams: { _, _, _, _ in [] },
         webpage: { _ in [] },
         webpageDiscovers: { [] },
         webpageCompetition: { _ in nil },
         webpageTeam: { _ in nil },
         webpageVideos: { _, _, _, _, _, _ in [] },
-        webpageNews: { _, _, _ in [] },
+        webpageNews: { _, _, _, _, _ in [] },
         upcoming: { [] },
         scoresByDate: { _ in [] },
         matchDetail: { id in
@@ -121,6 +121,13 @@ extension WasmClient {
                 )
             )
         },
+        competitionDetail: { id in
+            WasmClient.LiveScore.Competition(id: id)
+        },
+        teamDetail: { id in
+            WasmClient.LiveScore.Team(id: id)
+        },
+        liveMatchEvents: { AsyncStream { $0.finish() } },
         submitSurvey: { _, _ in },
         setNotification: { _, _, _, _ in },
         getNotificationSettings: { NotificationSettings(enabled: false, topics: []) },
@@ -496,7 +503,7 @@ extension WasmClient {
         webpageLeagues: {
             [LiveScore.WebPage(id: "league/premier-league", title: "Premier League", subtitle: "England")]
         },
-        webpageCompetitions: {
+        webpageCompetitions: { _, _, _ in
             [LiveScore.WebPage(id: "competition/champions-league", title: "Champions League", subtitle: "UEFA")]
         },
         webpageTeams: { _, _, _, _ in
@@ -517,7 +524,7 @@ extension WasmClient {
         webpageVideos: { _, _, _, _, _, _ in
             [LiveScore.WebPage(id: "video/example", title: "Example Highlight", subtitle: "Premier League")]
         },
-        webpageNews: { _, _, _ in
+        webpageNews: { _, _, _, _, _ in
             [
                 LiveScore.WebPage(
                     id: "news/example",
@@ -599,6 +606,64 @@ extension WasmClient {
                 refereeName: "Michael Oliver",
                 venue: LiveScore.Venue(id: "9", name: "Emirates Stadium")
             )
+        },
+        competitionDetail: { id in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return LiveScore.Competition(
+                id: id,
+                name: "Premier League",
+                image: "",
+                region: "England",
+                slug: "competition/england-premier-league",
+                seasonID: 0,
+                country: LiveScore.Country(id: "1", name: "England", iso2: "GB"),
+                url: "",
+                fixtures: [],
+                standings: [],
+                stats: LiveScore.CompetitionStats()
+            )
+        },
+        teamDetail: { id in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return LiveScore.Team(
+                id: id,
+                name: "Arsenal",
+                image: "",
+                slug: "team/arsenal",
+                url: "",
+                countryName: "England",
+                countryID: "1",
+                national: false,
+                aka: ["The Gunners"]
+            )
+        },
+        liveMatchEvents: {
+            AsyncStream { continuation in
+                continuation.yield(.connected)
+                continuation.yield(
+                    .update(
+                        LiveScore.MatchUpdate(
+                            id: "1001",
+                            home: LiveScore.MatchUpdateSide(
+                                teamID: "team/arsenal", teamName: "Arsenal",
+                                oldScore: 0, newScore: 1
+                            ),
+                            away: LiveScore.MatchUpdateSide(
+                                teamID: "team/chelsea", teamName: "Chelsea",
+                                oldScore: 1, newScore: 1
+                            ),
+                            competitionID: "competition/england-premier-league",
+                            competitionName: "Premier League",
+                            competitionRegion: "England",
+                            oldStatus: .secondHalf,
+                            newStatus: .secondHalf,
+                            eventType: .goal,
+                            kickoff: Date()
+                        )
+                    )
+                )
+                continuation.finish()
+            }
         },
         submitSurvey: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)

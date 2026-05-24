@@ -39,8 +39,19 @@ extension WasmActor {
         try await webpageList(type: .leagues)
     }
 
-    func webpageCompetitions() async throws -> [WasmClient.LiveScore.WebPage] {
-        try await webpageList(type: .competitions)
+    /// Server-filtered competitions catalog. `q` runs a full-text filter on
+    /// name + region; `limit`/`offset` drive offset-based pagination — caller
+    /// should stop when a response returns fewer than `limit` rows.
+    func webpageCompetitions(
+        q: String? = nil,
+        limit: Int64? = nil,
+        offset: Int64? = nil
+    ) async throws -> [WasmClient.LiveScore.WebPage] {
+        var args: [String: Google_Protobuf_Value] = [:]
+        if let q, !q.isEmpty { args["q"] = Google_Protobuf_Value(stringValue: q) }
+        if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
+        if let offset { args["offset"] = Google_Protobuf_Value(numberValue: Double(offset)) }
+        return try await webpageList(type: .competitions, extraArgs: args)
     }
 
     /// Server-filtered teams catalog. `q` runs a full-text filter on
@@ -129,12 +140,20 @@ extension WasmActor {
     func webpageNews(
         limit: Int64? = nil,
         offset: Int64? = nil,
-        q: String? = nil
+        q: String? = nil,
+        competitionID: String? = nil,
+        teamID: String? = nil
     ) async throws -> [WasmClient.LiveScore.WebPage] {
         var args: [String: Google_Protobuf_Value] = [:]
         if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
         if let offset { args["offset"] = Google_Protobuf_Value(numberValue: Double(offset)) }
-        if let q { args["q"] = Google_Protobuf_Value(stringValue: q) }
+        if let q, !q.isEmpty { args["q"] = Google_Protobuf_Value(stringValue: q) }
+        if let competitionID, !competitionID.isEmpty {
+            args["competition_id"] = Google_Protobuf_Value(stringValue: competitionID)
+        }
+        if let teamID, !teamID.isEmpty {
+            args["team_id"] = Google_Protobuf_Value(stringValue: teamID)
+        }
         return try await webpageList(type: .news, extraArgs: args)
     }
 
@@ -362,6 +381,282 @@ extension WasmActor {
         WasmClient.LiveScore.WebPage(
             id: p.id, image: p.image, title: p.title,
             subtitle: p.subtitle, url: p.url
+        )
+    }
+
+    // MARK: - Competition Detail
+
+    /// Enriched competition payload (standings, stats, fixtures, top
+    /// scorers/assists). Backed by `lsCompetitionDetail` → `LivescoreCompetition`
+    /// proto. Independent of the WebPage flow.
+    func competitionDetail(id: String) async throws -> WasmClient.LiveScore.Competition {
+        let instance = try await readyEngine()
+        let action = try await instance.action(
+            for: WasmClient.ActionID.lsCompetitionDetail.rawValue,
+            strategy: .roundRobin
+        )
+        let args: [String: Google_Protobuf_Value] = [
+            "id": Google_Protobuf_Value(stringValue: id),
+        ]
+        let argsCopy = args
+        let task = try await Task.detached {
+            try await instance.create(action: action, args: argsCopy)
+        }.value
+        let taskStatus = task.status
+        guard taskStatus == .completed, task.hasValue else {
+            throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
+        }
+        let proto: LivescoreCompetition
+        do {
+            proto = try LivescoreCompetition(unpackingAny: task.value)
+        } catch {
+            logger("lsCompetitionDetail(id=\(id)) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreCompetition.protoMessageName) error=\(error)")
+            throw error
+        }
+        return mapCompetition(proto)
+    }
+
+    // MARK: - Team Detail
+
+    /// Enriched team payload (aka, fixtures, results, tables). Backed by
+    /// `lsTeamDetail` → `LivescoreTeam` proto. Independent of the WebPage flow.
+    func teamDetail(id: String) async throws -> WasmClient.LiveScore.Team {
+        let instance = try await readyEngine()
+        let action = try await instance.action(
+            for: WasmClient.ActionID.lsTeamDetail.rawValue,
+            strategy: .roundRobin
+        )
+        let args: [String: Google_Protobuf_Value] = [
+            "id": Google_Protobuf_Value(stringValue: id),
+        ]
+        let argsCopy = args
+        let task = try await Task.detached {
+            try await instance.create(action: action, args: argsCopy)
+        }.value
+        let taskStatus = task.status
+        guard taskStatus == .completed, task.hasValue else {
+            throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
+        }
+        let proto: LivescoreTeam
+        do {
+            proto = try LivescoreTeam(unpackingAny: task.value)
+        } catch {
+            logger("lsTeamDetail(id=\(id)) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreTeam.protoMessageName) error=\(error)")
+            throw error
+        }
+        return mapTeam(proto)
+    }
+
+    // MARK: - Live Match Events (SSE)
+
+    /// Open the `/soccer/events` SSE stream and yield each `MatchUpdate`
+    /// delta as it arrives. Mirrors `chatStream`'s SSE plumbing — mints a
+    /// `requestID`, installs an `AsyncifyWasmInternal.installSSEChunkHandler`
+    /// for that id, then launches a detached Task to drive
+    /// `engine.create(action:args:requestID:)`. The stream runs until the
+    /// consumer cancels it (drops the `AsyncStream` / cancels the iterating
+    /// task); the underlying wasm task stays `Processing` for the life of
+    /// the connection.
+    func liveMatchEvents() async -> AsyncStream<WasmClient.LiveScore.LiveEvent> {
+        let log = logger
+        let instance: any TaskWasmProtocol
+        do {
+            instance = try await readyEngine()
+        } catch {
+            log("liveMatchEvents: engine not ready — \(error)")
+            return AsyncStream { $0.finish() }
+        }
+        guard let engine = instance as? TaskWasmEngine else {
+            log("liveMatchEvents: engine type is not TaskWasmEngine")
+            return AsyncStream { $0.finish() }
+        }
+        let action: WaTAction
+        do {
+            action = try await engine.action(
+                for: WasmClient.ActionID.lsLiveEvents.rawValue,
+                strategy: .roundRobin
+            )
+        } catch {
+            log("liveMatchEvents: action resolve failed — \(error)")
+            return AsyncStream { $0.finish() }
+        }
+
+        let requestID = UUID().uuidString
+        return AsyncStream { continuation in
+            AsyncifyWasmInternal.installSSEChunkHandler(for: requestID) { chunk in
+                guard let data = chunk.data(using: .utf8),
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      (json["event"] as? String) == "match-update",
+                      let b64 = json["data"] as? String,
+                      let protoBytes = Data(base64Encoded: b64),
+                      let update = try? LivescoreMatchUpdate(serializedBytes: protoBytes)
+                else { return }
+                continuation.yield(.update(Self.mapMatchUpdate(update)))
+            }
+
+            // `create` returns on the FIRST task status from the SSE executor
+            // (`.processing`, after the connection opens) while real chunks keep
+            // arriving via the `sse_chunk` host import for the life of the
+            // stream. The pump must hold open past that early return — otherwise
+            // `continuation.finish()` runs immediately, `onTermination` removes
+            // the chunk handler, and every subsequent SSE event is silently
+            // dropped. Cancelled via `onTermination` → `pump.cancel()`.
+            let pump = Task.detached {
+                do {
+                    let task = try await engine.create(action: action, args: [:], requestID: requestID)
+                    if task.status == .processing {
+                        // Connection is open — surface it so the consumer can
+                        // clear "reconnecting" UI before any chunk arrives.
+                        continuation.yield(.connected)
+                        while !Task.isCancelled {
+                            try await Task.sleep(nanoseconds: 1_000_000_000)
+                        }
+                    }
+                } catch {
+                    log("liveMatchEvents: create failed — \(error)")
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in
+                pump.cancel()
+                AsyncifyWasmInternal.removeSSEChunkHandler(for: requestID)
+            }
+        }
+    }
+
+    // MARK: - Competition / Team / MatchUpdate mappers
+
+    private func mapCompetition(_ p: LivescoreCompetition) -> WasmClient.LiveScore.Competition {
+        WasmClient.LiveScore.Competition(
+            id: String(p.id),
+            name: p.name,
+            image: p.image,
+            region: p.region,
+            slug: p.slug,
+            seasonID: Int(p.seasonID),
+            country: mapCountry(p.country),
+            url: p.url,
+            fixtures: p.fixtures.map(mapUpcomingMatch),
+            standings: p.standings.map(mapStanding),
+            stats: mapCompetitionStats(p.stats),
+            fetchedAt: p.fetchedAt
+        )
+    }
+
+    private func mapCountry(_ c: LivescoreCountry) -> WasmClient.LiveScore.Country {
+        WasmClient.LiveScore.Country(
+            id: c.id, name: c.name,
+            iso2: c.iso2, imagePath: c.imagePath
+        )
+    }
+
+    private func mapStanding(_ s: LivescoreStanding) -> WasmClient.LiveScore.Standing {
+        WasmClient.LiveScore.Standing(
+            position: Int(s.position),
+            points: Int(s.points),
+            goalsDiff: Int(s.goalsDiff),
+            groupName: s.groupName,
+            form: s.form,
+            teamID: s.participant.id,
+            teamName: s.participant.name,
+            teamLogoURL: s.participant.image,
+            all: mapStandingRecord(s.all)
+        )
+    }
+
+    private func mapStandingRecord(_ r: LivescoreStandingRecord) -> WasmClient.LiveScore.StandingRecord {
+        WasmClient.LiveScore.StandingRecord(
+            played: Int(r.played),
+            win: Int(r.win),
+            draw: Int(r.draw),
+            loss: Int(r.lose),
+            goalsFor: Int(r.goalsFor),
+            goalsAgainst: Int(r.goalsAgainst)
+        )
+    }
+
+    private func mapCompetitionStats(_ s: LivescoreCompetitionStats) -> WasmClient.LiveScore.CompetitionStats {
+        WasmClient.LiveScore.CompetitionStats(
+            matches: Int(s.matches),
+            goals: Int(s.goals),
+            homeWins: Int(s.homeWins),
+            awayWins: Int(s.awayWins),
+            draws: Int(s.draws),
+            cleanSheets: Int(s.cleanSheets),
+            biggestWins: s.biggestWins.map(mapUpcomingMatch),
+            commonScorelines: s.commonScorelines.map(mapCompetitionScoreline),
+            topScorers: s.topScorers.map(mapTopscorer),
+            topAssists: s.topAssists.map(mapTopscorer)
+        )
+    }
+
+    private func mapCompetitionScoreline(_ s: LivescoreCompetitionScoreline) -> WasmClient.LiveScore.CompetitionScoreline {
+        WasmClient.LiveScore.CompetitionScoreline(
+            count: Int(s.count),
+            score1: Int(s.score1),
+            score2: Int(s.score2)
+        )
+    }
+
+    private func mapTopscorer(_ t: LivescoreTopscorer) -> WasmClient.LiveScore.Topscorer {
+        WasmClient.LiveScore.Topscorer(
+            position: Int(t.position),
+            total: Int(t.total),
+            player: WasmClient.LiveScore.Player(id: t.player.id, name: t.player.name),
+            teamID: t.team.id,
+            teamName: t.team.name,
+            teamLogoURL: t.team.image
+        )
+    }
+
+    private func mapTeam(_ t: LivescoreTeam) -> WasmClient.LiveScore.Team {
+        WasmClient.LiveScore.Team(
+            id: t.id,
+            name: t.name,
+            image: t.image,
+            slug: t.slug,
+            url: t.url,
+            countryName: t.countryName,
+            countryID: t.countryID,
+            national: t.national,
+            aka: t.aka,
+            fixtures: t.fixtures.map(mapUpcomingMatch),
+            results: t.results.map(mapUpcomingMatch),
+            tables: t.tables.map(mapLeague),
+            fetchedAt: t.fetchedAt
+        )
+    }
+
+    private func mapLeague(_ l: LivescoreLeague) -> WasmClient.LiveScore.League {
+        WasmClient.LiveScore.League(
+            id: l.id, name: l.name, countryID: l.countryID
+        )
+    }
+
+    private static func mapMatchUpdate(_ u: LivescoreMatchUpdate) -> WasmClient.LiveScore.MatchUpdate {
+        WasmClient.LiveScore.MatchUpdate(
+            id: String(u.id),
+            home: mapMatchUpdateSide(u.home),
+            away: mapMatchUpdateSide(u.away),
+            competitionID: String(u.competition.id),
+            competitionName: u.competition.name,
+            competitionImage: u.competition.image,
+            competitionRegion: u.competition.region,
+            oldStatus: WasmClient.LiveScore.MatchStatus(rawValue: u.oldStatus.rawValue) ?? .unspecified,
+            newStatus: WasmClient.LiveScore.MatchStatus(rawValue: u.newStatus.rawValue) ?? .unspecified,
+            eventType: WasmClient.LiveScore.MatchUpdateType(rawValue: u.eventType.rawValue) ?? .unspecified,
+            url: u.url,
+            kickoff: Date(timeIntervalSince1970: TimeInterval(u.datetime))
+        )
+    }
+
+    private static func mapMatchUpdateSide(_ s: LivescoreMatchUpdateSide) -> WasmClient.LiveScore.MatchUpdateSide {
+        WasmClient.LiveScore.MatchUpdateSide(
+            teamID: s.team.id,
+            teamName: s.team.name,
+            teamLogoURL: s.team.image,
+            oldScore: Int(s.oldScore),
+            newScore: Int(s.newScore)
         )
     }
 }
