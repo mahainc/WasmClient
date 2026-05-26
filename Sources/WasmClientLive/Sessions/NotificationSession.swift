@@ -34,6 +34,11 @@ extension WasmActor {
         if !liveActivityToken.isEmpty {
             args["live_activity_token"] = Google_Protobuf_Value(stringValue: liveActivityToken)
         }
+        // Must match the on-device `ActivityAttributes` struct name in
+        // app773-live-score (see Features/Sources/LiveMatchAttributes); the
+        // backend uses this as the APNs `attributes-type` header for
+        // push-to-start and iOS silently drops mismatches.
+        args["live_activity_attributes_type"] = Google_Protobuf_Value(stringValue: "LiveMatchAttributes")
 
         let argsCopy = args
         let task = try await Task.detached {
