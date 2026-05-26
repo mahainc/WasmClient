@@ -30,28 +30,76 @@ trap 'rm -rf "$LOCK_DIR"' EXIT
 # casting failures when Xcode builds the app with a debug dylib.
 EXCLUDE="FlowKit.swiftmodule"
 
-# Search known xcframework locations (local dev + dependency consumer).
+# Search known xcframework locations.
+# Three resolver layouts to cover:
+#   - swift build       → $PACKAGE_DIR/.build/artifacts/<pkg>/FlowKit/
+#   - xcodebuild default DerivedData → $HOME/Library/Developer/Xcode/DerivedData/<proj>-<hash>/SourcePackages/artifacts/<pkg>/FlowKit/
+#   - xcodebuild -clonedSourcePackagesDirPath PATH → PATH/artifacts/<pkg>/FlowKit/
+#   - xcodebuild -derivedDataPath PATH → PATH/SourcePackages/artifacts/<pkg>/FlowKit/
+# <pkg> varies by manifest name (wasmclient, flow-kit, flowkitpackage).
+PKG_NAMES=("wasmclient" "flow-kit" "flowkitpackage")
 XCFW=""
-for candidate in \
-  "$PACKAGE_DIR/.build/artifacts/wasmclient/FlowKit/FlowKit.xcframework" \
-  "$PACKAGE_DIR/.build/artifacts/flow-kit/FlowKit/FlowKit.xcframework" \
-  "$PACKAGE_DIR/.build/artifacts/flowkitpackage/FlowKit/FlowKit.xcframework" \
-  "$PACKAGE_DIR/../../artifacts/wasmclient/FlowKit/FlowKit.xcframework" \
-  "$PACKAGE_DIR/../../artifacts/flow-kit/FlowKit/FlowKit.xcframework" \
-  "$PACKAGE_DIR/../../artifacts/flowkitpackage/FlowKit/FlowKit.xcframework"; do
-  if [ -d "$candidate" ]; then
-    XCFW="$candidate"
-    break
-  fi
+
+find_in_root() {
+  local root="$1"
+  local variant
+  local owner
+  for variant in "SourcePackages/artifacts" "artifacts"; do
+    for owner in "${PKG_NAMES[@]}"; do
+      local candidate="$root/$variant/$owner/FlowKit/FlowKit.xcframework"
+      if [ -d "$candidate" ]; then
+        echo "$candidate"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
+# 1) WasmClient-local checkouts.
+for owner in "${PKG_NAMES[@]}"; do
+  candidate="$PACKAGE_DIR/.build/artifacts/$owner/FlowKit/FlowKit.xcframework"
+  if [ -d "$candidate" ]; then XCFW="$candidate"; break; fi
 done
 
+# 2) Sibling-package artifacts dir (older layouts).
+if [ -z "$XCFW" ]; then
+  for owner in "${PKG_NAMES[@]}"; do
+    candidate="$PACKAGE_DIR/../../artifacts/$owner/FlowKit/FlowKit.xcframework"
+    if [ -d "$candidate" ]; then XCFW="$candidate"; break; fi
+  done
+fi
+
+# 3) Xcode build env vars (when invoked as a build phase / SPM plugin).
+#    BUILD_DIR usually = .../Build/Products/<config>-<sdk>; SourcePackages sits
+#    next to Build/. OBJROOT = .../Build/Intermediates.noindex. Walk a couple
+#    of parent levels in case Xcode's layout changes.
+if [ -z "$XCFW" ]; then
+  ENV_ROOTS=()
+  [ -n "${BUILD_DIR:-}" ] && ENV_ROOTS+=("$BUILD_DIR/../.." "$BUILD_DIR/..")
+  [ -n "${OBJROOT:-}" ]   && ENV_ROOTS+=("$OBJROOT/..")
+  [ -n "${SYMROOT:-}" ]   && ENV_ROOTS+=("$SYMROOT/..")
+  if [ "${#ENV_ROOTS[@]}" -gt 0 ]; then
+    for envroot in "${ENV_ROOTS[@]}"; do
+      candidate=$(find_in_root "$envroot" || true)
+      if [ -n "$candidate" ]; then XCFW="$candidate"; break; fi
+    done
+  fi
+fi
+
+# 4) Broad fallback — find under known DerivedData / temp roots.
+#    Capped maxdepth keeps this cheap even when /tmp is busy.
 if [ -z "$XCFW" ]; then
   while IFS= read -r candidate; do
-    if [ -d "$candidate" ]; then
-      XCFW="$candidate"
-      break
-    fi
-  done < <(find "$HOME/Library/Developer/Xcode/DerivedData" \( -path '*/SourcePackages/artifacts/wasmclient/FlowKit/FlowKit.xcframework' -o -path '*/SourcePackages/artifacts/flowkitpackage/FlowKit/FlowKit.xcframework' \) -type d 2>/dev/null | sort)
+    if [ -d "$candidate" ]; then XCFW="$candidate"; break; fi
+  done < <(find \
+    "$HOME/Library/Developer/Xcode/DerivedData" \
+    "${TMPDIR:-/tmp}" \
+    /tmp \
+    -maxdepth 8 \
+    \( -path '*/SourcePackages/artifacts/*/FlowKit/FlowKit.xcframework' \
+       -o -path '*/artifacts/*/FlowKit/FlowKit.xcframework' \) \
+    -type d 2>/dev/null | sort -u)
 fi
 
 if [ -z "$XCFW" ]; then
