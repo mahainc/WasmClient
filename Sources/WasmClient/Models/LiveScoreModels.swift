@@ -64,13 +64,13 @@ extension WasmClient.LiveScore {
     }
 }
 
-// MARK: - Livescore Upcoming
+// MARK: - Livescore MatchSummary
 
 extension WasmClient.LiveScore {
     /// A single upcoming match returned by `lsUpcoming` / `lsScores`. Mirrors
-    /// the `LivescoreUpcomingMatch` proto, with the UNIX `datetime` field
+    /// the `LivescoreMatchSummary` proto, with the UNIX `datetime` field
     /// decoded to a `Date` so consumers don't deal with the raw integer.
-    public struct UpcomingMatch: Sendable, Equatable, Identifiable {
+    public struct MatchSummary: Sendable, Equatable, Identifiable {
         /// String form of the Scorebat match id, suitable for `Identifiable`.
         public let id: String
         public let homeTeam: String
@@ -222,7 +222,7 @@ extension WasmClient.LiveScore {
     /// Most nested fields can be empty when the backend has nothing — the
     /// View must tolerate empty arrays / empty strings.
     public struct Match: Sendable, Equatable, Identifiable {
-        public let summary: UpcomingMatch
+        public let summary: MatchSummary
         public let events: [MatchEvent]
         public let lineups: Lineups
         public let statistics: [FixtureStatistic]
@@ -235,7 +235,7 @@ extension WasmClient.LiveScore {
         public var id: String { summary.id }
 
         public init(
-            summary: UpcomingMatch,
+            summary: MatchSummary,
             events: [MatchEvent] = [],
             lineups: Lineups = Lineups(),
             statistics: [FixtureStatistic] = [],
@@ -370,11 +370,36 @@ extension WasmClient.LiveScore {
     public struct Venue: Sendable, Equatable {
         public let id: String
         public let name: String
+        /// City the venue is located in. Empty when the backend has no mapping.
+        public let city: String
+        /// Country metadata for the venue. Empty `Country()` when unavailable.
+        public let country: Country
+        /// Stadium capacity. 0 when the backend hasn't populated it.
+        public let capacity: Int
+        /// Stadium photo URL. Empty when unavailable.
+        public let imageURL: String
+        /// Playing surface (e.g. "grass", "artificial"). Empty when unknown.
+        public let surface: String
+        public let latitude: Double
+        public let longitude: Double
+        public let address: String
 
         public var isEmpty: Bool { id.isEmpty && name.isEmpty }
 
-        public init(id: String = "", name: String = "") {
+        public init(
+            id: String = "", name: String = "",
+            city: String = "", country: Country = Country(),
+            capacity: Int = 0, imageURL: String = "",
+            surface: String = "",
+            latitude: Double = 0, longitude: Double = 0,
+            address: String = ""
+        ) {
             self.id = id; self.name = name
+            self.city = city; self.country = country
+            self.capacity = capacity; self.imageURL = imageURL
+            self.surface = surface
+            self.latitude = latitude; self.longitude = longitude
+            self.address = address
         }
     }
 
@@ -403,7 +428,7 @@ extension WasmClient.LiveScore {
     public struct H2H: Sendable, Equatable {
         public let home: TeamH2H
         public let away: TeamH2H
-        public let between: [UpcomingMatch]
+        public let between: [MatchSummary]
 
         public var isEmpty: Bool {
             home.form.isEmpty && away.form.isEmpty && between.isEmpty
@@ -411,7 +436,7 @@ extension WasmClient.LiveScore {
 
         public init(
             home: TeamH2H = TeamH2H(), away: TeamH2H = TeamH2H(),
-            between: [UpcomingMatch] = []
+            between: [MatchSummary] = []
         ) {
             self.home = home; self.away = away; self.between = between
         }
@@ -421,14 +446,14 @@ extension WasmClient.LiveScore {
         public let teamID: String
         public let teamName: String
         public let teamLogoURL: String
-        public let form: [UpcomingMatch]
+        public let form: [MatchSummary]
         public let recentCoach: String
 
         public var id: String { teamID }
 
         public init(
             teamID: String = "", teamName: String = "", teamLogoURL: String = "",
-            form: [UpcomingMatch] = [], recentCoach: String = ""
+            form: [MatchSummary] = [], recentCoach: String = ""
         ) {
             self.teamID = teamID; self.teamName = teamName
             self.teamLogoURL = teamLogoURL; self.form = form
@@ -469,14 +494,29 @@ extension WasmClient.LiveScore {
         public let name: String
         /// ISO 3166-1 alpha-2 (e.g. "GB"). Empty when the backend has no mapping.
         public let iso2: String
+        /// ISO 3166-1 alpha-3 (e.g. "GBR"). Empty when unavailable.
+        public let iso3: String
+        /// FIFA country identifier (e.g. "ENG"). Empty when unavailable.
+        public let fifaName: String
+        /// Continent label (e.g. "Europe"). Empty when unavailable.
+        public let continentName: String
+        /// Continent code (e.g. "EU"). Empty when unavailable.
+        public let continentCode: String
         public let imagePath: String
 
         public init(
             id: String = "", name: String = "",
-            iso2: String = "", imagePath: String = ""
+            iso2: String = "", iso3: String = "",
+            fifaName: String = "",
+            continentName: String = "", continentCode: String = "",
+            imagePath: String = ""
         ) {
             self.id = id; self.name = name
-            self.iso2 = iso2; self.imagePath = imagePath
+            self.iso2 = iso2; self.iso3 = iso3
+            self.fifaName = fifaName
+            self.continentName = continentName
+            self.continentCode = continentCode
+            self.imagePath = imagePath
         }
     }
 
@@ -585,7 +625,7 @@ extension WasmClient.LiveScore {
         public let awayWins: Int
         public let draws: Int
         public let cleanSheets: Int
-        public let biggestWins: [UpcomingMatch]
+        public let biggestWins: [MatchSummary]
         public let commonScorelines: [CompetitionScoreline]
         public let topScorers: [Topscorer]
         public let topAssists: [Topscorer]
@@ -600,7 +640,7 @@ extension WasmClient.LiveScore {
             matches: Int = 0, goals: Int = 0,
             homeWins: Int = 0, awayWins: Int = 0, draws: Int = 0,
             cleanSheets: Int = 0,
-            biggestWins: [UpcomingMatch] = [],
+            biggestWins: [MatchSummary] = [],
             commonScorelines: [CompetitionScoreline] = [],
             topScorers: [Topscorer] = [],
             topAssists: [Topscorer] = []
@@ -626,7 +666,7 @@ extension WasmClient.LiveScore {
         public let seasonID: Int
         public let country: Country
         public let url: String
-        public let fixtures: [UpcomingMatch]
+        public let fixtures: [MatchSummary]
         public let standings: [Standing]
         public let stats: CompetitionStats
         public let fetchedAt: String
@@ -637,7 +677,7 @@ extension WasmClient.LiveScore {
             slug: String = "", seasonID: Int = 0,
             country: Country = Country(),
             url: String = "",
-            fixtures: [UpcomingMatch] = [],
+            fixtures: [MatchSummary] = [],
             standings: [Standing] = [],
             stats: CompetitionStats = CompetitionStats(),
             fetchedAt: String = ""
@@ -683,8 +723,8 @@ extension WasmClient.LiveScore {
         public let national: Bool
         /// Alternative names / nicknames (e.g. "The Gunners").
         public let aka: [String]
-        public let fixtures: [UpcomingMatch]
-        public let results: [UpcomingMatch]
+        public let fixtures: [MatchSummary]
+        public let results: [MatchSummary]
         public let tables: [League]
         public let fetchedAt: String
 
@@ -695,8 +735,8 @@ extension WasmClient.LiveScore {
             countryName: String = "", countryID: String = "",
             national: Bool = false,
             aka: [String] = [],
-            fixtures: [UpcomingMatch] = [],
-            results: [UpcomingMatch] = [],
+            fixtures: [MatchSummary] = [],
+            results: [MatchSummary] = [],
             tables: [League] = [],
             fetchedAt: String = ""
         ) {
@@ -750,7 +790,7 @@ extension WasmClient.LiveScore {
     }
 
     /// A single live-events delta surfaced by `liveMatchEvents()`.
-    /// `competition*` fields are flattened the same way `UpcomingMatch`
+    /// `competition*` fields are flattened the same way `MatchSummary`
     /// flattens them — the full standings/stats payload of the underlying
     /// proto is intentionally dropped (deltas don't need it).
     public struct MatchUpdate: Sendable, Equatable, Identifiable {

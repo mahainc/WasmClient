@@ -110,7 +110,7 @@ extension WasmClient {
         scoresByDate: { _ in [] },
         matchDetail: { id in
             WasmClient.LiveScore.Match(
-                summary: WasmClient.LiveScore.UpcomingMatch(
+                summary: WasmClient.LiveScore.MatchSummary(
                     id: id,
                     homeTeam: "", awayTeam: "",
                     homeLogoURL: "", awayLogoURL: "",
@@ -536,7 +536,7 @@ extension WasmClient {
         },
         upcoming: {
             [
-                LiveScore.UpcomingMatch(
+                LiveScore.MatchSummary(
                     id: "1",
                     homeTeam: "PSG", awayTeam: "Bayern Munich",
                     homeLogoURL: "", awayLogoURL: "",
@@ -549,7 +549,7 @@ extension WasmClient {
         },
         scoresByDate: { _ in
             [
-                LiveScore.UpcomingMatch(
+                LiveScore.MatchSummary(
                     id: "2",
                     homeTeam: "Arsenal", awayTeam: "Chelsea",
                     homeLogoURL: "", awayLogoURL: "",
@@ -566,7 +566,7 @@ extension WasmClient {
         matchDetail: { id in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return LiveScore.Match(
-                summary: LiveScore.UpcomingMatch(
+                summary: LiveScore.MatchSummary(
                     id: id,
                     homeTeam: "Arsenal", awayTeam: "Chelsea",
                     homeLogoURL: "", awayLogoURL: "",

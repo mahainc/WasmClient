@@ -567,8 +567,8 @@ public struct WasmClient: Sendable {
     ) async throws -> [WasmClient.LiveScore.WebPage]
 
     /// Fetch the global upcoming-matches feed (no date arg).
-    /// Backed by `lsUpcoming` action returning `LivescoreUpcomingMatchList`.
-    public var upcoming: @Sendable () async throws -> [WasmClient.LiveScore.UpcomingMatch]
+    /// Backed by `lsUpcoming` action returning `LivescoreMatchSummaryList`.
+    public var upcoming: @Sendable () async throws -> [WasmClient.LiveScore.MatchSummary]
 
     /// Fetch matches for the given date (YYYY-MM-DD). Pass `nil` for "today" —
     /// the backend resolves it from the JWT `tz` claim (set in flowOptions
@@ -576,7 +576,7 @@ public struct WasmClient: Sendable {
     /// `competition{Image,Name,Region}` server-side.
     public var scoresByDate: @Sendable (
         _ date: String?
-    ) async throws -> [WasmClient.LiveScore.UpcomingMatch]
+    ) async throws -> [WasmClient.LiveScore.MatchSummary]
 
     /// Enriched match detail (events, lineups, statistics, predictions,
     /// referee, venue, h2h, highlight videos). Independent of the `lsWebpage`

@@ -544,7 +544,16 @@ public struct LivescoreCountry: Sendable {
 
   public var iso2: String = String()
 
+  /// flag URL
   public var imagePath: String = String()
+
+  public var iso3: String = String()
+
+  public var fifaName: String = String()
+
+  public var continentName: String = String()
+
+  public var continentCode: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -561,50 +570,6 @@ public struct LivescoreLeague: Sendable {
   public var name: String = String()
 
   public var countryID: String = String()
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-/// Flat upcoming/scores match row — backs `/soccer/upcoming` and the
-/// `scorebat:upcoming` cache. Kept flat by design.
-public struct LivescoreUpcomingMatch: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var id: Int64 = 0
-
-  public var team1Name: String = String()
-
-  public var team2Name: String = String()
-
-  public var team1Logo: String = String()
-
-  public var team2Logo: String = String()
-
-  public var team1ID: Int64 = 0
-
-  public var team2ID: Int64 = 0
-
-  public var datetime: Int64 = 0
-
-  public var competitionID: Int64 = 0
-
-  public var competitionName: String = String()
-
-  public var competitionImage: String = String()
-
-  public var competitionRegion: String = String()
-
-  public var score1: Int64 = 0
-
-  public var score2: Int64 = 0
-
-  public var status: LivescoreMatchStatus = .unspecified
-
-  public var url: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -634,9 +599,9 @@ public struct LivescoreTeam: Sendable {
 
   public var aka: [String] = []
 
-  public var fixtures: [LivescoreUpcomingMatch] = []
+  public var fixtures: [LivescoreMatchSummary] = []
 
-  public var results: [LivescoreUpcomingMatch] = []
+  public var results: [LivescoreMatchSummary] = []
 
   public var tables: [LivescoreLeague] = []
 
@@ -811,7 +776,7 @@ public struct LivescoreCompetitionStats: Sendable {
 
   public var cleanSheets: Int64 = 0
 
-  public var biggestWins: [LivescoreUpcomingMatch] = []
+  public var biggestWins: [LivescoreMatchSummary] = []
 
   public var commonScorelines: [LivescoreCompetitionScoreline] = []
 
@@ -868,7 +833,7 @@ public struct LivescoreCompetition: @unchecked Sendable {
   /// Clears the value of `country`. Subsequent reads from it will return its default value.
   public mutating func clearCountry() {_uniqueStorage()._country = nil}
 
-  public var fixtures: [LivescoreUpcomingMatch] {
+  public var fixtures: [LivescoreMatchSummary] {
     get {_storage._fixtures}
     set {_uniqueStorage()._fixtures = newValue}
   }
@@ -1247,18 +1212,74 @@ public struct LivescoreReferee: Sendable {
   public init() {}
 }
 
-public struct LivescoreVenue: Sendable {
+public struct LivescoreVenue: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var id: String = String()
+  /// scorebat vnId
+  public var id: String {
+    get {_storage._id}
+    set {_uniqueStorage()._id = newValue}
+  }
 
-  public var name: String = String()
+  /// scorebat vn
+  public var name: String {
+    get {_storage._name}
+    set {_uniqueStorage()._name = newValue}
+  }
+
+  public var city: String {
+    get {_storage._city}
+    set {_uniqueStorage()._city = newValue}
+  }
+
+  /// nested; same Country shape used by Competition
+  public var country: LivescoreCountry {
+    get {_storage._country ?? LivescoreCountry()}
+    set {_uniqueStorage()._country = newValue}
+  }
+  /// Returns true if `country` has been explicitly set.
+  public var hasCountry: Bool {_storage._country != nil}
+  /// Clears the value of `country`. Subsequent reads from it will return its default value.
+  public mutating func clearCountry() {_uniqueStorage()._country = nil}
+
+  public var capacity: Int32 {
+    get {_storage._capacity}
+    set {_uniqueStorage()._capacity = newValue}
+  }
+
+  /// venue photo
+  public var imageURL: String {
+    get {_storage._imageURL}
+    set {_uniqueStorage()._imageURL = newValue}
+  }
+
+  public var surface: String {
+    get {_storage._surface}
+    set {_uniqueStorage()._surface = newValue}
+  }
+
+  public var latitude: Double {
+    get {_storage._latitude}
+    set {_uniqueStorage()._latitude = newValue}
+  }
+
+  public var longitude: Double {
+    get {_storage._longitude}
+    set {_uniqueStorage()._longitude = newValue}
+  }
+
+  public var address: String {
+    get {_storage._address}
+    set {_uniqueStorage()._address = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct LivescorePredictionPercent: Sendable {
@@ -1347,7 +1368,7 @@ public struct LivescoreTeamH2H: Sendable {
   /// Clears the value of `team`. Subsequent reads from it will return its default value.
   public mutating func clearTeam() {self._team = nil}
 
-  public var form: [LivescoreUpcomingMatch] = []
+  public var form: [LivescoreMatchSummary] = []
 
   public var topContributors: [LivescoreTopscorer] = []
 
@@ -1383,7 +1404,7 @@ public struct LivescoreH2H: @unchecked Sendable {
   /// Clears the value of `away`. Subsequent reads from it will return its default value.
   public mutating func clearAway() {_uniqueStorage()._away = nil}
 
-  public var between: [LivescoreUpcomingMatch] {
+  public var between: [LivescoreMatchSummary] {
     get {_storage._between}
     set {_uniqueStorage()._between = newValue}
   }
@@ -1584,18 +1605,6 @@ public struct LivescoreWebPageList: Sendable {
   public init() {}
 }
 
-public struct LivescoreUpcomingMatchList: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var matches: [LivescoreUpcomingMatch] = []
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
 public struct LivescoreMatchSummaryList: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1638,7 +1647,7 @@ extension LivescoreWebPageType: SwiftProtobuf._ProtoNameProviding {
 
 extension LivescoreCountry: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Country"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}iso2\0\u{3}image_path\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}iso2\0\u{3}image_path\0\u{1}iso3\0\u{3}fifa_name\0\u{3}continent_name\0\u{3}continent_code\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1650,6 +1659,10 @@ extension LivescoreCountry: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.iso2) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.imagePath) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.iso3) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.fifaName) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.continentName) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.continentCode) }()
       default: break
       }
     }
@@ -1668,6 +1681,18 @@ extension LivescoreCountry: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if !self.imagePath.isEmpty {
       try visitor.visitSingularStringField(value: self.imagePath, fieldNumber: 4)
     }
+    if !self.iso3.isEmpty {
+      try visitor.visitSingularStringField(value: self.iso3, fieldNumber: 5)
+    }
+    if !self.fifaName.isEmpty {
+      try visitor.visitSingularStringField(value: self.fifaName, fieldNumber: 6)
+    }
+    if !self.continentName.isEmpty {
+      try visitor.visitSingularStringField(value: self.continentName, fieldNumber: 7)
+    }
+    if !self.continentCode.isEmpty {
+      try visitor.visitSingularStringField(value: self.continentCode, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1676,6 +1701,10 @@ extension LivescoreCountry: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if lhs.name != rhs.name {return false}
     if lhs.iso2 != rhs.iso2 {return false}
     if lhs.imagePath != rhs.imagePath {return false}
+    if lhs.iso3 != rhs.iso3 {return false}
+    if lhs.fifaName != rhs.fifaName {return false}
+    if lhs.continentName != rhs.continentName {return false}
+    if lhs.continentCode != rhs.continentCode {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1716,111 +1745,6 @@ extension LivescoreLeague: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.countryID != rhs.countryID {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension LivescoreUpcomingMatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".UpcomingMatch"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}team1_name\0\u{3}team2_name\0\u{3}team1_logo\0\u{3}team2_logo\0\u{3}team1_id\0\u{3}team2_id\0\u{1}datetime\0\u{3}competition_id\0\u{3}competition_name\0\u{3}competition_image\0\u{3}competition_region\0\u{1}score1\0\u{1}score2\0\u{1}status\0\u{1}url\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularInt64Field(value: &self.id) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.team1Name) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.team2Name) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.team1Logo) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.team2Logo) }()
-      case 6: try { try decoder.decodeSingularInt64Field(value: &self.team1ID) }()
-      case 7: try { try decoder.decodeSingularInt64Field(value: &self.team2ID) }()
-      case 8: try { try decoder.decodeSingularInt64Field(value: &self.datetime) }()
-      case 9: try { try decoder.decodeSingularInt64Field(value: &self.competitionID) }()
-      case 10: try { try decoder.decodeSingularStringField(value: &self.competitionName) }()
-      case 11: try { try decoder.decodeSingularStringField(value: &self.competitionImage) }()
-      case 12: try { try decoder.decodeSingularStringField(value: &self.competitionRegion) }()
-      case 13: try { try decoder.decodeSingularInt64Field(value: &self.score1) }()
-      case 14: try { try decoder.decodeSingularInt64Field(value: &self.score2) }()
-      case 15: try { try decoder.decodeSingularEnumField(value: &self.status) }()
-      case 16: try { try decoder.decodeSingularStringField(value: &self.url) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.id != 0 {
-      try visitor.visitSingularInt64Field(value: self.id, fieldNumber: 1)
-    }
-    if !self.team1Name.isEmpty {
-      try visitor.visitSingularStringField(value: self.team1Name, fieldNumber: 2)
-    }
-    if !self.team2Name.isEmpty {
-      try visitor.visitSingularStringField(value: self.team2Name, fieldNumber: 3)
-    }
-    if !self.team1Logo.isEmpty {
-      try visitor.visitSingularStringField(value: self.team1Logo, fieldNumber: 4)
-    }
-    if !self.team2Logo.isEmpty {
-      try visitor.visitSingularStringField(value: self.team2Logo, fieldNumber: 5)
-    }
-    if self.team1ID != 0 {
-      try visitor.visitSingularInt64Field(value: self.team1ID, fieldNumber: 6)
-    }
-    if self.team2ID != 0 {
-      try visitor.visitSingularInt64Field(value: self.team2ID, fieldNumber: 7)
-    }
-    if self.datetime != 0 {
-      try visitor.visitSingularInt64Field(value: self.datetime, fieldNumber: 8)
-    }
-    if self.competitionID != 0 {
-      try visitor.visitSingularInt64Field(value: self.competitionID, fieldNumber: 9)
-    }
-    if !self.competitionName.isEmpty {
-      try visitor.visitSingularStringField(value: self.competitionName, fieldNumber: 10)
-    }
-    if !self.competitionImage.isEmpty {
-      try visitor.visitSingularStringField(value: self.competitionImage, fieldNumber: 11)
-    }
-    if !self.competitionRegion.isEmpty {
-      try visitor.visitSingularStringField(value: self.competitionRegion, fieldNumber: 12)
-    }
-    if self.score1 != 0 {
-      try visitor.visitSingularInt64Field(value: self.score1, fieldNumber: 13)
-    }
-    if self.score2 != 0 {
-      try visitor.visitSingularInt64Field(value: self.score2, fieldNumber: 14)
-    }
-    if self.status != .unspecified {
-      try visitor.visitSingularEnumField(value: self.status, fieldNumber: 15)
-    }
-    if !self.url.isEmpty {
-      try visitor.visitSingularStringField(value: self.url, fieldNumber: 16)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: LivescoreUpcomingMatch, rhs: LivescoreUpcomingMatch) -> Bool {
-    if lhs.id != rhs.id {return false}
-    if lhs.team1Name != rhs.team1Name {return false}
-    if lhs.team2Name != rhs.team2Name {return false}
-    if lhs.team1Logo != rhs.team1Logo {return false}
-    if lhs.team2Logo != rhs.team2Logo {return false}
-    if lhs.team1ID != rhs.team1ID {return false}
-    if lhs.team2ID != rhs.team2ID {return false}
-    if lhs.datetime != rhs.datetime {return false}
-    if lhs.competitionID != rhs.competitionID {return false}
-    if lhs.competitionName != rhs.competitionName {return false}
-    if lhs.competitionImage != rhs.competitionImage {return false}
-    if lhs.competitionRegion != rhs.competitionRegion {return false}
-    if lhs.score1 != rhs.score1 {return false}
-    if lhs.score2 != rhs.score2 {return false}
-    if lhs.status != rhs.status {return false}
-    if lhs.url != rhs.url {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2336,7 +2260,7 @@ extension LivescoreCompetition: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     var _slug: String = String()
     var _seasonID: Int64 = 0
     var _country: LivescoreCountry? = nil
-    var _fixtures: [LivescoreUpcomingMatch] = []
+    var _fixtures: [LivescoreMatchSummary] = []
     var _standings: [LivescoreStanding] = []
     var _stats: LivescoreCompetitionStats? = nil
     var _fetchedAt: String = String()
@@ -3156,34 +3080,132 @@ extension LivescoreReferee: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension LivescoreVenue: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Venue"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}city\0\u{1}country\0\u{1}capacity\0\u{3}image_url\0\u{1}surface\0\u{1}latitude\0\u{1}longitude\0\u{1}address\0")
+
+  fileprivate class _StorageClass {
+    var _id: String = String()
+    var _name: String = String()
+    var _city: String = String()
+    var _country: LivescoreCountry? = nil
+    var _capacity: Int32 = 0
+    var _imageURL: String = String()
+    var _surface: String = String()
+    var _latitude: Double = 0
+    var _longitude: Double = 0
+    var _address: String = String()
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _id = source._id
+      _name = source._name
+      _city = source._city
+      _country = source._country
+      _capacity = source._capacity
+      _imageURL = source._imageURL
+      _surface = source._surface
+      _latitude = source._latitude
+      _longitude = source._longitude
+      _address = source._address
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._id) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._name) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._city) }()
+        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._country) }()
+        case 5: try { try decoder.decodeSingularInt32Field(value: &_storage._capacity) }()
+        case 6: try { try decoder.decodeSingularStringField(value: &_storage._imageURL) }()
+        case 7: try { try decoder.decodeSingularStringField(value: &_storage._surface) }()
+        case 8: try { try decoder.decodeSingularDoubleField(value: &_storage._latitude) }()
+        case 9: try { try decoder.decodeSingularDoubleField(value: &_storage._longitude) }()
+        case 10: try { try decoder.decodeSingularStringField(value: &_storage._address) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.id.isEmpty {
-      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
-    }
-    if !self.name.isEmpty {
-      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._id.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._id, fieldNumber: 1)
+      }
+      if !_storage._name.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._name, fieldNumber: 2)
+      }
+      if !_storage._city.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._city, fieldNumber: 3)
+      }
+      try { if let v = _storage._country {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      } }()
+      if _storage._capacity != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._capacity, fieldNumber: 5)
+      }
+      if !_storage._imageURL.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._imageURL, fieldNumber: 6)
+      }
+      if !_storage._surface.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._surface, fieldNumber: 7)
+      }
+      if _storage._latitude.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._latitude, fieldNumber: 8)
+      }
+      if _storage._longitude.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._longitude, fieldNumber: 9)
+      }
+      if !_storage._address.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._address, fieldNumber: 10)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: LivescoreVenue, rhs: LivescoreVenue) -> Bool {
-    if lhs.id != rhs.id {return false}
-    if lhs.name != rhs.name {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._id != rhs_storage._id {return false}
+        if _storage._name != rhs_storage._name {return false}
+        if _storage._city != rhs_storage._city {return false}
+        if _storage._country != rhs_storage._country {return false}
+        if _storage._capacity != rhs_storage._capacity {return false}
+        if _storage._imageURL != rhs_storage._imageURL {return false}
+        if _storage._surface != rhs_storage._surface {return false}
+        if _storage._latitude != rhs_storage._latitude {return false}
+        if _storage._longitude != rhs_storage._longitude {return false}
+        if _storage._address != rhs_storage._address {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3368,7 +3390,7 @@ extension LivescoreH2H: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
   fileprivate class _StorageClass {
     var _home: LivescoreTeamH2H? = nil
     var _away: LivescoreTeamH2H? = nil
-    var _between: [LivescoreUpcomingMatch] = []
+    var _between: [LivescoreMatchSummary] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3737,36 +3759,6 @@ extension LivescoreWebPageList: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
   public static func ==(lhs: LivescoreWebPageList, rhs: LivescoreWebPageList) -> Bool {
     if lhs.pages != rhs.pages {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension LivescoreUpcomingMatchList: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".UpcomingMatchList"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}matches\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.matches) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.matches.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.matches, fieldNumber: 1)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: LivescoreUpcomingMatchList, rhs: LivescoreUpcomingMatchList) -> Bool {
-    if lhs.matches != rhs.matches {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

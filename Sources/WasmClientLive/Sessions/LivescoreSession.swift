@@ -159,7 +159,7 @@ extension WasmActor {
 
     // MARK: - Upcoming
 
-    func upcoming() async throws -> [WasmClient.LiveScore.UpcomingMatch] {
+    func upcoming() async throws -> [WasmClient.LiveScore.MatchSummary] {
         let instance = try await readyEngine()
         let action = try await instance.action(for: WasmClient.ActionID.lsUpcoming.rawValue, strategy: .roundRobin)
         let args: [String: Google_Protobuf_Value] = [:]
@@ -220,7 +220,7 @@ extension WasmActor {
             lineups: mapLineups(p.lineup),
             statistics: p.statistics.map(mapStatistic),
             refereeName: p.referee.name,
-            venue: WasmClient.LiveScore.Venue(id: p.venue.id, name: p.venue.name),
+            venue: mapVenue(p.venue),
             predictions: p.predictions.map(mapPrediction),
             h2h: mapH2H(p.h2H),
             videos: p.videos.map(mapVideo)
@@ -293,7 +293,7 @@ extension WasmActor {
         WasmClient.LiveScore.H2H(
             home: mapTeamH2H(h.home),
             away: mapTeamH2H(h.away),
-            between: h.between.map(mapUpcomingMatch)
+            between: h.between.map(mapMatchSummary)
         )
     }
 
@@ -302,29 +302,8 @@ extension WasmActor {
             teamID: t.team.id,
             teamName: t.team.name,
             teamLogoURL: t.team.image,
-            form: t.form.map(mapUpcomingMatch),
+            form: t.form.map(mapMatchSummary),
             recentCoach: t.recentCoach
-        )
-    }
-
-    /// Map the standalone `LivescoreUpcomingMatch` proto (used for H2H form
-    /// + previous meetings list rows) into the public `UpcomingMatch` shape.
-    /// `LivescoreUpcomingMatch` has flat fields (team1Name, team1Logo, …)
-    /// rather than the nested `home`/`away`/`competition` sub-messages on
-    /// `LivescoreMatchSummary`, so this mapper differs from `mapMatchSummary`.
-    private func mapUpcomingMatch(_ m: LivescoreUpcomingMatch) -> WasmClient.LiveScore.UpcomingMatch {
-        WasmClient.LiveScore.UpcomingMatch(
-            id: String(m.id),
-            homeTeam: m.team1Name, awayTeam: m.team2Name,
-            homeLogoURL: m.team1Logo, awayLogoURL: m.team2Logo,
-            kickoff: Date(timeIntervalSince1970: TimeInterval(m.datetime)),
-            competitionID: String(m.competitionID),
-            homeScore: Int(m.score1), awayScore: Int(m.score2),
-            status: WasmClient.LiveScore.MatchStatus(rawValue: m.status.rawValue) ?? .unspecified,
-            embedURL: m.url,
-            competitionImage: m.competitionImage,
-            competitionName: m.competitionName,
-            competitionRegion: m.competitionRegion
         )
     }
 
@@ -338,7 +317,7 @@ extension WasmActor {
 
     // MARK: - Scores by date
 
-    func scoresByDate(date: String?) async throws -> [WasmClient.LiveScore.UpcomingMatch] {
+    func scoresByDate(date: String?) async throws -> [WasmClient.LiveScore.MatchSummary] {
         let instance = try await readyEngine()
         let action = try await instance.action(for: WasmClient.ActionID.lsScores.rawValue, strategy: .roundRobin)
         var args: [String: Google_Protobuf_Value] = [:]
@@ -361,8 +340,8 @@ extension WasmActor {
         return list.matches.map(mapMatchSummary)
     }
 
-    private func mapMatchSummary(_ m: LivescoreMatchSummary) -> WasmClient.LiveScore.UpcomingMatch {
-        WasmClient.LiveScore.UpcomingMatch(
+    private func mapMatchSummary(_ m: LivescoreMatchSummary) -> WasmClient.LiveScore.MatchSummary {
+        WasmClient.LiveScore.MatchSummary(
             id: String(m.id),
             homeTeam: m.home.name, awayTeam: m.away.name,
             homeLogoURL: m.home.image, awayLogoURL: m.away.image,
@@ -536,7 +515,7 @@ extension WasmActor {
             seasonID: Int(p.seasonID),
             country: mapCountry(p.country),
             url: p.url,
-            fixtures: p.fixtures.map(mapUpcomingMatch),
+            fixtures: p.fixtures.map(mapMatchSummary),
             standings: p.standings.map(mapStanding),
             stats: mapCompetitionStats(p.stats),
             fetchedAt: p.fetchedAt
@@ -546,7 +525,21 @@ extension WasmActor {
     private func mapCountry(_ c: LivescoreCountry) -> WasmClient.LiveScore.Country {
         WasmClient.LiveScore.Country(
             id: c.id, name: c.name,
-            iso2: c.iso2, imagePath: c.imagePath
+            iso2: c.iso2, iso3: c.iso3,
+            fifaName: c.fifaName,
+            continentName: c.continentName, continentCode: c.continentCode,
+            imagePath: c.imagePath
+        )
+    }
+
+    private func mapVenue(_ v: LivescoreVenue) -> WasmClient.LiveScore.Venue {
+        WasmClient.LiveScore.Venue(
+            id: v.id, name: v.name,
+            city: v.city, country: mapCountry(v.country),
+            capacity: Int(v.capacity), imageURL: v.imageURL,
+            surface: v.surface,
+            latitude: v.latitude, longitude: v.longitude,
+            address: v.address
         )
     }
 
@@ -583,7 +576,7 @@ extension WasmActor {
             awayWins: Int(s.awayWins),
             draws: Int(s.draws),
             cleanSheets: Int(s.cleanSheets),
-            biggestWins: s.biggestWins.map(mapUpcomingMatch),
+            biggestWins: s.biggestWins.map(mapMatchSummary),
             commonScorelines: s.commonScorelines.map(mapCompetitionScoreline),
             topScorers: s.topScorers.map(mapTopscorer),
             topAssists: s.topAssists.map(mapTopscorer)
@@ -620,8 +613,8 @@ extension WasmActor {
             countryID: t.countryID,
             national: t.national,
             aka: t.aka,
-            fixtures: t.fixtures.map(mapUpcomingMatch),
-            results: t.results.map(mapUpcomingMatch),
+            fixtures: t.fixtures.map(mapMatchSummary),
+            results: t.results.map(mapMatchSummary),
             tables: t.tables.map(mapLeague),
             fetchedAt: t.fetchedAt
         )
