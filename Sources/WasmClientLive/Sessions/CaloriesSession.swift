@@ -106,11 +106,14 @@ extension WasmActor {
     ) async throws -> WasmClient.FoodResult {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(actionID: actionID, logger: logger)
+        let sendArgs = Self.adaptedArgs(args, for: action)
         logger(
-            "calories.analyze: provider=\(action.provider) args=\(args.keys.sorted()) "
-                + "image=\(Self.describeArg(args["image"])) text=\(Self.describeArg(args["text"]))"
+            "calories.analyze: provider=\(action.provider) actionArgs=\(action.args.keys.sorted()) "
+                + "sendKeys=\(sendArgs.keys.sorted()) "
+                + "image=\(Self.describeArg(sendArgs["image"] ?? sendArgs["file"] ?? sendArgs["image_url"])) "
+                + "text=\(Self.describeArg(sendArgs["text"]))"
         )
-        let task = try await instance.create(action: action, args: args)
+        let task = try await instance.create(action: action, args: sendArgs)
         guard task.status == .completed, task.hasValue else {
             // On failure the backend surfaces detail (e.g. HTTP 400 + message)
             // in the task metadata; log it and carry it in the thrown error.
@@ -132,6 +135,27 @@ extension WasmActor {
             return code.map { "\($0): \(error)" } ?? error
         }
         return "\(task.status)"
+    }
+
+    /// Map our generic `image` arg onto whatever key the resolved provider
+    /// actually declares. Different providers name the image input differently
+    /// (`image`, `file`, `image_url`); the calorie analyze action 400s with
+    /// "failed to read image" if we send a key it doesn't recognise. Other args
+    /// (e.g. `text`) pass through unchanged.
+    private static func adaptedArgs(
+        _ args: [String: Google_Protobuf_Value],
+        for action: WaTAction
+    ) -> [String: Google_Protobuf_Value] {
+        guard let image = args["image"] else { return args }
+        let declared = Set(action.args.keys)
+        // Preferred order; fall back to `image` if the action declares none.
+        let imageKey = ["image", "file", "image_url", "imageUrl", "url"].first { declared.contains($0) } ?? "image"
+        guard imageKey != "image" else { return args }
+
+        var result = args
+        result.removeValue(forKey: "image")
+        result[imageKey] = image
+        return result
     }
 
     /// Short, log-safe description of an image/text arg (no base64 dumps).
