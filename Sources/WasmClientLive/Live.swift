@@ -54,6 +54,29 @@ extension WasmClient: DependencyKey {
             shopping: { query, provider in
                 try await actor.shopping(query: query, provider: provider)
             },
+            analyzeFoodText: { text in
+                try await actor.analyzeFoodText(text: text)
+            },
+            analyzeFoodImage: { imageURL in
+                try await actor.analyzeFoodImage(imageURL: imageURL)
+            },
+            searchFood: { query in
+                try await actor.searchFood(query: query)
+            },
+            scanFoodBarcode: { barcode in
+                try await actor.scanFoodBarcode(barcode: barcode)
+            },
+            foodHealthScore: { name, calories, protein, carbs, fats in
+                try await actor.foodHealthScore(
+                    name: name, calories: calories, protein: protein, carbs: carbs, fats: fats
+                )
+            },
+            foodSuggestions: {
+                try await actor.foodSuggestions()
+            },
+            ingredientLookup: { name in
+                try await actor.ingredientLookup(name: name)
+            },
             uploadImage: { imageData in
                 try await actor.uploadImage(imageData: imageData)
             },

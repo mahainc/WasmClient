@@ -106,6 +106,45 @@ public struct WasmClient: Sendable {
         _ query: String, _ provider: String
     ) async throws -> [WasmClient.ShoppingProduct]
 
+    // MARK: - Calories / Nutrition
+
+    /// Analyze food from a text description (e.g. "grilled chicken with rice").
+    /// Returns a full nutritional breakdown with per-ingredient macros.
+    public var analyzeFoodText: @Sendable (
+        _ text: String
+    ) async throws -> WasmClient.FoodResult
+
+    /// Analyze food from an image file URL (`file://` or `http(s)://`).
+    /// The wasm module reads the file and base64-encodes internally.
+    public var analyzeFoodImage: @Sendable (
+        _ imageURL: String
+    ) async throws -> WasmClient.FoodResult
+
+    /// Search a food database by name/query. Returns matching items with
+    /// calories and macros per default serving.
+    public var searchFood: @Sendable (
+        _ query: String
+    ) async throws -> [WasmClient.FoodItem]
+
+    /// Lookup food by product barcode (EAN-13, UPC).
+    public var scanFoodBarcode: @Sendable (
+        _ barcode: String
+    ) async throws -> WasmClient.FoodResult
+
+    /// Get a health score / analytics for a food item. Macros are optional —
+    /// pass 0 to let the provider estimate from the name alone.
+    public var foodHealthScore: @Sendable (
+        _ name: String, _ calories: Double, _ protein: Double, _ carbs: Double, _ fats: Double
+    ) async throws -> WasmClient.FoodHealthScore
+
+    /// Get food suggestions (popular/trending). No input needed.
+    public var foodSuggestions: @Sendable () async throws -> [WasmClient.FoodItem]
+
+    /// Lookup a single raw ingredient by name (per standard serving size).
+    public var ingredientLookup: @Sendable (
+        _ name: String
+    ) async throws -> WasmClient.FoodResult
+
     // MARK: - Blobstore
 
     /// Upload image data, returning the hosted URL.

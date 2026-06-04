@@ -49,6 +49,13 @@ extension WasmClient {
         describe: { _, _, _, _ in ScanResult() },
         visualSearch: { _, _ in [] },
         shopping: { _, _ in [] },
+        analyzeFoodText: { _ in FoodResult() },
+        analyzeFoodImage: { _ in FoodResult() },
+        searchFood: { _ in [] },
+        scanFoodBarcode: { _ in FoodResult() },
+        foodHealthScore: { _, _, _, _, _ in FoodHealthScore() },
+        foodSuggestions: { [] },
+        ingredientLookup: { _ in FoodResult() },
         uploadImage: { _ in "" },
         uploadFile: { _, _ in "" },
         chatModels: { _, _, _, _ in ([], 0) },
@@ -204,6 +211,59 @@ extension WasmClient {
             return [
                 ShoppingProduct(title: "Mock Product", price: "$24.99", url: "https://example.com/shop"),
             ]
+        },
+        analyzeFoodText: { text in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return FoodResult(
+                name: text.isEmpty ? "Mixed meal" : text,
+                calories: 485, protein: 28, carbs: 62, fats: 14,
+                ingredients: [
+                    FoodIngredient(name: "Avocado toast", calories: 285, protein: 8, carbs: 24, fats: 18),
+                    FoodIngredient(name: "Poached egg", calories: 78, protein: 6, carbs: 1, fats: 5),
+                ]
+            )
+        },
+        analyzeFoodImage: { _ in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return FoodResult(
+                name: "Avocado toast & egg",
+                calories: 485, protein: 28, carbs: 62, fats: 14,
+                ingredients: [
+                    FoodIngredient(name: "Avocado toast", calories: 285, protein: 8, carbs: 24, fats: 18),
+                    FoodIngredient(name: "Poached egg", calories: 78, protein: 6, carbs: 1, fats: 5),
+                    FoodIngredient(name: "Cherry tomatoes", calories: 22, protein: 1, carbs: 5, fats: 0),
+                ]
+            )
+        },
+        searchFood: { query in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return [
+                FoodItem(id: "1", name: query.isEmpty ? "Avocado" : query, calories: 160, protein: 2, carbs: 9, fats: 15),
+                FoodItem(id: "2", name: "Avocado toast", calories: 285, protein: 8, carbs: 24, fats: 18, brand: "Homemade"),
+            ]
+        },
+        scanFoodBarcode: { _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return FoodResult(name: "Granola Bar", calories: 190, protein: 4, carbs: 29, fats: 7)
+        },
+        foodHealthScore: { name, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return FoodHealthScore(
+                rating: 8, balance: "Well-balanced", fullness: "Filling",
+                goalFit: "Good for weight loss", message: "A solid, nutrient-dense choice.",
+                tips: ["Add a side of greens", "Watch the added sugar"]
+            )
+        },
+        foodSuggestions: {
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return [
+                FoodItem(id: "s1", name: "Greek yogurt", calories: 100, protein: 17, carbs: 6, fats: 0),
+                FoodItem(id: "s2", name: "Banana", calories: 105, protein: 1, carbs: 27, fats: 0),
+            ]
+        },
+        ingredientLookup: { name in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return FoodResult(name: name.isEmpty ? "Cheese" : name, calories: 110, protein: 7, carbs: 1, fats: 9)
         },
         uploadImage: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)

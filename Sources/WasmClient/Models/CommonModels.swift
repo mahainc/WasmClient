@@ -99,6 +99,14 @@ extension WasmClient {
         /// entity, entity_id)`. Send `la_token: ""` to retire the row
         /// after an activity ends or is dismissed.
         case liveActivityToken = "a3d9e5c1-7b2f-4e1d-8c4a-9f5e3b7d2c6e"
+        // Calories / nutrition (provider-agnostic). UUIDs match the engine's
+        // registered calorie actions (see flow-kit-example ActionID).
+        case caloriesAnalyze = "c4a1b2d3-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+        case caloriesSearch = "d5b2c3e4-f6a7-8b9c-0d1e-2f3a4b5c6d7e"
+        case caloriesHealthScore = "e6c3d4f5-a7b8-9c0d-1e2f-3a4b5c6d7e8f"
+        case caloriesBarcode = "f7d4e5a6-b8c9-0d1e-2f3a-4b5c6d7e8f9a"
+        case caloriesSuggestions = "a8e5f6b7-c9d0-1e2f-3a4b-5c6d7e8f9a0b"
+        case caloriesIngredient = "b9f6a7c8-d0e1-2f3a-4b5c-6d7e8f9a0b1c"
     }
 }
 
