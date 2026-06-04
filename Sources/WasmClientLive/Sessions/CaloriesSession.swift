@@ -16,24 +16,26 @@ extension WasmActor {
         return result
     }
 
-    /// Analyze food from an image file URL (`file://` or `http(s)://`).
+    /// Analyze food from an image. Accepts a local `file://` URL, a remote
+    /// `http(s)://` URL, or an inline `data:` URI.
     ///
-    /// Local `file://` URLs are not reachable by the analysis providers (they
-    /// fetch the image server-side and 400 with "failed to read image"), so
-    /// they are first uploaded to blobstore and analyzed via the hosted URL —
-    /// the same upload-then-act pattern as the Scan flow.
+    /// The analyze provider reads the `image` arg as a reference it fetches
+    /// server-side, and 400s ("failed to read image") on both device-local
+    /// `file://` paths and hosted URLs it can't retrieve. To sidestep the fetch
+    /// entirely, local files are inlined as a base64 `data:` URI so the image
+    /// travels in the request itself.
     func analyzeFoodImage(imageURL: String) async throws -> WasmClient.FoodResult {
-        var hostedURL = imageURL
+        var imageValue = imageURL
         if imageURL.hasPrefix("file://") {
             guard let fileURL = URL(string: imageURL), let data = try? Data(contentsOf: fileURL) else {
                 throw WasmClient.Error.uploadFailed("Cannot read local image at \(imageURL)")
             }
-            hostedURL = try await uploadImage(imageData: data)
-            logger("calories.analyze: uploaded local image (\(data.count) bytes) → \(hostedURL)")
+            imageValue = "data:image/jpeg;base64,\(data.base64EncodedString())"
+            logger("calories.analyze: inlined local image as data URI (\(data.count) bytes)")
         }
         return try await runFoodAnalysis(
             actionID: WasmClient.ActionID.caloriesAnalyze.rawValue,
-            args: ["image": Google_Protobuf_Value(stringValue: hostedURL)]
+            args: ["image": Google_Protobuf_Value(stringValue: imageValue)]
         )
     }
 
