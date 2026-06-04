@@ -17,10 +17,23 @@ extension WasmActor {
     }
 
     /// Analyze food from an image file URL (`file://` or `http(s)://`).
+    ///
+    /// Local `file://` URLs are not reachable by the analysis providers (they
+    /// fetch the image server-side and 400 with "failed to read image"), so
+    /// they are first uploaded to blobstore and analyzed via the hosted URL —
+    /// the same upload-then-act pattern as the Scan flow.
     func analyzeFoodImage(imageURL: String) async throws -> WasmClient.FoodResult {
-        try await runFoodAnalysis(
+        var hostedURL = imageURL
+        if imageURL.hasPrefix("file://") {
+            guard let fileURL = URL(string: imageURL), let data = try? Data(contentsOf: fileURL) else {
+                throw WasmClient.Error.uploadFailed("Cannot read local image at \(imageURL)")
+            }
+            hostedURL = try await uploadImage(imageData: data)
+            logger("calories.analyze: uploaded local image (\(data.count) bytes) → \(hostedURL)")
+        }
+        return try await runFoodAnalysis(
             actionID: WasmClient.ActionID.caloriesAnalyze.rawValue,
-            args: ["image": Google_Protobuf_Value(stringValue: imageURL)]
+            args: ["image": Google_Protobuf_Value(stringValue: hostedURL)]
         )
     }
 
@@ -71,7 +84,7 @@ extension WasmActor {
             logger: logger
         )
         var args: [String: Google_Protobuf_Value] = [
-            "name": Google_Protobuf_Value(stringValue: name),
+            "name": Google_Protobuf_Value(stringValue: name)
         ]
         if calories > 0 { args["calories"] = Google_Protobuf_Value(numberValue: calories) }
         if protein > 0 { args["protein"] = Google_Protobuf_Value(numberValue: protein) }
