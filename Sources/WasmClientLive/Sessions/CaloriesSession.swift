@@ -16,26 +16,17 @@ extension WasmActor {
         return result
     }
 
-    /// Analyze food from an image. Accepts a local `file://` URL, a remote
-    /// `http(s)://` URL, or an inline `data:` URI.
+    /// Analyze food from an image file URL (`file://` or `http(s)://`).
+    /// The wasm module reads the file and base64-encodes internally.
     ///
-    /// The analyze provider reads the `image` arg as a reference it fetches
-    /// server-side, and 400s ("failed to read image") on both device-local
-    /// `file://` paths and hosted URLs it can't retrieve. To sidestep the fetch
-    /// entirely, local files are inlined as a base64 `data:` URI so the image
-    /// travels in the request itself.
+    /// Tries every registered provider in turn until one succeeds — the calorie
+    /// analyze action has multiple providers and some are misconfigured (they
+    /// 400 "failed to read image" for every input format). Logs each provider's
+    /// outcome so a total failure is clearly a backend issue, not the input.
     func analyzeFoodImage(imageURL: String) async throws -> WasmClient.FoodResult {
-        var imageValue = imageURL
-        if imageURL.hasPrefix("file://") {
-            guard let fileURL = URL(string: imageURL), let data = try? Data(contentsOf: fileURL) else {
-                throw WasmClient.Error.uploadFailed("Cannot read local image at \(imageURL)")
-            }
-            imageValue = "data:image/jpeg;base64,\(data.base64EncodedString())"
-            logger("calories.analyze: inlined local image as data URI (\(data.count) bytes)")
-        }
-        return try await runFoodAnalysis(
+        try await runFoodAnalysisAllProviders(
             actionID: WasmClient.ActionID.caloriesAnalyze.rawValue,
-            args: ["image": Google_Protobuf_Value(stringValue: imageValue)]
+            args: ["image": Google_Protobuf_Value(stringValue: imageURL)]
         )
     }
 
@@ -101,6 +92,40 @@ extension WasmActor {
     }
 
     // MARK: - Shared runners
+
+    /// Run food analysis across every provider registered for the action,
+    /// returning the first success. Throws the last failure detail if all fail.
+    private func runFoodAnalysisAllProviders(
+        actionID: String,
+        args: [String: Google_Protobuf_Value]
+    ) async throws -> WasmClient.FoodResult {
+        let instance = try await readyEngine()
+        let actions = try await delegate.resolveAllActions(actionID: actionID, logger: logger)
+        logger(
+            "calories.analyze: \(actions.count) provider(s); sendKeys=\(args.keys.sorted()) "
+                + "image=\(Self.describeArg(args["image"]))"
+        )
+
+        var lastDetail = "no providers"
+        for (index, action) in actions.enumerated() {
+            logger("calories.analyze: provider \(index + 1)/\(actions.count) (\(action.provider.prefix(12))…)")
+            do {
+                let task = try await instance.create(action: action, args: args)
+                guard task.status == .completed, task.hasValue else {
+                    lastDetail = Self.failureDetail(task)
+                    logger("calories.analyze: provider \(index + 1) failed — \(lastDetail)")
+                    continue
+                }
+                let proto = try CaloriesFoodResult(unpackingAny: task.value)
+                logger("calories.analyze: provider \(index + 1) ok")
+                return Self.mapFoodResult(proto)
+            } catch {
+                lastDetail = error.localizedDescription
+                logger("calories.analyze: provider \(index + 1) threw — \(lastDetail)")
+            }
+        }
+        throw WasmClient.Error.taskFailed(status: lastDetail)
+    }
 
     private func runFoodAnalysis(
         actionID: String,
