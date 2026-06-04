@@ -93,12 +93,39 @@ extension WasmActor {
     ) async throws -> WasmClient.FoodResult {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(actionID: actionID, logger: logger)
+        logger(
+            "calories.analyze: provider=\(action.provider) args=\(args.keys.sorted()) "
+                + "image=\(Self.describeArg(args["image"])) text=\(Self.describeArg(args["text"]))"
+        )
         let task = try await instance.create(action: action, args: args)
         guard task.status == .completed, task.hasValue else {
-            throw WasmClient.Error.taskFailed(status: "\(task.status)")
+            // On failure the backend surfaces detail (e.g. HTTP 400 + message)
+            // in the task metadata; log it and carry it in the thrown error.
+            let detail = Self.failureDetail(task)
+            logger("calories.analyze: FAILED status=\(task.status) detail=\(detail)")
+            throw WasmClient.Error.taskFailed(status: detail)
         }
         let proto = try CaloriesFoodResult(unpackingAny: task.value)
         return Self.mapFoodResult(proto)
+    }
+
+    /// Pull whatever the backend reported on a failed task — the `error`
+    /// metadata field (which carries the HTTP status / provider message) if
+    /// present, otherwise the raw status. Mirrors HomedecorSession.
+    private static func failureDetail(_ task: WaTTask) -> String {
+        let fields = task.metadata.fields
+        if let error = fields["error"]?.stringValue, !error.isEmpty {
+            let code = fields["status"]?.stringValue ?? fields["statusCode"]?.stringValue
+            return code.map { "\($0): \(error)" } ?? error
+        }
+        return "\(task.status)"
+    }
+
+    /// Short, log-safe description of an image/text arg (no base64 dumps).
+    private static func describeArg(_ value: Google_Protobuf_Value?) -> String {
+        guard let value, case .stringValue(let string) = value.kind else { return "nil" }
+        if string.count > 80 { return "\(string.prefix(64))…(\(string.count) chars)" }
+        return string
     }
 
     private func runFoodSearch(
