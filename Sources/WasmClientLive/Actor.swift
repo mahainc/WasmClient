@@ -349,6 +349,27 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         }
     }
 
+    /// Make sure providers for `actionID` are discovered before resolving.
+    ///
+    /// `performActionsLoad` locks the cache in after the *first* non-empty poll,
+    /// so providers that register a beat later than the first batch (the calorie
+    /// actions, and late cloud providers like Banana/Replicate/FalAI/Runware)
+    /// can be missing from it. When the requested action isn't cached, re-discover
+    /// once — `refreshActions` waits for the provider count to stabilize — before
+    /// the caller reports it as missing. Skipped entirely on the happy path.
+    private func ensureActionAvailable(
+        actionID: String,
+        logger: @escaping @Sendable (String) -> Void
+    ) async throws {
+        if actionCache.isEmpty {
+            try await ensureActionsLoaded(logger: logger)
+        }
+        if (actionCache[actionID] ?? []).isEmpty {
+            logger("\(actionID) not in cache — re-discovering providers")
+            try await refreshActions(logger: logger)
+        }
+    }
+
     /// Resolve an action — lazily discovers providers on first call.
     /// When `preferredProvider` is given, selects the action from that provider
     /// (matching flow-kit-example's pattern of using the same provider across
@@ -358,9 +379,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         preferredProvider: String? = nil,
         logger: @escaping @Sendable (String) -> Void
     ) async throws -> WaTAction {
-        if actionCache.isEmpty {
-            try await ensureActionsLoaded(logger: logger)
-        }
+        try await ensureActionAvailable(actionID: actionID, logger: logger)
         guard let actions = actionCache[actionID], !actions.isEmpty else {
             throw WasmClient.Error.noProviderFound(action: actionID)
         }
@@ -376,9 +395,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         actionID: String,
         logger: @escaping @Sendable (String) -> Void
     ) async throws -> [WaTAction] {
-        if actionCache.isEmpty {
-            try await ensureActionsLoaded(logger: logger)
-        }
+        try await ensureActionAvailable(actionID: actionID, logger: logger)
         guard let actions = actionCache[actionID], !actions.isEmpty else {
             throw WasmClient.Error.noProviderFound(action: actionID)
         }
@@ -394,9 +411,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         actionID: String,
         logger: @escaping @Sendable (String) -> Void
     ) async throws -> WaTAction {
-        if actionCache.isEmpty {
-            try await ensureActionsLoaded(logger: logger)
-        }
+        try await ensureActionAvailable(actionID: actionID, logger: logger)
         guard let actions = actionCache[actionID], !actions.isEmpty else {
             throw WasmClient.Error.noProviderFound(action: actionID)
         }
