@@ -94,6 +94,12 @@ extension WasmClient: DependencyKey {
             chatStream: { config, messages in
                 try await actor.chatStream(config: config, messages: messages)
             },
+            chatToolCall: { config, messages in
+                try await actor.chatToolCall(config: config, messages: messages)
+            },
+            chatToolCallViaSession: { config, userText in
+                try await actor.chatToolCallViaSession(config: config, userText: userText)
+            },
             createChatModel: { providerId, input in
                 try await actor.createChatModel(providerId: providerId, input: input)
             },

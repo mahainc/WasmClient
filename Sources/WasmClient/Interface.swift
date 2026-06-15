@@ -180,6 +180,30 @@ public struct WasmClient: Sendable {
         _ messages: [WasmClient.ChatMessage]
     ) async throws -> AsyncThrowingStream<String, Swift.Error>
 
+    /// Single-shot tool/function calling over the streaming transport. Advertise
+    /// tools via `config.tools`; returns the assistant message with `.toolCalls`
+    /// populated when the model invoked one (each carrying the function name +
+    /// arguments JSON). Use this instead of `chatSend` for tool turns — the FFI
+    /// chat providers answer only over SSE, so the non-stream `chatSend` fails.
+    /// One round only; does not feed tool results back to the model.
+    public var chatToolCall: @Sendable (
+        _ config: WasmClient.ChatConfig,
+        _ messages: [WasmClient.ChatMessage]
+    ) async throws -> WasmClient.ChatMessage = { _, _ in
+        WasmClient.ChatMessage(role: .assistant, content: "")
+    }
+
+    /// TEST: run one tool call through the FlowKit example's own
+    /// `OpenAIChatSession` (verbatim copy) instead of the app's `chatToolCall`.
+    /// Serializes tools via proto exactly like the example, to compare behaviour.
+    /// `config.tools` carries the tool; `userText` is the single user message.
+    public var chatToolCallViaSession: @Sendable (
+        _ config: WasmClient.ChatConfig,
+        _ userText: String
+    ) async throws -> WasmClient.ChatMessage = { _, _ in
+        WasmClient.ChatMessage(role: .assistant, content: "")
+    }
+
     /// Create a custom chat model on a specific provider. Returns the
     /// provider-assigned model id (used as the `modelId` for subsequent
     /// `chatSend`/`chatStream` calls). Pass empty string for `providerId`

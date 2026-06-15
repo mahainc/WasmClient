@@ -63,6 +63,8 @@ extension WasmClient {
         chatStream: { _, _ in
             AsyncThrowingStream { $0.finish() }
         },
+        chatToolCall: { _, _ in ChatMessage(role: .assistant, content: "") },
+        chatToolCallViaSession: { _, _ in ChatMessage(role: .assistant, content: "") },
         createChatModel: { _, _ in "" },
         initializeChatProvider: { _, _ in },
         musicDiscover: { _, _ in MusicTrackList() },
@@ -324,6 +326,25 @@ extension WasmClient {
                     continuation.finish()
                 }
             }
+        },
+        chatToolCall: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return ChatMessage(
+                role: .assistant,
+                content: "",
+                toolCalls: [
+                    ToolCall(
+                        id: "call_mock",
+                        type: "function",
+                        functionName: "log_meals",
+                        functionArguments: #"{"meals":[]}"#
+                    )
+                ]
+            )
+        },
+        chatToolCallViaSession: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return ChatMessage(role: .assistant, content: "")
         },
         createChatModel: { _, input in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)

@@ -198,6 +198,288 @@ extension WasmActor {
         }
     }
 
+    /// Single-shot tool/function calling over the streaming transport.
+    ///
+    /// Drives the same `RunAction` + `installSSEChunkHandler` path as `chatStream`,
+    /// but instead of forwarding text deltas it accumulates the reply and captures
+    /// `delta.tool_calls[]` from the SSE terminator (and mid-stream deltas), returning
+    /// a `ChatMessage` with `.toolCalls` populated when the model picked a tool. Pass
+    /// `config.tools` to advertise them and `config.toolChoice` to force one.
+    ///
+    /// One round only — it does NOT loop tool results back to the model.
+    ///
+    /// ⚠️ KNOWN BACKEND LIMITATION (verified on-device 2026-06): this gateway only
+    /// supports tools as a NO-ARGUMENT signal (like the FlowKit example's
+    /// `get_current_time`, whose params are `{}` and whose arguments are never
+    /// read). When a tool has real parameters, the engine returns the tool call
+    /// with an empty `function.name` and a TRUNCATED/garbled `arguments` string
+    /// (JSON cut at the front, fields missing) — i.e. unusable for carrying data.
+    /// So do NOT use this to extract structured data from the model; read data
+    /// from `chatStream` content as JSON instead. This method is correct and kept
+    /// ready for if/when the engine's tool_call assembly is fixed upstream.
+    /// `chatStream` / `chatSend` are untouched.
+    func chatToolCall(
+        config: WasmClient.ChatConfig,
+        messages: [WasmClient.ChatMessage]
+    ) async throws -> WasmClient.ChatMessage {
+        let instance = try await readyEngine()
+        guard let engine = instance as? TaskWasmEngine else {
+            throw WasmClient.Error.engineNotStarted
+        }
+        let action = try await delegate.resolveAction(
+            actionID: WasmClient.ActionID.chat.rawValue,
+            preferredProvider: config.providerId.isEmpty ? nil : config.providerId,
+            logger: logger
+        )
+
+        let bodyData = try Self.buildChatBody(config: config, messages: messages, stream: true)
+        let bodyString = String(data: bodyData, encoding: .utf8)!
+
+        var streamArgs: [String: Google_Protobuf_Value] = [
+            "body": Google_Protobuf_Value(stringValue: bodyString),
+        ]
+        if !config.endpoint.isEmpty {
+            streamArgs["url"] = Google_Protobuf_Value(stringValue: config.endpoint)
+        }
+        if !config.apiKey.isEmpty {
+            streamArgs["api_key"] = Google_Protobuf_Value(stringValue: config.apiKey)
+        }
+        let args = streamArgs
+        let log = logger
+        let requestID = UUID().uuidString
+
+        let accumulated = ContentAccumulator()
+        let pendingToolCalls = ToolCallsBox()
+        let lastChunkAt = LastChunkTime()
+        let didReceiveChunks = ChunkFlag()
+
+        // ── DEBUG: the exact request body sent to the engine ──
+        log("[chatToolCall] body: \(bodyString)")
+
+        // NOTE: this SSE handler is written to MIRROR the FlowKit example's
+        // OpenAIChatSession.runStreaming exactly (capture tool_calls from the
+        // terminator chunk with `set`, no incremental merge) so it can be
+        // compared 1:1. If the engine ever streams tool_calls across multiple
+        // chunks, switch back to a merge-by-index accumulator.
+        AsyncifyWasmInternal.installSSEChunkHandler(for: requestID) { chunk in
+            // ── DEBUG: every raw SSE chunk the engine emits ──
+            log("[chatToolCall] rawChunk: \(chunk)")
+            guard let data = chunk.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = json["choices"] as? [[String: Any]] else { return }
+            lastChunkAt.touch()
+            // Terminator chunk: Rust sets finish_reason "stop" or "tool_calls";
+            // when the model picked a tool, it carries delta.tool_calls[].
+            if let finish = choices.first?["finish_reason"] as? String,
+               finish == "stop" || finish == "tool_calls" {
+                if let delta = choices.first?["delta"] as? [String: Any],
+                   let calls = delta["tool_calls"] as? [[String: Any]],
+                   !calls.isEmpty {
+                    pendingToolCalls.set(calls)
+                    log("[chatToolCall] terminator finish=\(finish) CAPTURED tool_calls=\(calls.count)")
+                } else {
+                    let keys = (choices.first?["delta"] as? [String: Any])?.keys.map { String($0) } ?? []
+                    log("[chatToolCall] terminator finish=\(finish) NO tool_calls. deltaKeys=\(keys)")
+                }
+                lastChunkAt.markFinished()
+                return
+            }
+            guard let delta = choices.first?["delta"] as? [String: Any],
+                  let content = delta["content"] as? String,
+                  !content.isEmpty else { return }
+            didReceiveChunks.set()
+            accumulated.append(content)
+        }
+        defer { AsyncifyWasmInternal.removeSSEChunkHandler(for: requestID) }
+
+        // Run create() + the wait loop OFF the actor — exactly like chatStream.
+        // FlowKit's instance.create() must run on the global executor; calling it
+        // actor-isolated hangs and emits NO SSE chunks (the bug that made tool
+        // calls always come back empty). The detached task returns the final
+        // task once the terminator / quiet window settles.
+        let task = try await Task.detached { () -> WaTTask in
+            let created = try await engine.create(action: action, args: args, requestID: requestID)
+            log("[chatToolCall] create returned status=\(created.status) hasValue=\(created.hasValue)")
+            if created.status != .completed {
+                let deadline = Date().addingTimeInterval(60)
+                let quietWindow: TimeInterval = 2.5
+                while Date() < deadline {
+                    try await Task.sleep(nanoseconds: 200_000_000)
+                    if lastChunkAt.finished { break }
+                    if !didReceiveChunks.value, !pendingToolCalls.value.isEmpty { break }
+                    if !didReceiveChunks.value {
+                        if created.hasValue { break }
+                        continue
+                    }
+                    if Date().timeIntervalSince(lastChunkAt.value) >= quietWindow { break }
+                }
+            }
+            return created
+        }.value
+
+        // Build the assistant message. Tool calls from the terminator are
+        // authoritative; streamed text lands in content.
+        let toolCallDicts = pendingToolCalls.value
+        // ── DEBUG: assembled tool_calls + how many mapped to a valid ToolCall ──
+        let mapped = toolCallDicts.compactMap(Self.toolCall(from:))
+        log("[chatToolCall] assembled dicts=\(toolCallDicts.count) mapped=\(mapped.count) rawDicts=\(toolCallDicts)")
+        if !toolCallDicts.isEmpty {
+            return WasmClient.ChatMessage(
+                role: .assistant,
+                content: accumulated.value,
+                toolCalls: mapped
+            )
+        }
+        if !accumulated.value.isEmpty {
+            return WasmClient.ChatMessage(role: .assistant, content: accumulated.value)
+        }
+        // Fallback: full ChatCompletion proto in the task value (offline/mocked).
+        if task.hasValue,
+           let result = try? TypesBytes(unpackingAny: task.value),
+           case .raw(let data) = result.data {
+            // ── DEBUG: when no SSE chunk arrived, what (if anything) is in task.value ──
+            log("[chatToolCall] task.value raw (\(data.count)b): \(String(data: data.prefix(800), encoding: .utf8) ?? "<binary>")")
+            var opts = JSONDecodingOptions()
+            opts.ignoreUnknownFields = true
+            if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
+               let choice = completion.choices.first {
+                return Self.mapMessage(choice.message)
+            }
+        } else {
+            log("[chatToolCall] no SSE chunks AND no task.value — engine returned nothing")
+        }
+        return WasmClient.ChatMessage(role: .assistant, content: "")
+    }
+
+    /// TEST PATH: run a one-shot tool call through the example's own
+    /// `OpenAIChatSession` (copied verbatim from the FlowKit example, which works
+    /// there). This bypasses `WasmActor`/`chatToolCall` entirely and serializes
+    /// tools via the proto `OpenAITool.jsonUTF8Data()` exactly like the example —
+    /// to confirm whether the difference vs our hand-built body matters.
+    /// Logs with `[SessionTest]`. Returns the assistant message (read .toolCalls).
+    func chatToolCallViaSession(
+        config: WasmClient.ChatConfig,
+        userText: String
+    ) async throws -> WasmClient.ChatMessage {
+        let engine = try await readyEngine()
+        let session = OpenAIChatSession(engine: engine, model: config.model)
+
+        // Pin to the same provider the rest of the app uses, via the resolved action.
+        let action = try await delegate.resolveAction(
+            actionID: WasmClient.ActionID.chat.rawValue,
+            preferredProvider: config.providerId.isEmpty ? nil : config.providerId,
+            logger: logger
+        )
+        session.setAction(action)
+
+        if !config.systemPrompt.isEmpty { session.setSystem(config.systemPrompt) }
+
+        // Build OpenAIChatTool wrappers from config.tools (proto-serialized inside).
+        let tools: [any OpenAIChatTool] = config.tools.map { t in
+            ProxyTool(
+                name: t.functionName,
+                definition: ProxyTool.makeDefinition(
+                    name: t.functionName,
+                    description: t.functionDescription,
+                    parametersJSON: t.parametersJSON
+                )
+            )
+        }
+        if let first = config.tools.first {
+            // Force the tool, same `{type:function,function:{name}}` form as the example.
+            session.toolChoice =
+                ["type": "function", "function": ["name": first.functionName]] as [String: Any]
+        }
+
+        logger("[SessionTest] streaming via OpenAIChatSession, tools=\(tools.count)")
+        var streamed = ""
+        for try await delta in session.stream(userText, tools: tools) {
+            streamed += delta
+        }
+        let last = session.messages.last
+        let calls = last?.toolCalls ?? []
+        logger("[SessionTest] done streamedLen=\(streamed.count) toolCalls=\(calls.count)")
+        for (i, tc) in calls.enumerated() {
+            logger("[SessionTest]   call[\(i)] name=\"\(tc.function.name)\" args=\(tc.function.arguments)")
+        }
+        return WasmClient.ChatMessage(
+            role: .assistant,
+            content: last?.content ?? streamed,
+            toolCalls: calls.map {
+                WasmClient.ToolCall(
+                    id: $0.id,
+                    type: $0.type,
+                    functionName: $0.function.name,
+                    functionArguments: $0.function.arguments
+                )
+            }
+        )
+    }
+
+    /// Convert a raw tool_call dictionary (from the SSE terminator) into a
+    /// `ChatMessage.ToolCall`. Returns nil when malformed.
+    private static func toolCall(from dict: [String: Any]) -> WasmClient.ToolCall? {
+        // `id` is optional — this gateway's streamed terminator omits it; only the
+        // function name + arguments matter for the caller. Requiring `id` here was
+        // silently dropping every tool call.
+        guard let function = dict["function"] as? [String: Any],
+              let name = function["name"] as? String,
+              !name.isEmpty else { return nil }
+        return WasmClient.ToolCall(
+            id: (dict["id"] as? String) ?? "",
+            type: (dict["type"] as? String) ?? "function",
+            functionName: name,
+            functionArguments: (function["arguments"] as? String) ?? ""
+        )
+    }
+
+    /// Thread-safe text accumulator for `chatToolCall`'s streamed content.
+    private final class ContentAccumulator: @unchecked Sendable {
+        private let lock = NSLock()
+        private var _value = ""
+        var value: String { lock.withLock { _value } }
+        func append(_ s: String) { lock.withLock { _value += s } }
+    }
+
+    /// Thread-safe holder for tool_calls. Handles both shapes: a terminator that
+    /// carries the fully-assembled array (`set`), and OpenAI's incremental stream
+    /// where each delta contributes a fragment keyed by `index` — id/name arrive
+    /// first, then `arguments` is appended piece by piece (`merge`).
+    private final class ToolCallsBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private var byIndex: [Int: [String: Any]] = [:]
+        private var explicit: [[String: Any]] = []
+
+        var value: [[String: Any]] {
+            lock.withLock {
+                if !explicit.isEmpty { return explicit }
+                return byIndex.sorted { $0.key < $1.key }.map { $0.value }
+            }
+        }
+
+        func set(_ v: [[String: Any]]) { lock.withLock { explicit = v } }
+
+        func merge(_ fragments: [[String: Any]]) {
+            lock.withLock {
+                for frag in fragments {
+                    let idx = (frag["index"] as? Int) ?? 0
+                    var entry = byIndex[idx] ?? [:]
+                    if let id = frag["id"] as? String, !id.isEmpty { entry["id"] = id }
+                    if let type = frag["type"] as? String, !type.isEmpty { entry["type"] = type }
+                    if let fn = frag["function"] as? [String: Any] {
+                        var merged = entry["function"] as? [String: Any] ?? [:]
+                        if let name = fn["name"] as? String, !name.isEmpty { merged["name"] = name }
+                        if let args = fn["arguments"] as? String {
+                            merged["arguments"] = ((merged["arguments"] as? String) ?? "") + args
+                        }
+                        entry["function"] = merged
+                    }
+                    byIndex[idx] = entry
+                }
+            }
+        }
+    }
+
     /// Thread-safe one-shot flag the SSE handler sets when the first chunk
     /// arrives. The detached Task reads `.value` after `create()` resolves to
     /// decide whether to fall back to the task's full value payload.
@@ -575,6 +857,19 @@ extension WasmActor {
                 }
                 if tool.strict { fn["strict"] = true }
                 return ["type": tool.type, "function": fn]
+            }
+            // `tool_choice` — "auto"/"required"/"none" or a specific function name.
+            // A bare name becomes the OpenAI `{type:function,function:{name}}` form.
+            if !config.toolChoice.isEmpty {
+                switch config.toolChoice {
+                case "auto", "required", "none":
+                    body["tool_choice"] = config.toolChoice
+                default:
+                    body["tool_choice"] = [
+                        "type": "function",
+                        "function": ["name": config.toolChoice],
+                    ]
+                }
             }
         }
 

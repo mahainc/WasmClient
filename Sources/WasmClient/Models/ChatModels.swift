@@ -227,6 +227,10 @@ extension WasmClient {
         /// buffer used by `readOutLoud`) lives on the same provider as the
         /// selected model. Empty string falls back to first-match.
         public let providerId: String
+        /// OpenAI `tool_choice` — `"auto"` (default), `"required"` (force the
+        /// model to call some tool), `"none"`, or a specific function name. Only
+        /// emitted into the request body when non-empty AND `tools` is non-empty.
+        public let toolChoice: String
 
         public init(
             model: String = "gpt-4o-mini",
@@ -234,7 +238,8 @@ extension WasmClient {
             apiKey: String = "",
             systemPrompt: String = "",
             tools: [ChatTool] = [],
-            providerId: String = ""
+            providerId: String = "",
+            toolChoice: String = ""
         ) {
             self.model = model
             self.endpoint = endpoint
@@ -242,6 +247,7 @@ extension WasmClient {
             self.systemPrompt = systemPrompt
             self.tools = tools
             self.providerId = providerId
+            self.toolChoice = toolChoice
         }
     }
 }
