@@ -359,7 +359,7 @@ extension WasmActor {
     private func mapWebPage(_ p: LivescoreWebPage) -> WasmClient.LiveScore.WebPage {
         WasmClient.LiveScore.WebPage(
             id: p.id, image: p.image, title: p.title,
-            subtitle: p.subtitle, url: p.url
+            subtitle: p.subtitle, url: p.url, datetime: p.datetime
         )
     }
 

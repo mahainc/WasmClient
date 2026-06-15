@@ -522,7 +522,12 @@ extension WasmClient {
             LiveScore.WebPage(id: "team/\(id)", title: "Mock Team \(id)", subtitle: "England")
         },
         webpageVideos: { _, _, _, _, _, _ in
-            [LiveScore.WebPage(id: "video/example", title: "Example Highlight", subtitle: "Premier League")]
+            [
+                LiveScore.WebPage(
+                    id: "video/example", title: "Example Highlight",
+                    subtitle: "Premier League", datetime: 1_718_400_000
+                )
+            ]
         },
         webpageNews: { _, _, _, _, _ in
             [
