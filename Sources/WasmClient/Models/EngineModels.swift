@@ -5,7 +5,7 @@ extension WasmClient {
     /// `flowKitVersion` in `Package.swift`). Feed this into
     /// `setExpectedVersionProvider` so the engine evicts stale wasm caches
     /// whenever the app upgrades to a new FlowKit bundle.
-    public static let bundledFlowKitVersion: String = "1.2.48-26.1.1-ffi"
+    public static let bundledFlowKitVersion: String = "1.2.57-26.1.1-ffi"
 
     /// Engine lifecycle state.
     public enum EngineState: Sendable, Equatable {
