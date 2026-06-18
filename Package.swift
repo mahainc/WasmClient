@@ -98,5 +98,12 @@ let package = Package(
             name: "MergeFlowKitModules",
             capability: .buildTool()
         ),
+        .testTarget(
+            name: "WasmClientTests",
+            dependencies: [
+                "WasmClient",
+                .product(name: "Dependencies", package: "swift-dependencies"),
+            ]
+        ),
     ]
 )
