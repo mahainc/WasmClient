@@ -3,7 +3,7 @@ import Foundation
 import WasmClient
 
 #if canImport(Darwin)
-import Darwin
+    import Darwin
 #endif
 
 // MARK: - Delegate
@@ -103,7 +103,10 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         runningLock.withLock { engineDidReachRunning = false }
     }
 
-    func addStateContinuation(id: UUID, _ continuation: AsyncStream<WasmClient.EngineState>.Continuation) {
+    func addStateContinuation(
+        id: UUID,
+        _ continuation: AsyncStream<WasmClient.EngineState>.Continuation
+    ) {
         let replay: WasmClient.EngineState = stateLock.withLock {
             stateContinuations[id] = continuation
             return lastState
@@ -134,32 +137,32 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         logger?("Engine state: \(state)")
         let mapped: WasmClient.EngineState
         switch state {
-        case .running:
-            mapped = .running
-            markRunning()
-            let (continuation, timeout) = runningLock.withLock {
-                let c = startContinuation
-                startContinuation = nil
-                let t = startTimeoutTask
-                startTimeoutTask = nil
-                return (c, t)
-            }
-            timeout?.cancel()
-            continuation?.resume()
-        case .reload:
-            // After `.updating(1.0)` FlowKit fires `.reload` to swap the
-            // freshly downloaded wasm into the engine, then emits `.running`.
-            // Surfacing this as `.starting` makes consumers reset progress
-            // to 0% for the reload window — the user sees the boot bar snap
-            // 100 → 0 → 100 right before crossfade. Skip the yield;
-            // `lastState` still holds the prior `.updating(p)` snapshot for
-            // late subscribers.
-            return
-        case .updating(let progress):
-            mapped = .updating(progress)
-        default:
-            logger?("Unmapped FlowKit state \(state) — defaulting to .stopped")
-            mapped = .stopped
+            case .running:
+                mapped = .running
+                markRunning()
+                let (continuation, timeout) = runningLock.withLock {
+                    let c = startContinuation
+                    startContinuation = nil
+                    let t = startTimeoutTask
+                    startTimeoutTask = nil
+                    return (c, t)
+                }
+                timeout?.cancel()
+                continuation?.resume()
+            case .reload:
+                // After `.updating(1.0)` FlowKit fires `.reload` to swap the
+                // freshly downloaded wasm into the engine, then emits `.running`.
+                // Surfacing this as `.starting` makes consumers reset progress
+                // to 0% for the reload window — the user sees the boot bar snap
+                // 100 → 0 → 100 right before crossfade. Skip the yield;
+                // `lastState` still holds the prior `.updating(p)` snapshot for
+                // late subscribers.
+                return
+            case .updating(let progress):
+                mapped = .updating(progress)
+            default:
+                logger?("Unmapped FlowKit state \(state) — defaulting to .stopped")
+                mapped = .stopped
         }
         yieldState(mapped)
     }
@@ -171,7 +174,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     /// action providers as part of the start flow.
     func ensureStarted(logger: @escaping @Sendable (String) -> Void) async throws -> TaskWasmProtocol {
         #if canImport(Darwin)
-        signal(SIGPIPE, SIG_IGN)
+            signal(SIGPIPE, SIG_IGN)
         #endif
 
         // Fast path — already started.
@@ -181,7 +184,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         if isStarting {
             logger("Engine start in progress — waiting...")
             while isStarting {
-                try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+                try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
             }
             if let engine, isStarted { return engine }
             throw WasmClient.Error.engineInitFailed
@@ -194,7 +197,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             let cachedID = AsyncifyWasm.currentVersionID
 
             // Ask the host for the expected wasm version. nil / throw = no-op policy.
-            var expectedID: String? = nil
+            var expectedID: String?
             if let provider = currentExpectedVersionProvider() {
                 do {
                     expectedID = try await provider()
@@ -204,14 +207,14 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             }
 
             switch (cachedID, expectedID) {
-            case (nil, _):
-                logger("No cached wasm version — resetting downloads to force fresh download")
-                AsyncifyWasm.resetDownloads()
-            case let (.some(cached), .some(expected)) where cached != expected:
-                logger("Wasm version mismatch (cached=\(cached), expected=\(expected)) — resetting downloads")
-                AsyncifyWasm.resetDownloads()
-            case let (.some(cached), _):
-                logger("Using cached wasm version: \(cached)")
+                case (nil, _):
+                    logger("No cached wasm version — resetting downloads to force fresh download")
+                    AsyncifyWasm.resetDownloads()
+                case let (.some(cached), .some(expected)) where cached != expected:
+                    logger("Wasm version mismatch (cached=\(cached), expected=\(expected)) — resetting downloads")
+                    AsyncifyWasm.resetDownloads()
+                case let (.some(cached), _):
+                    logger("Using cached wasm version: \(cached)")
             }
 
             // Direct async calls — exactly like flow-kit-example's WasmEngine.load()
@@ -297,7 +300,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
 
         logger("Discovering action providers...")
         var cache: [String: [WaTAction]] = [:]
-        for attempt in 1...60 { // 60 × 500ms = 30s
+        for attempt in 1...60 {  // 60 × 500ms = 30s
             do {
                 let all = try await engine.actions()
                 if !all.actions.isEmpty {
@@ -328,7 +331,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     func refreshActions(logger: @escaping @Sendable (String) -> Void) async throws {
         guard let engine else { throw WasmClient.Error.engineNotStarted }
         var previousCount = 0
-        for attempt in 1...15 { // 15 × 2s = 30s max
+        for attempt in 1...15 {  // 15 × 2s = 30s max
             let allActions = try await engine.actions()
             let currentCount = allActions.actions.count
             var cache: [String: [WaTAction]] = [:]
@@ -365,7 +368,8 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             throw WasmClient.Error.noProviderFound(action: actionID)
         }
         if let preferred = preferredProvider,
-           let match = actions.first(where: { $0.provider == preferred }) {
+            let match = actions.first(where: { $0.provider == preferred })
+        {
             return match
         }
         return actions[0]
@@ -451,12 +455,20 @@ actor WasmActor {
     /// independently, wasting bandwidth.
     var isResumingPendingTasks: Bool = false
 
+    /// Serializes chat streaming. FlowKit's CAI/WebSocket SSE path routes chunks
+    /// to the most-recently-installed handler (not by requestID), so two
+    /// overlapping `chatStream` calls bleed one conversation's frames into the
+    /// other. Each `chatStream` parks on the previous stream's task and installs
+    /// its SSE handler only after that stream has fully drained, guaranteeing a
+    /// single live handler at any time.
+    var streamGate: Task<Void, Never>?
+
     // MARK: - Init
 
     init(
         logger: @escaping @Sendable (String) -> Void = { message in
             #if DEBUG
-            print("[WasmClient]: \(message)")
+                print("[WasmClient]: \(message)")
             #endif
         }
     ) {
@@ -541,7 +553,7 @@ actor WasmActor {
             let name = arg.name.isEmpty ? key : arg.name
             let isRequired = arg.hasValidator && arg.validator.required
             let kind: WasmClient.ActionArg.ArgKind
-            if arg.hasValidator, case .media(_) = arg.validator.data {
+            if arg.hasValidator, case .media = arg.validator.data {
                 kind = .media
             } else if arg.hasValidator, case .string(let s) = arg.validator.data {
                 if s.hasRegex, let values = Self.regexValues(s.regex), !values.isEmpty {

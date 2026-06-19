@@ -96,17 +96,18 @@ public actor ChatStreamSession {
         config: WasmClient.ChatConfig,
         history: [WasmClient.ChatMessage]
     ) {
-        // Stop every OTHER conversation that still has a live stream before
-        // starting this one, so concurrent `engine.create()` calls never race on
-        // the single WASM runtime. Each is torn down exactly like `stop(...)`:
-        // cancel the task, mark `.stopped`, and broadcast the accumulated partial
-        // so the consumer can persist it. The entry is kept (not removed) so a
-        // later re-open can still snapshot it.
+        // Finalize every OTHER conversation that's still streaming, so its UI and
+        // persistence settle on the partial it has so far and the consumer routes
+        // subsequent input to this conversation. We broadcast `.stopped` but do
+        // NOT cancel its task: WasmClient serializes streaming (the WasmActor
+        // gate), and cancelling here would tear that stream's SSE handler down
+        // early — on CAI/WS the still-arriving frames would then bleed into the
+        // next installed handler. Let the underlying stream drain naturally; the
+        // gate makes this conversation's stream wait for it. The entry is kept so
+        // a later re-open can still snapshot it.
         for (otherID, otherEntry) in streams where otherID != conversationID {
-            guard otherEntry.task != nil, otherEntry.status == .streaming else { continue }
-            otherEntry.task?.cancel()
+            guard otherEntry.status == .streaming else { continue }
             var stopped = otherEntry
-            stopped.task = nil
             stopped.status = .stopped
             streams[otherID] = stopped
             broadcast(
