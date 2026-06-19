@@ -10,7 +10,7 @@ extension WasmActor {
     private func webpageList(
         type: LivescoreWebPageType,
         extraArgs: [String: Google_Protobuf_Value] = [:]
-    ) async throws -> [WasmClient.LiveScore.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.Entry] {
         let instance = try await readyEngine()
         let action = try await instance.action(for: WasmClient.ActionID.lsWebpage.rawValue, strategy: .roundRobin)
         var args: [String: Google_Protobuf_Value] = [
@@ -32,10 +32,10 @@ extension WasmActor {
             logger("lsWebpage(type=\(type)) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreWebPageList.protoMessageName) error=\(error)")
             throw error
         }
-        return list.pages.map(mapWebPage)
+        return list.pages.map(mapEntry)
     }
 
-    func webpageLeagues() async throws -> [WasmClient.LiveScore.WebPage] {
+    func webpageLeagues() async throws -> [WasmClient.LiveScore.Entry] {
         try await webpageList(type: .leagues)
     }
 
@@ -46,7 +46,7 @@ extension WasmActor {
         q: String? = nil,
         limit: Int64? = nil,
         offset: Int64? = nil
-    ) async throws -> [WasmClient.LiveScore.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
         if let q, !q.isEmpty { args["q"] = Google_Protobuf_Value(stringValue: q) }
         if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
@@ -65,7 +65,7 @@ extension WasmActor {
         limit: Int64? = nil,
         offset: Int64? = nil,
         competitionId: String? = nil
-    ) async throws -> [WasmClient.LiveScore.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
         if let q, !q.isEmpty { args["q"] = Google_Protobuf_Value(stringValue: q) }
         if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
@@ -76,20 +76,20 @@ extension WasmActor {
         return try await webpageList(type: .teams, extraArgs: args)
     }
 
-    func webpage(url: String) async throws -> [WasmClient.LiveScore.WebPage] {
+    func webpage(url: String) async throws -> [WasmClient.LiveScore.Entry] {
         try await webpageList(type: .page, extraArgs: ["url": Google_Protobuf_Value(stringValue: url)])
     }
 
-    func webpageDiscovers() async throws -> [WasmClient.LiveScore.WebPage] {
+    func webpageDiscovers() async throws -> [WasmClient.LiveScore.Entry] {
         try await webpageList(type: .discovers)
     }
 
     // MARK: - Single-item lookups (id-filtered)
 
     /// Fetch one competition by numeric Scorebat id. Returns the matching
-    /// `WebPage` (with composed embed URL) or nil when the backend doesn't
+    /// `Entry` (with composed embed URL) or nil when the backend doesn't
     /// know it.
-    func webpageCompetition(id: String) async throws -> WasmClient.LiveScore.WebPage? {
+    func webpageCompetition(id: String) async throws -> WasmClient.LiveScore.Entry? {
         try await webpageList(
             type: .competitions,
             extraArgs: ["id": Google_Protobuf_Value(stringValue: id)]
@@ -97,8 +97,8 @@ extension WasmActor {
     }
 
     /// Fetch one team by numeric Scorebat id. Returns the matching
-    /// `WebPage` or nil when the backend doesn't know it.
-    func webpageTeam(id: String) async throws -> WasmClient.LiveScore.WebPage? {
+    /// `Entry` or nil when the backend doesn't know it.
+    func webpageTeam(id: String) async throws -> WasmClient.LiveScore.Entry? {
         try await webpageList(
             type: .teams,
             extraArgs: ["id": Google_Protobuf_Value(stringValue: id)]
@@ -114,7 +114,7 @@ extension WasmActor {
         q: String? = nil,
         page: Int64? = nil,
         pageSize: Int64? = nil
-    ) async throws -> [WasmClient.LiveScore.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
         if let videoType, !videoType.isEmpty {
             args["video_type"] = Google_Protobuf_Value(stringValue: videoType)
@@ -143,7 +143,7 @@ extension WasmActor {
         q: String? = nil,
         competitionID: String? = nil,
         teamID: String? = nil
-    ) async throws -> [WasmClient.LiveScore.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
         if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
         if let offset { args["offset"] = Google_Protobuf_Value(numberValue: Double(offset)) }
@@ -356,8 +356,8 @@ extension WasmActor {
         )
     }
 
-    private func mapWebPage(_ p: LivescoreWebPage) -> WasmClient.LiveScore.WebPage {
-        WasmClient.LiveScore.WebPage(
+    private func mapEntry(_ p: LivescoreWebPage) -> WasmClient.LiveScore.Entry {
+        WasmClient.LiveScore.Entry(
             id: p.id, image: p.image, title: p.title,
             subtitle: p.subtitle, url: p.url, datetime: p.datetime
         )

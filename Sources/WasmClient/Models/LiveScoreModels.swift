@@ -126,13 +126,13 @@ extension WasmClient.LiveScore {
     }
 }
 
-// MARK: - Livescore Webpage
+// MARK: - Livescore Entry
 
 extension WasmClient.LiveScore {
-    /// A webpage entry returned by `lsWebpage`. Mirrors `LivescoreWebPage`
+    /// A content entry returned by `lsWebpage`. Mirrors the `LivescoreWebPage`
     /// proto from FlowKit. The same type backs every `WebPageType` variant
     /// (leagues, competitions, teams, page, discovers, videos, news).
-    public struct WebPage: Sendable, Equatable, Identifiable {
+    public struct Entry: Sendable, Equatable, Identifiable {
         /// Slug identifier (e.g. "team/real-madrid", "competition/england-premier-league").
         public let id: String
         /// Thumbnail / logo URL for list display.

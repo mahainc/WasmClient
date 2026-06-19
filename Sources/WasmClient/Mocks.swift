@@ -501,29 +501,29 @@ extension WasmClient {
             return "https://example.com/tryon.jpg"
         },
         webpageLeagues: {
-            [LiveScore.WebPage(id: "league/premier-league", title: "Premier League", subtitle: "England")]
+            [LiveScore.Entry(id: "league/premier-league", title: "Premier League", subtitle: "England")]
         },
         webpageCompetitions: { _, _, _ in
-            [LiveScore.WebPage(id: "competition/champions-league", title: "Champions League", subtitle: "UEFA")]
+            [LiveScore.Entry(id: "competition/champions-league", title: "Champions League", subtitle: "UEFA")]
         },
         webpageTeams: { _, _, _, _ in
-            [LiveScore.WebPage(id: "team/arsenal", title: "Arsenal", subtitle: "England")]
+            [LiveScore.Entry(id: "team/arsenal", title: "Arsenal", subtitle: "England")]
         },
         webpage: { _ in
-            [LiveScore.WebPage(id: "page/example", title: "Example Page", url: "https://example.com")]
+            [LiveScore.Entry(id: "page/example", title: "Example Page", url: "https://example.com")]
         },
         webpageDiscovers: {
-            [LiveScore.WebPage(id: "discover/featured", title: "Featured", subtitle: "Discover")]
+            [LiveScore.Entry(id: "discover/featured", title: "Featured", subtitle: "Discover")]
         },
         webpageCompetition: { id in
-            LiveScore.WebPage(id: "competition/\(id)", title: "Mock Competition \(id)", subtitle: "UEFA")
+            LiveScore.Entry(id: "competition/\(id)", title: "Mock Competition \(id)", subtitle: "UEFA")
         },
         webpageTeam: { id in
-            LiveScore.WebPage(id: "team/\(id)", title: "Mock Team \(id)", subtitle: "England")
+            LiveScore.Entry(id: "team/\(id)", title: "Mock Team \(id)", subtitle: "England")
         },
         webpageVideos: { _, _, _, _, _, _ in
             [
-                LiveScore.WebPage(
+                LiveScore.Entry(
                     id: "video/example", title: "Example Highlight",
                     subtitle: "Premier League", datetime: 1_718_400_000
                 )
@@ -531,7 +531,7 @@ extension WasmClient {
         },
         webpageNews: { _, _, _, _, _ in
             [
-                LiveScore.WebPage(
+                LiveScore.Entry(
                     id: "news/example",
                     title: "Example Headline",
                     subtitle: "livescore · Mock Author",
