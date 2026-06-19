@@ -23,7 +23,7 @@ extension WasmActor {
         let bodyString = String(data: bodyData, encoding: .utf8)!
 
         var args: [String: Google_Protobuf_Value] = [
-            "body": Google_Protobuf_Value(stringValue: bodyString),
+            "body": Google_Protobuf_Value(stringValue: bodyString)
         ]
         if !config.endpoint.isEmpty {
             args["url"] = Google_Protobuf_Value(stringValue: config.endpoint)
@@ -50,7 +50,8 @@ extension WasmActor {
         var opts = JSONDecodingOptions()
         opts.ignoreUnknownFields = true
         if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
-           let choice = completion.choices.first {
+            let choice = completion.choices.first
+        {
             return Self.mapMessage(choice.message)
         }
 
@@ -60,10 +61,13 @@ extension WasmActor {
 
     /// Stream a chat response, yielding content deltas as they arrive via SSE.
     ///
-    /// Per-request routing: each call mints a `requestID` and registers a handler
-    /// via `AsyncifyWasmInternal.installSSEChunkHandler(for:)`. FlowKit tags every
-    /// SSE chunk with its originating requestID, so multiple concurrent streams
-    /// (e.g. different chats) never bleed into each other's continuations.
+    /// Serialized streaming: FlowKit's CAI/WebSocket path routes SSE frames to
+    /// the most-recently-installed chunk handler (NOT by requestID), so two
+    /// overlapping streams bleed one conversation's frames into the other. To
+    /// guarantee a single live handler, each call parks on the previous stream's
+    /// task (`streamGate`) and installs its handler only after that stream has
+    /// fully drained. The handler is removed in a `defer` tied to this task, so
+    /// the next stream's gate-wait only returns once this handler is gone.
     func chatStream(
         config: WasmClient.ChatConfig,
         messages: [WasmClient.ChatMessage]
@@ -86,7 +90,7 @@ extension WasmActor {
         logger("chatStream: body built (\(bodyData.count) bytes), model: \(config.model)")
 
         var streamArgs: [String: Google_Protobuf_Value] = [
-            "body": Google_Protobuf_Value(stringValue: bodyString),
+            "body": Google_Protobuf_Value(stringValue: bodyString)
         ]
         if !config.endpoint.isEmpty {
             streamArgs["url"] = Google_Protobuf_Value(stringValue: config.endpoint)
@@ -98,11 +102,28 @@ extension WasmActor {
         let log = logger
         let requestID = UUID().uuidString
 
-        return AsyncThrowingStream { continuation in
-            // Tracks whether any chunk reached the consumer. Read in the
-            // detached task after `create()` returns to decide whether to fall
-            // back to the task value (some providers ship the full response
-            // as the WaTTask result instead of as SSE frames).
+        // Chain onto the previous stream so handler install/drain is serialized.
+        let previous = streamGate
+        let (stream, continuation) = AsyncThrowingStream<String, Swift.Error>.makeStream()
+
+        // Use Task.detached to avoid inheriting WasmActor isolation.
+        // FlowKit's instance.create() must run on the global executor —
+        // running it actor-isolated causes hangs under Xcode's debugger
+        // (flow-kit-example avoids this by using a plain class, not an actor).
+        let streamTask = Task.detached {
+            // Wait for the previous stream to FULLY terminate (drain to
+            // finish_reason:"stop" / quiet window / 60s deadline) before
+            // installing our handler — overlapping handlers bleed on CAI/WS.
+            await previous?.value
+            if Task.isCancelled {
+                continuation.finish()
+                return
+            }
+
+            // Tracks whether any chunk reached the consumer. Read after
+            // `create()` returns to decide whether to fall back to the task
+            // value (some providers ship the full response as the WaTTask
+            // result instead of as SSE frames).
             let didReceiveChunks = ChunkFlag()
             // Tracks the timestamp of the last SSE frame plus an explicit
             // `finish_reason:"stop"` signal. Used by the post-`create()` wait
@@ -112,90 +133,94 @@ extension WasmActor {
 
             AsyncifyWasmInternal.installSSEChunkHandler(for: requestID) { chunk in
                 guard let data = chunk.data(using: .utf8),
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let choices = json["choices"] as? [[String: Any]] else { return }
+                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                    let choices = json["choices"] as? [[String: Any]]
+                else { return }
                 lastChunkAt.touch()
                 if let finish = choices.first?["finish_reason"] as? String, finish == "stop" {
                     lastChunkAt.markFinished()
                     return
                 }
                 guard let delta = choices.first?["delta"] as? [String: Any],
-                      let content = delta["content"] as? String,
-                      !content.isEmpty else { return }
+                    let content = delta["content"] as? String,
+                    !content.isEmpty
+                else { return }
                 didReceiveChunks.set()
                 continuation.yield(content)
             }
+            // Tie handler removal to THIS task so the next stream's
+            // `await previous?.value` only returns once our handler is gone.
+            defer { AsyncifyWasmInternal.removeSSEChunkHandler(for: requestID) }
 
-            // Use Task.detached to avoid inheriting WasmActor isolation.
-            // FlowKit's instance.create() must run on the global executor —
-            // running it actor-isolated causes hangs under Xcode's debugger
-            // (flow-kit-example avoids this by using a plain class, not an actor).
-            let streamTask = Task.detached {
-                log("chatStream: Task started (requestID: \(requestID))...")
-                do {
-                    log("chatStream: calling engine.create(action:args:requestID:)...")
-                    let task = try await engine.create(action: action, args: args, requestID: requestID)
-                    log("chatStream: task returned — status: \(task.status), hasValue: \(task.hasValue), didReceiveChunks: \(didReceiveChunks.value)")
+            log("chatStream: Task started (requestID: \(requestID))...")
+            do {
+                log("chatStream: calling engine.create(action:args:requestID:)...")
+                let task = try await engine.create(action: action, args: args, requestID: requestID)
+                log(
+                    "chatStream: task returned — status: \(task.status), hasValue: \(task.hasValue), didReceiveChunks: \(didReceiveChunks.value)"
+                )
 
-                    // For WS-streaming providers (CAI), `engine.create()` resolves
-                    // on the first partial Task while frames keep arriving via the
-                    // SSE handler. Wait for an explicit `finish_reason:"stop"` or a
-                    // quiet window of no chunks before treating the response as
-                    // complete. Mirrors flow-kit-example's `sendViaWasm` poll loop.
-                    if task.status != .completed {
-                        let deadline = Date().addingTimeInterval(60)
-                        let quietWindow: TimeInterval = 2.5
-                        log("chatStream: entering WS-stream wait (60s deadline, 2.5s quiet window)")
-                        while Date() < deadline {
-                            try await Task.sleep(nanoseconds: 200_000_000)
-                            if lastChunkAt.finished {
-                                log("chatStream: saw finish_reason:'stop', exiting wait")
-                                break
-                            }
-                            if !didReceiveChunks.value { continue }
-                            if Date().timeIntervalSince(lastChunkAt.value) >= quietWindow {
-                                log("chatStream: quiet window elapsed, exiting wait")
-                                break
-                            }
+                // For WS-streaming providers (CAI), `engine.create()` resolves
+                // on the first partial Task while frames keep arriving via the
+                // SSE handler. Wait for an explicit `finish_reason:"stop"` or a
+                // quiet window of no chunks before treating the response as
+                // complete. Mirrors flow-kit-example's `sendViaWasm` poll loop.
+                if task.status != .completed {
+                    let deadline = Date().addingTimeInterval(60)
+                    let quietWindow: TimeInterval = 2.5
+                    log("chatStream: entering WS-stream wait (60s deadline, 2.5s quiet window)")
+                    while Date() < deadline {
+                        try await Task.sleep(nanoseconds: 200_000_000)
+                        if lastChunkAt.finished {
+                            log("chatStream: saw finish_reason:'stop', exiting wait")
+                            break
+                        }
+                        if !didReceiveChunks.value { continue }
+                        if Date().timeIntervalSince(lastChunkAt.value) >= quietWindow {
+                            log("chatStream: quiet window elapsed, exiting wait")
+                            break
                         }
                     }
-
-                    // If no SSE chunks arrived, fall back to the task result
-                    if !didReceiveChunks.value,
-                       task.status == .completed,
-                       task.hasValue,
-                       let result = try? TypesBytes(unpackingAny: task.value),
-                       case .raw(let data) = result.data
-                    {
-                        log("chatStream: no SSE chunks, falling back to task result (\(data.count) bytes)")
-                        var opts = JSONDecodingOptions()
-                        opts.ignoreUnknownFields = true
-                        if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
-                           let choice = completion.choices.first,
-                           !choice.message.content.isEmpty
-                        {
-                            continuation.yield(choice.message.content)
-                        } else if let text = String(data: data, encoding: .utf8), !text.isEmpty {
-                            continuation.yield(text)
-                        }
-                    }
-                    continuation.finish()
-                    log("chatStream: finished successfully")
-                } catch {
-                    log("chatStream: error — \(error)")
-                    continuation.finish(throwing: error)
                 }
-            }
 
-            // Termination handler runs when the consumer cancels the stream OR
-            // when `continuation.finish(...)` is called above. Cancels the
-            // underlying detached task (so the WASM-side work stops too) and
-            // removes the per-request SSE handler.
-            continuation.onTermination = { _ in
-                streamTask.cancel()
-                AsyncifyWasmInternal.removeSSEChunkHandler(for: requestID)
+                // If no SSE chunks arrived, fall back to the task result
+                if !didReceiveChunks.value,
+                    task.status == .completed,
+                    task.hasValue,
+                    let result = try? TypesBytes(unpackingAny: task.value),
+                    case .raw(let data) = result.data
+                {
+                    log("chatStream: no SSE chunks, falling back to task result (\(data.count) bytes)")
+                    var opts = JSONDecodingOptions()
+                    opts.ignoreUnknownFields = true
+                    if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
+                        let choice = completion.choices.first,
+                        !choice.message.content.isEmpty
+                    {
+                        continuation.yield(choice.message.content)
+                    } else if let text = String(data: data, encoding: .utf8), !text.isEmpty {
+                        continuation.yield(text)
+                    }
+                }
+                continuation.finish()
+                log("chatStream: finished successfully")
+            } catch {
+                log("chatStream: error — \(error)")
+                continuation.finish(throwing: error)
             }
         }
+
+        // Park the next stream behind this one. `streamTask` is `Task<Void,
+        // Never>` (errors are funneled into the continuation), so the gate
+        // never propagates a failure to the next waiter.
+        streamGate = streamTask
+
+        // Cancelling the consumer's stream cancels the detached task; the
+        // `defer` then removes this request's SSE handler.
+        continuation.onTermination = { _ in
+            streamTask.cancel()
+        }
+        return stream
     }
 
     /// Single-shot tool/function calling over the streaming transport.
@@ -545,11 +570,13 @@ extension WasmActor {
             "limit": Google_Protobuf_Value(numberValue: Double(limit)),
         ]
         if let trimmed = keyword?.trimmingCharacters(in: .whitespaces),
-           !trimmed.isEmpty {
+            !trimmed.isEmpty
+        {
             args["keyword"] = Google_Protobuf_Value(stringValue: trimmed)
         }
         if let trimmedCategory = category?.trimmingCharacters(in: .whitespaces),
-           !trimmedCategory.isEmpty {
+            !trimmedCategory.isEmpty
+        {
             args["category"] = Google_Protobuf_Value(stringValue: trimmedCategory)
         }
 
@@ -610,9 +637,11 @@ extension WasmActor {
             args["image"] = .init(stringValue: input.image)
         }
         if !input.categories.isEmpty {
-            args["category"] = .init(listValue: .init(
-                values: input.categories.map { .init(stringValue: $0) }
-            ))
+            args["category"] = .init(
+                listValue: .init(
+                    values: input.categories.map { .init(stringValue: $0) }
+                )
+            )
         }
         if !input.gender.isEmpty {
             args["gender"] = .init(stringValue: input.gender)
@@ -621,9 +650,11 @@ extension WasmActor {
             args["tone"] = .init(stringValue: input.tone)
         }
         if !input.traits.isEmpty {
-            args["traits"] = .init(listValue: .init(
-                values: input.traits.map { .init(stringValue: $0) }
-            ))
+            args["traits"] = .init(
+                listValue: .init(
+                    values: input.traits.map { .init(stringValue: $0) }
+                )
+            )
         }
 
         let task = try await instance.create(action: action, args: args)
@@ -667,10 +698,11 @@ extension WasmActor {
         // fallback here: registering the user on the wrong provider (because
         // the requested one happens not to expose providerInit) silently
         // pollutes the wrong account. flow-kit-example uses exact match.
-        let allInitActions = (try? await delegate.resolveAllActions(
-            actionID: WasmClient.ActionID.providerInit.rawValue,
-            logger: logger
-        )) ?? []
+        let allInitActions =
+            (try? await delegate.resolveAllActions(
+                actionID: WasmClient.ActionID.providerInit.rawValue,
+                logger: logger
+            )) ?? []
 
         let actions: [WaTAction]
         if providerId.isEmpty {
@@ -689,11 +721,13 @@ extension WasmActor {
         if actions.isEmpty { return }
 
         let args: [String: Google_Protobuf_Value] = [
-            "metadata": .init(structValue: .with {
-                $0.fields = [
-                    "name": .init(stringValue: userName),
-                ]
-            }),
+            "metadata": .init(
+                structValue: .with {
+                    $0.fields = [
+                        "name": .init(stringValue: userName)
+                    ]
+                }
+            )
         ]
 
         for action in actions {
@@ -832,10 +866,13 @@ extension WasmActor {
             }
             if !msg.toolCalls.isEmpty {
                 dict["tool_calls"] = msg.toolCalls.map { tc -> [String: Any] in
-                    ["id": tc.id, "type": tc.type, "function": [
-                        "name": tc.functionName,
-                        "arguments": tc.functionArguments,
-                    ]]
+                    [
+                        "id": tc.id, "type": tc.type,
+                        "function": [
+                            "name": tc.functionName,
+                            "arguments": tc.functionArguments,
+                        ],
+                    ]
                 }
             }
             if !msg.toolCallID.isEmpty {

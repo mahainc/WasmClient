@@ -2,8 +2,8 @@
 import PackageDescription
 
 let packageDir = Context.packageDirectory
-let flowKitVersion = "1.2.54-26.1.1-ffi"
-let flowKitChecksum = "83b36939e32c940f8696f1cab0d90422aa97733366990439c6e519cd9450bb4d"
+let flowKitVersion = "1.2.57-26.1.1-ffi"
+let flowKitChecksum = "2ec233ab8212368e4b8d36eb3850b330d8ab7fac0e50df208c023503e6effc3b"
 let flowKitURL = "https://github.com/mahainc/flow-kit/releases/download/\(flowKitVersion)/FlowKit.xcframework.zip"
 
 let package = Package(
@@ -97,6 +97,13 @@ let package = Package(
         .plugin(
             name: "MergeFlowKitModules",
             capability: .buildTool()
+        ),
+        .testTarget(
+            name: "WasmClientTests",
+            dependencies: [
+                "WasmClient",
+                .product(name: "Dependencies", package: "swift-dependencies"),
+            ]
         ),
     ]
 )

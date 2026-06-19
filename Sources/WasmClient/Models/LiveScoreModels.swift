@@ -143,13 +143,15 @@ extension WasmClient.LiveScore {
         public let subtitle: String
         /// Embed URL loaded directly in WKWebView (no-proxy).
         public let url: String
+        /// UNIX seconds; populated for Highlights/news items, 0 otherwise.
+        public let datetime: Int64
 
         public init(
             id: String = "", image: String = "", title: String = "",
-            subtitle: String = "", url: String = ""
+            subtitle: String = "", url: String = "", datetime: Int64 = 0
         ) {
             self.id = id; self.image = image; self.title = title
-            self.subtitle = subtitle; self.url = url
+            self.subtitle = subtitle; self.url = url; self.datetime = datetime
         }
     }
 }
