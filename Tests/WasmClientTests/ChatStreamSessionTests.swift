@@ -286,4 +286,87 @@ final class ChatStreamSessionTests: XCTestCase {
             XCTAssertEqual(text, "Hi")
         }
     }
+
+    // MARK: - (f) Starting a new conversation stops the previous one (no bleed)
+
+    func testStartingNewConversationStopsPreviousStream() async {
+        let cidA = UUID()
+        let assistantA = UUID()
+        let cidB = UUID()
+        let assistantB = UUID()
+
+        await withDependencies {
+            $0.wasm = .noop
+            // Conversation A: yields one chunk then stays open (still "streaming").
+            $0.wasm.chatStream = { _, _ in
+                AsyncThrowingStream { continuation in
+                    continuation.yield("A-partial")
+                    // Never finishes — simulates a long in-flight response.
+                }
+            }
+        } operation: {
+            let session = ChatStreamSession()
+            let streamA = await session.subscribe(conversationID: cidA)
+            try? await Task.sleep(for: .milliseconds(20))
+
+            await session.start(
+                conversationID: cidA,
+                assistantMessageID: assistantA,
+                config: .init(model: "m"),
+                history: []
+            )
+
+            // Wait until A has accumulated its partial chunk.
+            let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+            while ContinuousClock.now < deadline {
+                if await session.snapshot(conversationID: cidA)?.accumulatedText == "A-partial" { break }
+                try? await Task.sleep(for: .milliseconds(5))
+            }
+
+            // Now start a DIFFERENT conversation B with its own stub.
+            await withDependencies {
+                $0.wasm.chatStream = { _, _ in
+                    AsyncThrowingStream { continuation in
+                        continuation.yield("B-only")
+                        continuation.finish()
+                    }
+                }
+            } operation: {
+                let streamB = await session.subscribe(conversationID: cidB)
+                try? await Task.sleep(for: .milliseconds(20))
+                await session.start(
+                    conversationID: cidB,
+                    assistantMessageID: assistantB,
+                    config: .init(model: "m"),
+                    history: []
+                )
+
+                // A's subscriber must receive `.stopped` carrying A's partial text.
+                let aEvents = await collect(streamA) {
+                    if case .stopped = $0 { return true }
+                    return false
+                }
+                guard case .stopped(let aID, let aText) = aEvents.last else {
+                    return XCTFail("expected A to be .stopped when B starts, got \(String(describing: aEvents.last))")
+                }
+                XCTAssertEqual(aID, assistantA)
+                XCTAssertEqual(aText, "A-partial")
+
+                // B streams its own content, never A's.
+                let bEvents = await collect(streamB) {
+                    if case .finished = $0 { return true }
+                    return false
+                }
+                let bDeltas = bEvents.compactMap { event -> String? in
+                    if case .delta(_, let chunk) = event { return chunk }
+                    return nil
+                }
+                XCTAssertEqual(bDeltas, ["B-only"])
+                XCTAssertFalse(
+                    bDeltas.contains { $0.contains("A-partial") },
+                    "conversation B must not receive conversation A's text"
+                )
+            }
+        }
+    }
 }

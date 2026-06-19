@@ -83,12 +83,38 @@ public actor ChatStreamSession {
     /// Start (or replace) a stream for `conversationID`. If a stream is already
     /// active, its Task is cancelled and subscribers are transferred to the new
     /// one — matches "regenerate" semantics.
+    ///
+    /// Single active stream: the underlying WASM runtime serializes engine work,
+    /// so two concurrent streams would bleed one conversation's response into
+    /// the other. Starting a stream therefore stops any *other* in-flight
+    /// conversation first (persisting its partial via `.stopped`). Re-entering
+    /// the SAME conversation does not call `start`, so its durable stream keeps
+    /// running and replays on re-subscribe.
     public func start(
         conversationID: UUID,
         assistantMessageID: UUID,
         config: WasmClient.ChatConfig,
         history: [WasmClient.ChatMessage]
     ) {
+        // Stop every OTHER conversation that still has a live stream before
+        // starting this one, so concurrent `engine.create()` calls never race on
+        // the single WASM runtime. Each is torn down exactly like `stop(...)`:
+        // cancel the task, mark `.stopped`, and broadcast the accumulated partial
+        // so the consumer can persist it. The entry is kept (not removed) so a
+        // later re-open can still snapshot it.
+        for (otherID, otherEntry) in streams where otherID != conversationID {
+            guard otherEntry.task != nil, otherEntry.status == .streaming else { continue }
+            otherEntry.task?.cancel()
+            var stopped = otherEntry
+            stopped.task = nil
+            stopped.status = .stopped
+            streams[otherID] = stopped
+            broadcast(
+                .stopped(assistantMessageID: stopped.assistantMessageID, text: stopped.accumulatedText),
+                to: stopped.subscribers
+            )
+        }
+
         // Regenerate / replace: cancel the in-flight Task and transfer the
         // existing subscribers to the new entry so a subscriber that attached
         // before `start` keeps receiving events. We deliberately do NOT
