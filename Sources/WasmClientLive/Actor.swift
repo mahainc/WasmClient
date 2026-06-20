@@ -386,13 +386,32 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         guard let actions = actionCache[actionID], !actions.isEmpty else {
             throw WasmClient.Error.noProviderFound(action: actionID)
         }
+        // Honour the caller's preferred provider — UNLESS it's known to trap the
+        // WASM runtime, in which case fall through to a healthy alternative.
         if let preferred = preferredProvider,
+            !Self.blockedProviderIDs.contains(preferred),
             let match = actions.first(where: { $0.provider == preferred })
         {
             return match
         }
+        // No (usable) preferred provider → pick the first one that ISN'T
+        // known-broken. Some chat providers crash the WASM runtime on
+        // `engine.create()` ("error while executing at wasm backtrace…"), which
+        // corrupts the whole engine. `actions[0]` is frequently the broken one, so
+        // skip it when a healthy alternative exists. Falls back to actions[0] if
+        // every provider is blocked.
+        if let healthy = actions.first(where: { !Self.blockedProviderIDs.contains($0.provider) }) {
+            return healthy
+        }
         return actions[0]
     }
+
+    /// Provider ciphered-ids whose WASM `engine.create()` traps the runtime.
+    /// Skipped by `resolveAction` when no specific provider was requested.
+    /// Verified on-device 2026-06; remove once the backend fixes the provider.
+    static let blockedProviderIDs: Set<String> = [
+        "479227509d1398bf41ee31cba5bc9a9010dd7873faea6095c9e8156d4a54b2e0"
+    ]
 
     /// Return all providers registered for a given action ID.
     func resolveAllActions(
