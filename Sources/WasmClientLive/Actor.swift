@@ -103,6 +103,12 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         runningLock.withLock { engineDidReachRunning = false }
     }
 
+    /// Called before an in-place `TaskWasmEngine.reset()` so `ensureStarted`
+    /// can wait for a fresh `.running` callback if needed.
+    func prepareForInPlaceReset() {
+        clearRunning()
+    }
+
     func addStateContinuation(id: UUID, _ continuation: AsyncStream<WasmClient.EngineState>.Continuation) {
         let replay: WasmClient.EngineState = stateLock.withLock {
             stateContinuations[id] = continuation
@@ -450,6 +456,9 @@ actor WasmActor {
     /// duplicate concurrent loops; each one would re-poll every descriptor
     /// independently, wasting bandwidth.
     var isResumingPendingTasks: Bool = false
+    /// Serializes chat SSE streams so stale WS frames cannot bleed into the
+    /// next consumer after a mid-stream dismiss (see `ChatStreamGate`).
+    let chatStreamGate = ChatStreamGate()
 
     // MARK: - Init
 
@@ -484,6 +493,7 @@ actor WasmActor {
     }
 
     func reset() async throws {
+        await chatStreamGate.prepareForStream(recoverEngine: nil, log: logger)
         delegate.resetEngine()
     }
 

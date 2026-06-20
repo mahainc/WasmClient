@@ -70,6 +70,8 @@ extension WasmClient {
         ttsVoices: { _, _ in [] },
         aiartGenerate: { _, _ in AiartResult() },
         aiartStyles: { _ in [] },
+        aiartModels: { _ in AiartModelCatalog() },
+        aiartAspectRatios: { _ in [] },
         aiartVideoCreate: { _ in AiartVideoResult(status: .processing) },
         aiartVideoStatus: { _ in AiartVideoResult() },
         aiartVideoPoll: { _, _, _ in AiartVideoResult() },
@@ -347,6 +349,20 @@ extension WasmClient {
                 "ANIME", "CYBERPUNK", "WATERCOLOR", "PIXEL_ART", "THREE_D_CARTOON",
                 "FANTASY", "OIL_PAINTING", "LINE_ART", "MINIMAL", "PHOTOREAL",
             ]
+        },
+        aiartModels: { _ in
+            AiartModelCatalog(
+                models: [
+                    AiartModelInfo(modelID: "flux-schnell", name: "Flux Schnell", ownedBy: "black-forest-labs"),
+                    AiartModelInfo(modelID: "flux-dev", name: "Flux Dev", ownedBy: "black-forest-labs"),
+                    AiartModelInfo(
+                        modelID: "sdxl", name: "Stable Diffusion XL", ownedBy: "stability-ai", vision: true),
+                ],
+                defaultModelID: "flux-schnell"
+            )
+        },
+        aiartAspectRatios: { _ in
+            ["1:1", "3:4", "4:3", "16:9", "9:16"]
         },
         aiartVideoCreate: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)

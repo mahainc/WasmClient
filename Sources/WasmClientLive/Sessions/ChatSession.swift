@@ -12,6 +12,10 @@ extension WasmActor {
         config: WasmClient.ChatConfig,
         messages: [WasmClient.ChatMessage]
     ) async throws -> WasmClient.ChatMessage {
+        await chatStreamGate.prepareForStream(
+            recoverEngine: makeRecoverInterruptedChatEngine(),
+            log: logger
+        )
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.chat.rawValue,
@@ -62,12 +66,20 @@ extension WasmActor {
     ///
     /// Per-request routing: each call mints a `requestID` and registers a handler
     /// via `AsyncifyWasmInternal.installSSEChunkHandler(for:)`. FlowKit tags every
-    /// SSE chunk with its originating requestID, so multiple concurrent streams
-    /// (e.g. different chats) never bleed into each other's continuations.
+    /// SSE chunk with its originating requestID on backends that support it.
+    ///
+    /// Chat streams are also serialized through `ChatStreamGate`: a new call waits
+    /// for the previous stream to tear down and for an active quarantine window
+    /// (discard handler + real SSE quiet time) so stale WS frames cannot paint
+    /// the next consumer after a mid-stream dismiss.
     func chatStream(
         config: WasmClient.ChatConfig,
         messages: [WasmClient.ChatMessage]
     ) async throws -> AsyncThrowingStream<String, Swift.Error> {
+        await chatStreamGate.prepareForStream(
+            recoverEngine: makeRecoverInterruptedChatEngine(),
+            log: logger
+        )
         logger("chatStream: acquiring engine...")
         let instance = try await readyEngine()
         guard let engine = instance as? TaskWasmEngine else {
@@ -96,19 +108,18 @@ extension WasmActor {
         }
         let args = streamArgs
         let log = logger
+        let gate = chatStreamGate
+        let recoverEngine = makeRecoverInterruptedChatEngine()
         let requestID = UUID().uuidString
 
         return AsyncThrowingStream { continuation in
-            // Tracks whether any chunk reached the consumer. Read in the
-            // detached task after `create()` returns to decide whether to fall
-            // back to the task value (some providers ship the full response
-            // as the WaTTask result instead of as SSE frames).
             let didReceiveChunks = ChunkFlag()
-            // Tracks the timestamp of the last SSE frame plus an explicit
-            // `finish_reason:"stop"` signal. Used by the post-`create()` wait
-            // loop to short-circuit on WS-streaming providers (CAI) that
-            // resolve `create()` early and keep emitting frames.
             let lastChunkAt = LastChunkTime()
+            let taskHolder = StreamTaskHolder()
+
+            let teardown: @Sendable () -> Void = {
+                taskHolder.cancel()
+            }
 
             AsyncifyWasmInternal.installSSEChunkHandler(for: requestID) { chunk in
                 guard let data = chunk.data(using: .utf8),
@@ -126,22 +137,16 @@ extension WasmActor {
                 continuation.yield(content)
             }
 
-            // Use Task.detached to avoid inheriting WasmActor isolation.
-            // FlowKit's instance.create() must run on the global executor —
-            // running it actor-isolated causes hangs under Xcode's debugger
-            // (flow-kit-example avoids this by using a plain class, not an actor).
             let streamTask = Task.detached {
                 log("chatStream: Task started (requestID: \(requestID))...")
+                defer {
+                    gate.clearActive(requestID: requestID)
+                }
                 do {
                     log("chatStream: calling engine.create(action:args:requestID:)...")
                     let task = try await engine.create(action: action, args: args, requestID: requestID)
                     log("chatStream: task returned — status: \(task.status), hasValue: \(task.hasValue), didReceiveChunks: \(didReceiveChunks.value)")
 
-                    // For WS-streaming providers (CAI), `engine.create()` resolves
-                    // on the first partial Task while frames keep arriving via the
-                    // SSE handler. Wait for an explicit `finish_reason:"stop"` or a
-                    // quiet window of no chunks before treating the response as
-                    // complete. Mirrors flow-kit-example's `sendViaWasm` poll loop.
                     if task.status != .completed {
                         let deadline = Date().addingTimeInterval(60)
                         let quietWindow: TimeInterval = 2.5
@@ -160,7 +165,6 @@ extension WasmActor {
                         }
                     }
 
-                    // If no SSE chunks arrived, fall back to the task result
                     if !didReceiveChunks.value,
                        task.status == .completed,
                        task.hasValue,
@@ -179,21 +183,94 @@ extension WasmActor {
                             continuation.yield(text)
                         }
                     }
+                    AsyncifyWasmInternal.removeSSEChunkHandler(for: requestID)
                     continuation.finish()
                     log("chatStream: finished successfully")
+                } catch is CancellationError {
+                    // Handler removal is owned by `ChatStreamGate` quarantine on
+                    // the same requestID — stale native frames must not land on
+                    // the next consumer's handler.
+                    log("chatStream: error — CancellationError()")
+                    continuation.finish(throwing: CancellationError())
                 } catch {
+                    AsyncifyWasmInternal.removeSSEChunkHandler(for: requestID)
                     log("chatStream: error — \(error)")
                     continuation.finish(throwing: error)
                 }
             }
+            taskHolder.store(streamTask)
+            gate.register(requestID: requestID, teardown: teardown, task: streamTask)
 
-            // Termination handler runs when the consumer cancels the stream OR
-            // when `continuation.finish(...)` is called above. Cancels the
-            // underlying detached task (so the WASM-side work stops too) and
-            // removes the per-request SSE handler.
-            continuation.onTermination = { _ in
-                streamTask.cancel()
-                AsyncifyWasmInternal.removeSSEChunkHandler(for: requestID)
+            continuation.onTermination = { termination in
+                switch termination {
+                case .cancelled:
+                    gate.streamCancelled(
+                        requestID: requestID,
+                        cancelTask: teardown,
+                        recoverEngine: recoverEngine,
+                        log: log
+                    )
+                case .finished:
+                    gate.clearActive(requestID: requestID)
+                @unknown default:
+                    break
+                }
+            }
+        }
+    }
+
+    // MARK: - Interrupted chat recovery
+
+    /// Hard-resets the live `TaskWasmEngine` after a mid-stream dismiss. Swift
+    /// cancellation alone does not stop the provider's WS task; stale frames can
+    /// keep flowing for minutes (see quarantine timeout logs). FlowKit exposes
+    /// `TaskWasmEngine.reset()` for this — distinct from `WasmDelegate.resetEngine()`
+    /// which only drops the Swift reference without calling into native.
+    private func makeRecoverInterruptedChatEngine() -> @Sendable () async -> Void {
+        { await self.recoverEngineAfterInterruptedChat(delegate: self.delegate, log: self.logger) }
+    }
+
+    private func recoverEngineAfterInterruptedChat(
+        delegate: WasmDelegate,
+        log: @escaping @Sendable (String) -> Void
+    ) async {
+        guard let engine = delegate.engine as? TaskWasmEngine else {
+            log("chatStream recover: no TaskWasmEngine instance — skipping")
+            return
+        }
+        do {
+            log("chatStream recover: calling TaskWasmEngine.reset()...")
+            delegate.prepareForInPlaceReset()
+            try await engine.reset()
+            try await engine.start()
+            log("chatStream recover: TaskWasmEngine reset + start complete")
+        } catch {
+            log("chatStream recover: reset failed (\(error)) — rebuilding engine")
+            delegate.resetEngine()
+            do {
+                _ = try await readyEngine()
+                log("chatStream recover: engine rebuilt via readyEngine()")
+            } catch {
+                log("chatStream recover: readyEngine() failed — \(error)")
+            }
+        }
+    }
+
+    /// Holds the detached stream task so `teardown` can cancel it before the
+    /// task variable is assigned (gate may tear down synchronously on the next
+    /// `prepareForStream`).
+    private final class StreamTaskHolder: @unchecked Sendable {
+        private let lock = NSLock()
+        private var task: Task<Void, Never>?
+
+        func store(_ task: Task<Void, Never>) {
+            lock.withLock { self.task = task }
+        }
+
+        func cancel() {
+            lock.withLock {
+                task?.cancel()
+                task = nil
             }
         }
     }
@@ -278,28 +355,28 @@ extension WasmActor {
         guard task.hasValue else {
             throw WasmClient.Error.missingValue
         }
-        guard let payload = try? Google_Protobuf_Struct(unpackingAny: task.value) else {
-            throw WasmClient.Error.unexpectedResponseFormat
-        }
+        // FlowKit returns a typed `TypesListModels` message (data: [TypesModelInfo]),
+        // not a generic Struct. Each row's scalar fields are typed; the `metadata`
+        // field is a Struct carrying is_pro / vision / voices / etc.
+        let list = try TypesListModels(unpackingAny: task.value)
 
         var models: [WasmClient.ChatModelInfo] = []
-        if case .listValue(let list)? = payload.fields["data"]?.kind {
-            for value in list.values {
-                guard case .structValue(let row)? = value.kind else { continue }
-                guard let model = Self.mapModelRow(row.fields, providerNames: providerNames) else {
-                    continue
-                }
-                models.append(model)
+        for row in list.data {
+            var rowFields: [String: Google_Protobuf_Value] = [
+                "id": .init(stringValue: row.id),
+                "name": .init(stringValue: row.name),
+                "owned_by": .init(stringValue: row.ownedBy),
+            ]
+            if row.hasMetadata {
+                rowFields["metadata"] = .init(structValue: row.metadata)
             }
+            guard let model = Self.mapModelRow(rowFields, providerNames: providerNames) else {
+                continue
+            }
+            models.append(model)
         }
 
-        let total: Int = {
-            if case .numberValue(let t)? = payload.fields["total"]?.kind {
-                return Int(t)
-            }
-            return models.count
-        }()
-
+        let total = list.total > 0 ? Int(list.total) : models.count
         return (models, total)
     }
 

@@ -81,4 +81,45 @@ extension WasmClient {
             self.url = url
         }
     }
+
+    /// One entry from an aiart action's `metadata.model_infos` list — a
+    /// provider-specific image-generation model surfaced by the plugin. The
+    /// `id` is the value sent back as the `model` arg on `aiartGenerate`.
+    public struct AiartModelInfo: Sendable, Equatable, Identifiable {
+        public var id: String { modelID }
+        public let modelID: String
+        public let name: String
+        public let ownedBy: String
+        public let vision: Bool
+        public let isPro: Bool
+
+        public init(
+            modelID: String,
+            name: String = "",
+            ownedBy: String = "",
+            vision: Bool = false,
+            isPro: Bool = false
+        ) {
+            self.modelID = modelID
+            self.name = name.isEmpty ? modelID : name
+            self.ownedBy = ownedBy
+            self.vision = vision
+            self.isPro = isPro
+        }
+    }
+
+    /// The model catalog for an aiart action: the list parsed from
+    /// `metadata.model_infos` plus the plugin's `metadata.default_model`.
+    /// `models` is empty when the provider exposes a single fixed model — the
+    /// caller should hide the model picker in that case (mirrors
+    /// flow-kit-example's `availableModels` / `defaultModelId`).
+    public struct AiartModelCatalog: Sendable, Equatable {
+        public let models: [AiartModelInfo]
+        public let defaultModelID: String?
+
+        public init(models: [AiartModelInfo] = [], defaultModelID: String? = nil) {
+            self.models = models
+            self.defaultModelID = defaultModelID
+        }
+    }
 }

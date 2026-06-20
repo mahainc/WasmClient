@@ -283,6 +283,25 @@ public struct WasmClient: Sendable {
         _ actionID: String
     ) async throws -> [String]
 
+    /// Model catalog for an aiart action, read from the resolved action's
+    /// `metadata.model_infos` list and `metadata.default_model`. Returns an
+    /// empty `models` array when the provider exposes a single fixed model
+    /// (caller should hide the model picker). Pass the result's `modelID`
+    /// verbatim as the `model` arg to `aiartGenerate`. Mirrors how
+    /// flow-kit-example reads `AiArtPlugin::models()` from action metadata.
+    public var aiartModels: @Sendable (
+        _ actionID: String
+    ) async throws -> WasmClient.AiartModelCatalog = { _ in .init() }
+
+    /// Available `aspect_ratio` values for an aiart action, parsed from the
+    /// action schema's `aspect_ratio` arg regex validator (e.g.
+    /// `^(1:1|3:4|4:3|16:9)$`). Returns an empty array when the action has no
+    /// `aspect_ratio` validator or the regex cannot be parsed, in which case
+    /// the caller should keep its own fallback list. Mirrors `aiartStyles`.
+    public var aiartAspectRatios: @Sendable (
+        _ actionID: String
+    ) async throws -> [String] = { _ in [] }
+
     /// Submit an AI art video generation task (Character.AI Avatar FX).
     /// Returns immediately with `.processing` status and the `videoID` used
     /// for polling via `aiartVideoStatus`. Pass flat string args

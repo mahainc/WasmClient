@@ -113,6 +113,12 @@ extension WasmClient: DependencyKey {
             aiartStyles: { actionID in
                 try await actor.aiartStyles(actionID: actionID)
             },
+            aiartModels: { actionID in
+                try await actor.aiartModels(actionID: actionID)
+            },
+            aiartAspectRatios: { actionID in
+                try await actor.aiartAspectRatios(actionID: actionID)
+            },
             aiartVideoCreate: { args in
                 try await actor.aiartVideoCreate(args: args)
             },

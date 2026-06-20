@@ -58,6 +58,101 @@ extension WasmActor {
         return parsed
     }
 
+    /// Available `aspect_ratio` values for an aiart action, parsed from the
+    /// action's `aspect_ratio` arg regex validator. Returns an empty array
+    /// when the validator is missing or the regex cannot be parsed.
+    func aiartAspectRatios(actionID: String) async throws -> [String] {
+        _ = try await readyEngine()
+        let action = try await delegate.resolveAction(actionID: actionID, logger: logger)
+
+        logger(
+            "aiartAspectRatios: actionID=\(actionID) provider=\(action.provider) args=\(action.args.keys.sorted())"
+        )
+
+        guard let ratioArg = action.args["aspect_ratio"] else {
+            logger("aiartAspectRatios: no 'aspect_ratio' arg on action")
+            return []
+        }
+        guard ratioArg.hasValidator else {
+            logger("aiartAspectRatios: aspect_ratio arg has no validator")
+            return []
+        }
+        guard case .string(let stringValidator) = ratioArg.validator.data else {
+            logger("aiartAspectRatios: aspect_ratio validator is not a string validator")
+            return []
+        }
+        guard stringValidator.hasRegex else {
+            logger("aiartAspectRatios: string validator has no regex")
+            return []
+        }
+
+        let rawPattern = stringValidator.regex
+        logger("aiartAspectRatios: raw regex=\(rawPattern)")
+
+        let parsed = Self.parseRegexAlternatives(rawPattern) ?? []
+        logger("aiartAspectRatios: parsed \(parsed.count) ratios → \(parsed)")
+        return parsed
+    }
+
+    /// Read the model catalog from an aiart action's `metadata.model_infos`
+    /// list and `metadata.default_model`. Returns an empty catalog when the
+    /// provider exposes no `model_infos` (single fixed model). Mirrors how
+    /// flow-kit-example reads `AiArtPlugin::models()` from action metadata.
+    func aiartModels(actionID: String) async throws -> WasmClient.AiartModelCatalog {
+        _ = try await readyEngine()
+        let action = try await delegate.resolveAction(actionID: actionID, logger: logger)
+
+        guard case .listValue(let list)? = action.metadata.fields["model_infos"]?.kind else {
+            logger("aiartModels: no 'model_infos' list in action metadata")
+            return WasmClient.AiartModelCatalog()
+        }
+
+        let models = list.values.compactMap(Self.mapAiartModelInfo(_:))
+
+        var defaultModelID: String?
+        if case .stringValue(let s)? = action.metadata.fields["default_model"]?.kind, !s.isEmpty {
+            defaultModelID = s
+        }
+
+        logger("aiartModels: parsed \(models.count) models, default=\(defaultModelID ?? "nil")")
+        return WasmClient.AiartModelCatalog(models: models, defaultModelID: defaultModelID)
+    }
+
+    /// Map one `model_infos` entry (a protobuf struct) into `AiartModelInfo`.
+    /// Returns nil when the entry has no usable `id`. Mirrors
+    /// flow-kit-example's `AiartModelOption.init(value:)`.
+    private static func mapAiartModelInfo(_ value: Google_Protobuf_Value) -> WasmClient.AiartModelInfo? {
+        guard case .structValue(let s) = value.kind else { return nil }
+        guard case .stringValue(let id)? = s.fields["id"]?.kind, !id.isEmpty else { return nil }
+
+        let name: String = {
+            if case .stringValue(let n)? = s.fields["name"]?.kind, !n.isEmpty { return n }
+            return id
+        }()
+        let ownedBy: String = {
+            if case .stringValue(let v)? = s.fields["owned_by"]?.kind { return v }
+            return ""
+        }()
+        let vision: Bool = {
+            guard case .structValue(let meta)? = s.fields["metadata"]?.kind else { return false }
+            if case .boolValue(let b)? = meta.fields["vision"]?.kind { return b }
+            return false
+        }()
+        let isPro: Bool = {
+            guard case .structValue(let meta)? = s.fields["metadata"]?.kind else { return false }
+            if case .boolValue(let b)? = meta.fields["is_pro"]?.kind { return b }
+            return false
+        }()
+
+        return WasmClient.AiartModelInfo(
+            modelID: id,
+            name: name,
+            ownedBy: ownedBy,
+            vision: vision,
+            isPro: isPro
+        )
+    }
+
     // MARK: - Aiart Video
 
     /// Submit a video generation task. Returns immediately with the initial
