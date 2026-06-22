@@ -145,13 +145,18 @@ extension WasmClient.LiveScore {
         public let url: String
         /// UNIX seconds; populated for Highlights/news items, 0 otherwise.
         public let datetime: Int64
+        /// Highlight clips for this entry. Populated only for `webpageVideos`
+        /// (Highlights) rows; empty for all other WebPage variants.
+        public let videos: [Video]
 
         public init(
             id: String = "", image: String = "", title: String = "",
-            subtitle: String = "", url: String = "", datetime: Int64 = 0
+            subtitle: String = "", url: String = "", datetime: Int64 = 0,
+            videos: [Video] = []
         ) {
             self.id = id; self.image = image; self.title = title
             self.subtitle = subtitle; self.url = url; self.datetime = datetime
+            self.videos = videos
         }
     }
 }

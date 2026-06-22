@@ -544,7 +544,9 @@ public struct WasmClient: Sendable {
     /// `Entry.id` (e.g. `"team/real-madrid"`,
     /// `"competition/england-premier-league"`) and are mutually exclusive on
     /// the server side. `page` is 1-based; `pageSize` is clamped server-side
-    /// to `[1, 60]` (default 20).
+    /// to `[1, 60]` (default 20). Each returned `Entry` carries its highlight
+    /// clips in `Entry.videos` (one `Video` per clip; empty when the row has
+    /// none).
     public var webpageVideos: @Sendable (
         _ videoType: String?,
         _ competitionID: String?,

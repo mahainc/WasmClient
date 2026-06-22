@@ -1587,6 +1587,11 @@ public struct LivescoreWebPage: Sendable {
   /// UNIX timestamp; populated for Highlights items
   public var datetime: Int64 = 0
 
+  /// Per-match highlight clips from backend `metadata.videos[]`.
+  /// Each entry is a Scorebat video embed (title, iframe HTML,
+  /// YouTube source URL, poster image). Empty for non-video page types.
+  public var videos: [LivescoreVideo] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3681,7 +3686,7 @@ extension LivescoreMatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 
 extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WebPage"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}image\0\u{1}title\0\u{1}subtitle\0\u{1}url\0\u{1}id\0\u{1}datetime\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}image\0\u{1}title\0\u{1}subtitle\0\u{1}url\0\u{1}id\0\u{1}datetime\0\u{1}videos\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3695,6 +3700,7 @@ extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       case 4: try { try decoder.decodeSingularStringField(value: &self.url) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.id) }()
       case 6: try { try decoder.decodeSingularInt64Field(value: &self.datetime) }()
+      case 7: try { try decoder.decodeRepeatedMessageField(value: &self.videos) }()
       default: break
       }
     }
@@ -3719,6 +3725,9 @@ extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if self.datetime != 0 {
       try visitor.visitSingularInt64Field(value: self.datetime, fieldNumber: 6)
     }
+    if !self.videos.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.videos, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3729,6 +3738,7 @@ extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if lhs.url != rhs.url {return false}
     if lhs.id != rhs.id {return false}
     if lhs.datetime != rhs.datetime {return false}
+    if lhs.videos != rhs.videos {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

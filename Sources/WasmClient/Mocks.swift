@@ -525,7 +525,19 @@ extension WasmClient {
             [
                 LiveScore.Entry(
                     id: "video/example", title: "Example Highlight",
-                    subtitle: "Premier League", datetime: 1_718_400_000
+                    subtitle: "Premier League", datetime: 1_718_400_000,
+                    videos: [
+                        LiveScore.Video(
+                            id: "clip-1", title: "Goal — 23'",
+                            sourceURL: "https://www.youtube.com/watch?v=clip1",
+                            image: "https://example.com/clip1.jpg"
+                        ),
+                        LiveScore.Video(
+                            id: "clip-2", title: "Goal — 67'",
+                            sourceURL: "https://www.youtube.com/watch?v=clip2",
+                            image: "https://example.com/clip2.jpg"
+                        )
+                    ]
                 )
             ]
         },

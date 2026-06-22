@@ -359,7 +359,8 @@ extension WasmActor {
     private func mapEntry(_ p: LivescoreWebPage) -> WasmClient.LiveScore.Entry {
         WasmClient.LiveScore.Entry(
             id: p.id, image: p.image, title: p.title,
-            subtitle: p.subtitle, url: p.url, datetime: p.datetime
+            subtitle: p.subtitle, url: p.url, datetime: p.datetime,
+            videos: p.videos.map(mapVideo)
         )
     }
 
