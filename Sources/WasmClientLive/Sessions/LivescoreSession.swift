@@ -360,7 +360,8 @@ extension WasmActor {
         WasmClient.LiveScore.Entry(
             id: p.id, image: p.image, title: p.title,
             subtitle: p.subtitle, url: p.url, datetime: p.datetime,
-            videos: p.videos.map(mapVideo)
+            videos: p.videos.map(mapVideo),
+            competition: p.hasCompetition ? mapCompetition(p.competition) : nil
         )
     }
 

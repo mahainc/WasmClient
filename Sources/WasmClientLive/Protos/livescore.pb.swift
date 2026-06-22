@@ -1592,9 +1592,25 @@ public struct LivescoreWebPage: Sendable {
   /// YouTube source URL, poster image). Empty for non-video page types.
   public var videos: [LivescoreVideo] = []
 
+  /// Parent competition from backend `metadata.competition` (videos
+  /// feed only). Carries id, name, and — after the backend alias
+  /// overlay — image/region. Lets the video card show the competition
+  /// logo and link to its detail; `subtitle` still mirrors the name
+  /// for plain text display. Absent for non-video WebPage types.
+  public var competition: LivescoreCompetition {
+    get {_competition ?? LivescoreCompetition()}
+    set {_competition = newValue}
+  }
+  /// Returns true if `competition` has been explicitly set.
+  public var hasCompetition: Bool {self._competition != nil}
+  /// Clears the value of `competition`. Subsequent reads from it will return its default value.
+  public mutating func clearCompetition() {self._competition = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _competition: LivescoreCompetition? = nil
 }
 
 /// List wrappers used as task::Task.value targets for each livescore action.
@@ -3686,7 +3702,7 @@ extension LivescoreMatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 
 extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WebPage"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}image\0\u{1}title\0\u{1}subtitle\0\u{1}url\0\u{1}id\0\u{1}datetime\0\u{1}videos\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}image\0\u{1}title\0\u{1}subtitle\0\u{1}url\0\u{1}id\0\u{1}datetime\0\u{1}videos\0\u{1}competition\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3701,6 +3717,7 @@ extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       case 5: try { try decoder.decodeSingularStringField(value: &self.id) }()
       case 6: try { try decoder.decodeSingularInt64Field(value: &self.datetime) }()
       case 7: try { try decoder.decodeRepeatedMessageField(value: &self.videos) }()
+      case 8: try { try decoder.decodeSingularMessageField(value: &self._competition) }()
       default: break
       }
     }
@@ -3728,6 +3745,9 @@ extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if !self.videos.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.videos, fieldNumber: 7)
     }
+    try { if let v = self._competition {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3739,6 +3759,7 @@ extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if lhs.id != rhs.id {return false}
     if lhs.datetime != rhs.datetime {return false}
     if lhs.videos != rhs.videos {return false}
+    if lhs._competition != rhs._competition {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

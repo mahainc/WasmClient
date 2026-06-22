@@ -148,15 +148,19 @@ extension WasmClient.LiveScore {
         /// Highlight clips for this entry. Populated only for `webpageVideos`
         /// (Highlights) rows; empty for all other WebPage variants.
         public let videos: [Video]
+        /// Parent competition of this row. Populated only for `webpageVideos`
+        /// (Highlights) rows; `nil` for all other WebPage variants. Its `slug`
+        /// is usable as `webpageVideos(competitionID:)` to fetch related videos.
+        public let competition: Competition?
 
         public init(
             id: String = "", image: String = "", title: String = "",
             subtitle: String = "", url: String = "", datetime: Int64 = 0,
-            videos: [Video] = []
+            videos: [Video] = [], competition: Competition? = nil
         ) {
             self.id = id; self.image = image; self.title = title
             self.subtitle = subtitle; self.url = url; self.datetime = datetime
-            self.videos = videos
+            self.videos = videos; self.competition = competition
         }
     }
 }

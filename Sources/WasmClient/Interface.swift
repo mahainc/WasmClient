@@ -546,7 +546,8 @@ public struct WasmClient: Sendable {
     /// the server side. `page` is 1-based; `pageSize` is clamped server-side
     /// to `[1, 60]` (default 20). Each returned `Entry` carries its highlight
     /// clips in `Entry.videos` (one `Video` per clip; empty when the row has
-    /// none).
+    /// none) and its parent `Entry.competition` (use `competition.slug` to fetch
+    /// related videos via `competitionID`).
     public var webpageVideos: @Sendable (
         _ videoType: String?,
         _ competitionID: String?,

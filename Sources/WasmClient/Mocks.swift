@@ -537,7 +537,12 @@ extension WasmClient {
                             sourceURL: "https://www.youtube.com/watch?v=clip2",
                             image: "https://example.com/clip2.jpg"
                         )
-                    ]
+                    ],
+                    competition: LiveScore.Competition(
+                        id: "39", name: "Premier League",
+                        image: "https://example.com/epl.png",
+                        slug: "competition/england-premier-league"
+                    )
                 )
             ]
         },
