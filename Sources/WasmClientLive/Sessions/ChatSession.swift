@@ -147,14 +147,22 @@ extension WasmActor {
                     let task = try await engine.create(action: action, args: args, requestID: requestID)
                     log("chatStream: task returned — status: \(task.status), hasValue: \(task.hasValue), didReceiveChunks: \(didReceiveChunks.value)")
 
+                    // Set when the WS wait loop exits WITHOUT a `finish_reason:"stop"`
+                    // (quiet window or 60s deadline). The native WS task is then
+                    // likely still alive, so stale frames must be quarantined and the
+                    // engine reset — otherwise leftover tokens bleed into the next
+                    // reply on backends that don't tag frames by requestID.
+                    var streamInterrupted = false
                     if task.status != .completed {
                         let deadline = Date().addingTimeInterval(60)
                         let quietWindow: TimeInterval = 2.5
                         log("chatStream: entering WS-stream wait (60s deadline, 2.5s quiet window)")
+                        var sawStop = false
                         while Date() < deadline {
                             try await Task.sleep(nanoseconds: 200_000_000)
                             if lastChunkAt.finished {
                                 log("chatStream: saw finish_reason:'stop', exiting wait")
+                                sawStop = true
                                 break
                             }
                             if !didReceiveChunks.value { continue }
@@ -163,6 +171,7 @@ extension WasmActor {
                                 break
                             }
                         }
+                        streamInterrupted = !sawStop
                     }
 
                     if !didReceiveChunks.value,
@@ -183,9 +192,26 @@ extension WasmActor {
                             continuation.yield(text)
                         }
                     }
-                    AsyncifyWasmInternal.removeSSEChunkHandler(for: requestID)
-                    continuation.finish()
-                    log("chatStream: finished successfully")
+                    if streamInterrupted {
+                        // Quiet-window / deadline cut, NOT a real stop. Finish the
+                        // consumer so the app keeps the partial bubble, then route
+                        // through the same path as a mid-stream cancel: quarantine
+                        // stale SSE on this requestID and hard-reset the engine so
+                        // the still-alive WS task's trailing tokens can't paint the
+                        // next reply. Handler removal is owned by the quarantine.
+                        log("chatStream: interrupted (no stop) — finishing + quarantining stale SSE")
+                        continuation.finish()
+                        gate.streamCancelled(
+                            requestID: requestID,
+                            cancelTask: teardown,
+                            recoverEngine: recoverEngine,
+                            log: log
+                        )
+                    } else {
+                        AsyncifyWasmInternal.removeSSEChunkHandler(for: requestID)
+                        continuation.finish()
+                        log("chatStream: finished successfully")
+                    }
                 } catch is CancellationError {
                     // Handler removal is owned by `ChatStreamGate` quarantine on
                     // the same requestID — stale native frames must not land on
