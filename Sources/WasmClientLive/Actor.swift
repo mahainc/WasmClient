@@ -352,6 +352,50 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         }
     }
 
+    /// Ensure a *specific* action provider is registered, re-polling the engine
+    /// when it's missing from the cache.
+    ///
+    /// On a fresh install providers register over the network *after* the engine
+    /// reaches `.running`. The initial discovery poll (`performActionsLoad`)
+    /// breaks on the first-any provider, so it can cache a partial set that omits
+    /// a still-registering provider — and because `actionCache` is then non-empty,
+    /// `ensureActionsLoaded` early-returns on every later call, freezing that gap.
+    /// A caller asking for the missing action would throw `noProviderFound` and
+    /// keep throwing until the app is restarted. This re-polls for the specific
+    /// action so a late provider self-heals instead of requiring a relaunch. On
+    /// warm launches the action is already cached, so this returns immediately.
+    private func ensureActionAvailable(
+        actionID: String,
+        logger: @escaping @Sendable (String) -> Void
+    ) async throws {
+        if actionCache[actionID]?.isEmpty == false { return }
+        // First call on an empty cache — run the normal discovery poll.
+        if actionCache.isEmpty {
+            try await ensureActionsLoaded(logger: logger)
+            if actionCache[actionID]?.isEmpty == false { return }
+        }
+        // Cached but this action is absent — provider may be registering late.
+        // Re-poll the engine directly (bypassing the non-empty-cache guard) and
+        // refresh the cache until the action appears or we time out.
+        for attempt in 1...10 {  // 10 × 500ms = up to 5s
+            guard let engine else { throw WasmClient.Error.engineNotStarted }
+            let all = try await engine.actions()
+            if !all.actions.isEmpty {
+                var cache: [String: [WaTAction]] = [:]
+                for action in all.actions {
+                    cache[action.id, default: []].append(action)
+                }
+                actionCache = cache
+                if cache[actionID]?.isEmpty == false {
+                    logger("action '\(actionID)' available after refresh poll \(attempt)")
+                    return
+                }
+            }
+            logger("action '\(actionID)' missing — refresh poll \(attempt)/10")
+            try await Task.sleep(nanoseconds: 500_000_000)
+        }
+    }
+
     /// Resolve an action — lazily discovers providers on first call.
     /// When `preferredProvider` is given, selects the action from that provider
     /// (matching flow-kit-example's pattern of using the same provider across
@@ -361,9 +405,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         preferredProvider: String? = nil,
         logger: @escaping @Sendable (String) -> Void
     ) async throws -> WaTAction {
-        if actionCache.isEmpty {
-            try await ensureActionsLoaded(logger: logger)
-        }
+        try await ensureActionAvailable(actionID: actionID, logger: logger)
         guard let actions = actionCache[actionID], !actions.isEmpty else {
             throw WasmClient.Error.noProviderFound(action: actionID)
         }
@@ -380,9 +422,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         actionID: String,
         logger: @escaping @Sendable (String) -> Void
     ) async throws -> [WaTAction] {
-        if actionCache.isEmpty {
-            try await ensureActionsLoaded(logger: logger)
-        }
+        try await ensureActionAvailable(actionID: actionID, logger: logger)
         guard let actions = actionCache[actionID], !actions.isEmpty else {
             throw WasmClient.Error.noProviderFound(action: actionID)
         }
@@ -398,9 +438,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         actionID: String,
         logger: @escaping @Sendable (String) -> Void
     ) async throws -> WaTAction {
-        if actionCache.isEmpty {
-            try await ensureActionsLoaded(logger: logger)
-        }
+        try await ensureActionAvailable(actionID: actionID, logger: logger)
         guard let actions = actionCache[actionID], !actions.isEmpty else {
             throw WasmClient.Error.noProviderFound(action: actionID)
         }

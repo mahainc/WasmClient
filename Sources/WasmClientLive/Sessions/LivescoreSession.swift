@@ -5,6 +5,36 @@ import WasmClient
 
 extension WasmActor {
 
+    // MARK: - Action resolution
+
+    /// Resolve a Livescore action provider with a bounded retry.
+    ///
+    /// On a fresh install the engine reaches `.running` (binary loaded) before
+    /// its action providers finish registering over the network, so the very
+    /// first `action(for:)` for a given provider throws before that provider is
+    /// known. Surfacing that as a user-facing failure forces a manual retry
+    /// (the bug this guards against). Instead we poll for a few seconds to give
+    /// the provider a moment to register — on warm launches the first attempt
+    /// succeeds, so this adds no latency there.
+    private func resolveLivescoreAction(
+        _ instance: TaskWasmProtocol,
+        _ actionID: String
+    ) async throws -> WaTAction {
+        var lastError: Error?
+        for attempt in 1...10 {  // 10 × 500ms = up to 5s
+            do {
+                return try await instance.action(for: actionID, strategy: .roundRobin)
+            } catch {
+                lastError = error
+                logger(
+                    "action(for: \(actionID)) attempt \(attempt)/10 failed: \(error) — provider may still be registering"
+                )
+                try await Task.sleep(nanoseconds: 500_000_000)
+            }
+        }
+        throw lastError ?? WasmClient.Error.noProviderFound(action: actionID)
+    }
+
     // MARK: - Webpage
 
     private func webpageList(
@@ -12,7 +42,7 @@ extension WasmActor {
         extraArgs: [String: Google_Protobuf_Value] = [:]
     ) async throws -> [WasmClient.LiveScore.Entry] {
         let instance = try await readyEngine()
-        let action = try await instance.action(for: WasmClient.ActionID.lsWebpage.rawValue, strategy: .roundRobin)
+        let action = try await resolveLivescoreAction(instance, WasmClient.ActionID.lsWebpage.rawValue)
         var args: [String: Google_Protobuf_Value] = [
             "type": Google_Protobuf_Value(numberValue: Double(type.rawValue)),
         ]
@@ -161,7 +191,7 @@ extension WasmActor {
 
     func upcoming() async throws -> [WasmClient.LiveScore.MatchSummary] {
         let instance = try await readyEngine()
-        let action = try await instance.action(for: WasmClient.ActionID.lsUpcoming.rawValue, strategy: .roundRobin)
+        let action = try await resolveLivescoreAction(instance, WasmClient.ActionID.lsUpcoming.rawValue)
         let args: [String: Google_Protobuf_Value] = [:]
         let argsCopy = args
         let task = try await Task.detached {
@@ -188,10 +218,7 @@ extension WasmActor {
     /// `LivescoreMatch` proto. Independent of the WebPage flow.
     func matchDetail(id: String) async throws -> WasmClient.LiveScore.Match {
         let instance = try await readyEngine()
-        let action = try await instance.action(
-            for: WasmClient.ActionID.lsMatchDetail.rawValue,
-            strategy: .roundRobin
-        )
+        let action = try await resolveLivescoreAction(instance, WasmClient.ActionID.lsMatchDetail.rawValue)
         let args: [String: Google_Protobuf_Value] = [
             "id": Google_Protobuf_Value(stringValue: id),
         ]
@@ -319,7 +346,7 @@ extension WasmActor {
 
     func scoresByDate(date: String?) async throws -> [WasmClient.LiveScore.MatchSummary] {
         let instance = try await readyEngine()
-        let action = try await instance.action(for: WasmClient.ActionID.lsScores.rawValue, strategy: .roundRobin)
+        let action = try await resolveLivescoreAction(instance, WasmClient.ActionID.lsScores.rawValue)
         var args: [String: Google_Protobuf_Value] = [:]
         if let date { args["date"] = Google_Protobuf_Value(stringValue: date) }
         let argsCopy = args
@@ -372,10 +399,7 @@ extension WasmActor {
     /// proto. Independent of the WebPage flow.
     func competitionDetail(id: String) async throws -> WasmClient.LiveScore.Competition {
         let instance = try await readyEngine()
-        let action = try await instance.action(
-            for: WasmClient.ActionID.lsCompetitionDetail.rawValue,
-            strategy: .roundRobin
-        )
+        let action = try await resolveLivescoreAction(instance, WasmClient.ActionID.lsCompetitionDetail.rawValue)
         let args: [String: Google_Protobuf_Value] = [
             "id": Google_Protobuf_Value(stringValue: id),
         ]
