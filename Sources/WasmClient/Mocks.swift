@@ -353,10 +353,15 @@ extension WasmClient {
         aiartModels: { _ in
             AiartModelCatalog(
                 models: [
-                    AiartModelInfo(modelID: "flux-schnell", name: "Flux Schnell", ownedBy: "black-forest-labs"),
-                    AiartModelInfo(modelID: "flux-dev", name: "Flux Dev", ownedBy: "black-forest-labs"),
                     AiartModelInfo(
-                        modelID: "sdxl", name: "Stable Diffusion XL", ownedBy: "stability-ai", vision: true),
+                        modelID: "flux-schnell", name: "Flux Schnell", ownedBy: "black-forest-labs",
+                        aspectRatios: ["1:1", "16:9", "9:16"]),
+                    AiartModelInfo(
+                        modelID: "flux-dev", name: "Flux Dev", ownedBy: "black-forest-labs",
+                        aspectRatios: ["1:1", "3:4", "4:3"]),
+                    AiartModelInfo(
+                        modelID: "sdxl", name: "Stable Diffusion XL", ownedBy: "stability-ai", vision: true,
+                        aspectRatios: ["1:1"]),
                 ],
                 defaultModelID: "flux-schnell"
             )

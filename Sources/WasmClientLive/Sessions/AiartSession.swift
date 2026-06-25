@@ -107,6 +107,21 @@ extension WasmActor {
             return WasmClient.AiartModelCatalog()
         }
 
+        // Diagnostic: dump each entry's raw metadata keys so we can see exactly
+        // what the BE sends (e.g. whether per-model ratios live under
+        // `aspect_ratios` or some other key).
+        for entry in list.values {
+            guard case .structValue(let s) = entry.kind else { continue }
+            let id = s.fields["id"]?.stringValue ?? "?"
+            if case .structValue(let meta)? = s.fields["metadata"]?.kind {
+                let keys = meta.fields.keys.sorted()
+                let rawRatios = meta.fields["aspect_ratios"].map { "\($0.kind as Any)" } ?? "nil"
+                logger("aiartModels: raw[\(id)] metadataKeys=\(keys) aspect_ratios=\(rawRatios)")
+            } else {
+                logger("aiartModels: raw[\(id)] has no metadata struct")
+            }
+        }
+
         let models = list.values.compactMap(Self.mapAiartModelInfo(_:))
 
         var defaultModelID: String?
@@ -115,6 +130,9 @@ extension WasmActor {
         }
 
         logger("aiartModels: parsed \(models.count) models, default=\(defaultModelID ?? "nil")")
+        for m in models {
+            logger("aiartModels:   • \(m.modelID) name=\(m.name) aspectRatios=\(m.aspectRatios)")
+        }
         return WasmClient.AiartModelCatalog(models: models, defaultModelID: defaultModelID)
     }
 
@@ -143,13 +161,22 @@ extension WasmActor {
             if case .boolValue(let b)? = meta.fields["is_pro"]?.kind { return b }
             return false
         }()
+        let aspectRatios: [String] = {
+            guard case .structValue(let meta)? = s.fields["metadata"]?.kind else { return [] }
+            guard case .listValue(let list)? = meta.fields["aspect_ratios"]?.kind else { return [] }
+            return list.values.compactMap {
+                if case .stringValue(let r) = $0.kind, !r.isEmpty { return r }
+                return nil
+            }
+        }()
 
         return WasmClient.AiartModelInfo(
             modelID: id,
             name: name,
             ownedBy: ownedBy,
             vision: vision,
-            isPro: isPro
+            isPro: isPro,
+            aspectRatios: aspectRatios
         )
     }
 

@@ -92,19 +92,26 @@ extension WasmClient {
         public let ownedBy: String
         public let vision: Bool
         public let isPro: Bool
+        /// Aspect-ratio strings this model accepts (e.g. "1:1", "16:9"), read
+        /// from the entry's `metadata.aspect_ratios`. Empty when the plugin
+        /// doesn't constrain per model — callers fall back to the action-level
+        /// `aspect_ratio` validator.
+        public let aspectRatios: [String]
 
         public init(
             modelID: String,
             name: String = "",
             ownedBy: String = "",
             vision: Bool = false,
-            isPro: Bool = false
+            isPro: Bool = false,
+            aspectRatios: [String] = []
         ) {
             self.modelID = modelID
             self.name = name.isEmpty ? modelID : name
             self.ownedBy = ownedBy
             self.vision = vision
             self.isPro = isPro
+            self.aspectRatios = aspectRatios
         }
     }
 
