@@ -102,6 +102,19 @@ extension WasmClient {
     }
 }
 
+// MARK: - Vision Method
+
+extension WasmClient {
+    /// FlowKit VisionService RPC method names. The wasm dispatcher routes by
+    /// method name when the action id contains '/', selecting the provider via
+    /// the persisted provider_strategy — no per-action UUID discovery needed.
+    /// Mirrors flow-kit-example's `VisionMethod` (vision.fk.pb.swift).
+    public enum VisionMethod: String, CaseIterable, Sendable {
+        case visualSearch = "asyncify.vision.VisionService/VisualSearch"
+        case shopping = "asyncify.vision.VisionService/Shopping"
+    }
+}
+
 // MARK: - Error
 
 extension WasmClient {
@@ -118,22 +131,22 @@ extension WasmClient {
 
         public var errorDescription: String? {
             switch self {
-            case .engineNotReady:
-                "The WASM engine is not ready. Please try again."
-            case .engineNotStarted:
-                "The WASM engine has not been started. Call start() first."
-            case .engineInitFailed:
-                "The WASM engine failed to initialize."
-            case .noProviderFound(let action):
-                "No provider found for action: \(action)"
-            case .taskFailed(let status):
-                "Task did not complete (status: \(status))"
-            case .missingValue:
-                "Task completed without a value"
-            case .uploadFailed(let reason):
-                "Upload failed: \(reason)"
-            case .unexpectedResponseFormat:
-                "Unexpected response data format"
+                case .engineNotReady:
+                    "The WASM engine is not ready. Please try again."
+                case .engineNotStarted:
+                    "The WASM engine has not been started. Call start() first."
+                case .engineInitFailed:
+                    "The WASM engine failed to initialize."
+                case .noProviderFound(let action):
+                    "No provider found for action: \(action)"
+                case .taskFailed(let status):
+                    "Task did not complete (status: \(status))"
+                case .missingValue:
+                    "Task completed without a value"
+                case .uploadFailed(let reason):
+                    "Upload failed: \(reason)"
+                case .unexpectedResponseFormat:
+                    "Unexpected response data format"
             }
         }
     }

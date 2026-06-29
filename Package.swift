@@ -2,14 +2,14 @@
 import PackageDescription
 
 let packageDir = Context.packageDirectory
-let flowKitVersion = "1.2.57-26.1.1-ffi"
-let flowKitChecksum = "2ec233ab8212368e4b8d36eb3850b330d8ab7fac0e50df208c023503e6effc3b"
+let flowKitVersion = "1.2.59-26.1.1-ffi"
+let flowKitChecksum = "0780039ac1ef0a144dddce74bebd4600265a4ddd2b3ceaa863b5b364ae8a66f3"
 let flowKitURL = "https://github.com/mahainc/flow-kit/releases/download/\(flowKitVersion)/FlowKit.xcframework.zip"
 
 let package = Package(
     name: "WasmClient",
     platforms: [
-        .iOS(.v17),
+        .iOS(.v17)
     ],
     products: [
         .library(name: "WasmClient", targets: ["WasmClient"]),
@@ -20,7 +20,7 @@ let package = Package(
         .package(
             url: "https://github.com/pointfreeco/swift-dependencies.git",
             from: "1.9.0"
-        ),
+        )
     ],
     targets: [
         .binaryTarget(
@@ -70,11 +70,11 @@ let package = Package(
                 // disables explicit modules in a way the driver will accept.
                 .unsafeFlags([
                     "-I", "\(packageDir)/.build/flowkit-merged-modules",  // local dev
-                    "-I", "/tmp/wasmclient-flowkit-modules",              // build plugin
-                ]),
+                    "-I", "/tmp/wasmclient-flowkit-modules",  // build plugin
+                ])
             ],
             plugins: [
-                .plugin(name: "MergeFlowKitModules"),
+                .plugin(name: "MergeFlowKitModules")
             ]
         ),
         .target(
@@ -88,10 +88,10 @@ let package = Package(
                 .unsafeFlags([
                     "-I", "\(packageDir)/.build/flowkit-merged-modules",
                     "-I", "/tmp/wasmclient-flowkit-modules",
-                ]),
+                ])
             ],
             plugins: [
-                .plugin(name: "MergeFlowKitModules"),
+                .plugin(name: "MergeFlowKitModules")
             ]
         ),
         .plugin(
