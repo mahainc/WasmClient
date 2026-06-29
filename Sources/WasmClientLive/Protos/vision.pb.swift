@@ -58,6 +58,28 @@ public struct VisionScanRequest: Sendable {
   /// Clears the value of `prompt`. Subsequent reads from it will return its default value.
   public mutating func clearPrompt() {self._prompt = nil}
 
+  /// user latitude (WGS84) — passed to providers that condition results
+  /// on local climate (plant identification under PictureThis-family
+  /// backends adjusts for hardiness zone, similar-species ranking, etc.)
+  public var latitude: Double {
+    get {_latitude ?? 0}
+    set {_latitude = newValue}
+  }
+  /// Returns true if `latitude` has been explicitly set.
+  public var hasLatitude: Bool {self._latitude != nil}
+  /// Clears the value of `latitude`. Subsequent reads from it will return its default value.
+  public mutating func clearLatitude() {self._latitude = nil}
+
+  /// user longitude (WGS84) — see latitude
+  public var longitude: Double {
+    get {_longitude ?? 0}
+    set {_longitude = newValue}
+  }
+  /// Returns true if `longitude` has been explicitly set.
+  public var hasLongitude: Bool {self._longitude != nil}
+  /// Clears the value of `longitude`. Subsequent reads from it will return its default value.
+  public mutating func clearLongitude() {self._longitude = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -65,6 +87,8 @@ public struct VisionScanRequest: Sendable {
   fileprivate var _category: String? = nil
   fileprivate var _language: String? = nil
   fileprivate var _prompt: String? = nil
+  fileprivate var _latitude: Double? = nil
+  fileprivate var _longitude: Double? = nil
 }
 
 public struct VisionScanResult: @unchecked Sendable {
@@ -201,6 +225,40 @@ public struct VisionScanResult: @unchecked Sendable {
   public var hasRaw: Bool {_storage._raw != nil}
   /// Clears the value of `raw`. Subsequent reads from it will return its default value.
   public mutating func clearRaw() {_uniqueStorage()._raw = nil}
+
+  /// confidence of this result (0..1) — set when the source ranked candidates
+  public var probability: Double {
+    get {_storage._probability ?? 0}
+    set {_uniqueStorage()._probability = newValue}
+  }
+  /// Returns true if `probability` has been explicitly set.
+  public var hasProbability: Bool {_storage._probability != nil}
+  /// Clears the value of `probability`. Subsequent reads from it will return its default value.
+  public mutating func clearProbability() {_uniqueStorage()._probability = nil}
+
+  /// additional ranked candidates below the top result (each carries its own probability)
+  public var alternatives: [VisionScanResult] {
+    get {_storage._alternatives}
+    set {_uniqueStorage()._alternatives = newValue}
+  }
+
+  /// server-curated key/value facts (display label → joined values). The
+  /// label is already localized server-side. Example for a plant: Sunlight
+  /// → "Partial sun", Bloom Time → "Spring · Summer". Agnostic across
+  /// vision domains (plants/coins/food). When a fact has multiple values,
+  /// the provider joins them with " · ".
+  public var facts: Dictionary<String,String> {
+    get {_storage._facts}
+    set {_uniqueStorage()._facts = newValue}
+  }
+
+  /// lookalike candidates the user shouldn't confuse this with (provider-
+  /// populated when available). Each entry is a thin ScanResult with at
+  /// least title + imageUrl set.
+  public var confusions: [VisionScanResult] {
+    get {_storage._confusions}
+    set {_uniqueStorage()._confusions = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1047,13 +1105,908 @@ public struct VisionScanHistoryList: Sendable {
   public init() {}
 }
 
+public struct VisionVisualSearchRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Image URL (file:// or http(s)://) to visually match.
+  public var file: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct VisionShoppingRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Free-text query — searches the configured shopping endpoint.
+  public var query: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct VisionDescribeRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Image URL to caption / describe.
+  public var file: String = String()
+
+  /// Optional scan category for context (e.g. "object", "food").
+  public var category: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct VisionWaterCalcRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// image of the plant (file:// or https://); optional when plant_id is set
+  public var file: String {
+    get {_file ?? String()}
+    set {_file = newValue}
+  }
+  /// Returns true if `file` has been explicitly set.
+  public var hasFile: Bool {self._file != nil}
+  /// Clears the value of `file`. Subsequent reads from it will return its default value.
+  public mutating func clearFile() {self._file = nil}
+
+  /// previously-resolved plant id (from a prior Scan); provider-agnostic string
+  public var plantID: String {
+    get {_plantID ?? String()}
+    set {_plantID = newValue}
+  }
+  /// Returns true if `plantID` has been explicitly set.
+  public var hasPlantID: Bool {self._plantID != nil}
+  /// Clears the value of `plantID`. Subsequent reads from it will return its default value.
+  public mutating func clearPlantID() {self._plantID = nil}
+
+  /// pot / placement / light / soil settings as provider-specific JSON;
+  /// omit for "I don't know" — provider picks a sensible default
+  public var settings: String {
+    get {_settings ?? String()}
+    set {_settings = newValue}
+  }
+  /// Returns true if `settings` has been explicitly set.
+  public var hasSettings: Bool {self._settings != nil}
+  /// Clears the value of `settings`. Subsequent reads from it will return its default value.
+  public mutating func clearSettings() {self._settings = nil}
+
+  /// ISO country code (default "US")
+  public var countryCode: String {
+    get {_countryCode ?? String()}
+    set {_countryCode = newValue}
+  }
+  /// Returns true if `countryCode` has been explicitly set.
+  public var hasCountryCode: Bool {self._countryCode != nil}
+  /// Clears the value of `countryCode`. Subsequent reads from it will return its default value.
+  public mutating func clearCountryCode() {self._countryCode = nil}
+
+  /// user latitude (WGS84) — climate-aware care recommendation; optional
+  public var latitude: Double {
+    get {_latitude ?? 0}
+    set {_latitude = newValue}
+  }
+  /// Returns true if `latitude` has been explicitly set.
+  public var hasLatitude: Bool {self._latitude != nil}
+  /// Clears the value of `latitude`. Subsequent reads from it will return its default value.
+  public mutating func clearLatitude() {self._latitude = nil}
+
+  /// user longitude (WGS84) — climate-aware care recommendation; optional
+  public var longitude: Double {
+    get {_longitude ?? 0}
+    set {_longitude = newValue}
+  }
+  /// Returns true if `longitude` has been explicitly set.
+  public var hasLongitude: Bool {self._longitude != nil}
+  /// Clears the value of `longitude`. Subsequent reads from it will return its default value.
+  public mutating func clearLongitude() {self._longitude = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _file: String? = nil
+  fileprivate var _plantID: String? = nil
+  fileprivate var _settings: String? = nil
+  fileprivate var _countryCode: String? = nil
+  fileprivate var _latitude: Double? = nil
+  fileprivate var _longitude: Double? = nil
+}
+
+public struct VisionWaterCalcResult: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// recommended water amount per watering, in millilitres
+  public var waterAmountMl: Double {
+    get {_waterAmountMl ?? 0}
+    set {_waterAmountMl = newValue}
+  }
+  /// Returns true if `waterAmountMl` has been explicitly set.
+  public var hasWaterAmountMl: Bool {self._waterAmountMl != nil}
+  /// Clears the value of `waterAmountMl`. Subsequent reads from it will return its default value.
+  public mutating func clearWaterAmountMl() {self._waterAmountMl = nil}
+
+  /// watering cadence, in days between waterings
+  public var frequencyDays: Int32 {
+    get {_frequencyDays ?? 0}
+    set {_frequencyDays = newValue}
+  }
+  /// Returns true if `frequencyDays` has been explicitly set.
+  public var hasFrequencyDays: Bool {self._frequencyDays != nil}
+  /// Clears the value of `frequencyDays`. Subsequent reads from it will return its default value.
+  public mutating func clearFrequencyDays() {self._frequencyDays = nil}
+
+  /// care category (e.g. "low_water", "moderate", "high_water", "seasonal")
+  public var careType: String {
+    get {_careType ?? String()}
+    set {_careType = newValue}
+  }
+  /// Returns true if `careType` has been explicitly set.
+  public var hasCareType: Bool {self._careType != nil}
+  /// Clears the value of `careType`. Subsequent reads from it will return its default value.
+  public mutating func clearCareType() {self._careType = nil}
+
+  /// identified plant common name (echo from provider)
+  public var plantName: String {
+    get {_plantName ?? String()}
+    set {_plantName = newValue}
+  }
+  /// Returns true if `plantName` has been explicitly set.
+  public var hasPlantName: Bool {self._plantName != nil}
+  /// Clears the value of `plantName`. Subsequent reads from it will return its default value.
+  public mutating func clearPlantName() {self._plantName = nil}
+
+  /// identified plant latin name (echo from provider)
+  public var latinName: String {
+    get {_latinName ?? String()}
+    set {_latinName = newValue}
+  }
+  /// Returns true if `latinName` has been explicitly set.
+  public var hasLatinName: Bool {self._latinName != nil}
+  /// Clears the value of `latinName`. Subsequent reads from it will return its default value.
+  public mutating func clearLatinName() {self._latinName = nil}
+
+  /// plant id echoed for chaining follow-up calls; provider-agnostic string
+  public var plantID: String {
+    get {_plantID ?? String()}
+    set {_plantID = newValue}
+  }
+  /// Returns true if `plantID` has been explicitly set.
+  public var hasPlantID: Bool {self._plantID != nil}
+  /// Clears the value of `plantID`. Subsequent reads from it will return its default value.
+  public mutating func clearPlantID() {self._plantID = nil}
+
+  /// raw JSON response (provider-specific extras: FAQ blocks, etc.)
+  public var raw: String {
+    get {_raw ?? String()}
+    set {_raw = newValue}
+  }
+  /// Returns true if `raw` has been explicitly set.
+  public var hasRaw: Bool {self._raw != nil}
+  /// Clears the value of `raw`. Subsequent reads from it will return its default value.
+  public mutating func clearRaw() {self._raw = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _waterAmountMl: Double? = nil
+  fileprivate var _frequencyDays: Int32? = nil
+  fileprivate var _careType: String? = nil
+  fileprivate var _plantName: String? = nil
+  fileprivate var _latinName: String? = nil
+  fileprivate var _plantID: String? = nil
+  fileprivate var _raw: String? = nil
+}
+
+public struct VisionRepottingCheckerRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// image of the plant (must show both plant and pot)
+  public var file: String = String()
+
+  /// previously-resolved plant id; optional, provider-agnostic string
+  public var plantID: String {
+    get {_plantID ?? String()}
+    set {_plantID = newValue}
+  }
+  /// Returns true if `plantID` has been explicitly set.
+  public var hasPlantID: Bool {self._plantID != nil}
+  /// Clears the value of `plantID`. Subsequent reads from it will return its default value.
+  public mutating func clearPlantID() {self._plantID = nil}
+
+  /// user-visible name of the plant. When set, the provider substitutes
+  /// it for the CMS placeholder (e.g. `__YOUR_PLANT_NAME__`) in returned
+  /// markdown guidance so the user sees their plant's name inline.
+  public var plantName: String {
+    get {_plantName ?? String()}
+    set {_plantName = newValue}
+  }
+  /// Returns true if `plantName` has been explicitly set.
+  public var hasPlantName: Bool {self._plantName != nil}
+  /// Clears the value of `plantName`. Subsequent reads from it will return its default value.
+  public mutating func clearPlantName() {self._plantName = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _plantID: String? = nil
+  fileprivate var _plantName: String? = nil
+}
+
+public struct VisionRepottingCheckerResult: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// true when the image shows a recognised plant
+  public var isPlant: Bool = false
+
+  /// true when the species is one repotting advice applies to
+  /// (false for outdoor / ground species)
+  public var isRepottable: Bool = false
+
+  /// status hint (e.g. "no_pot_detected") when the engine couldn't analyse
+  /// the photo; empty when topics[] is populated
+  public var status: String {
+    get {_status ?? String()}
+    set {_status = newValue}
+  }
+  /// Returns true if `status` has been explicitly set.
+  public var hasStatus: Bool {self._status != nil}
+  /// Clears the value of `status`. Subsequent reads from it will return its default value.
+  public mutating func clearStatus() {self._status = nil}
+
+  /// structured repotting guidance — one entry per topic (preparation,
+  /// tools, post-care, etc.). Each section is a titled markdown blurb.
+  public var topics: [VisionRepotTopic] = []
+
+  /// raw JSON response (provider-specific extras)
+  public var raw: String {
+    get {_raw ?? String()}
+    set {_raw = newValue}
+  }
+  /// Returns true if `raw` has been explicitly set.
+  public var hasRaw: Bool {self._raw != nil}
+  /// Clears the value of `raw`. Subsequent reads from it will return its default value.
+  public mutating func clearRaw() {self._raw = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _status: String? = nil
+  fileprivate var _raw: String? = nil
+}
+
+public struct VisionRepotTopic: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// human-readable topic name (e.g. "Preparation", "Tools", "Aftercare")
+  public var name: String = String()
+
+  /// titled markdown sections inside the topic
+  public var sections: [VisionRepotTopicSection] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct VisionRepotTopicSection: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// section heading (e.g. "How to repot")
+  public var title: String {
+    get {_title ?? String()}
+    set {_title = newValue}
+  }
+  /// Returns true if `title` has been explicitly set.
+  public var hasTitle: Bool {self._title != nil}
+  /// Clears the value of `title`. Subsequent reads from it will return its default value.
+  public mutating func clearTitle() {self._title = nil}
+
+  /// markdown body content
+  public var content: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _title: String? = nil
+}
+
+public struct VisionLightMeterRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// captured camera brightness (provider-defined units, e.g. AVFoundation
+  /// exposure-based lux estimate); set when measured on-device
+  public var brightness: Double {
+    get {_brightness ?? 0}
+    set {_brightness = newValue}
+  }
+  /// Returns true if `brightness` has been explicitly set.
+  public var hasBrightness: Bool {self._brightness != nil}
+  /// Clears the value of `brightness`. Subsequent reads from it will return its default value.
+  public mutating func clearBrightness() {self._brightness = nil}
+
+  /// optional image to classify when brightness isn't available
+  public var file: String {
+    get {_file ?? String()}
+    set {_file = newValue}
+  }
+  /// Returns true if `file` has been explicitly set.
+  public var hasFile: Bool {self._file != nil}
+  /// Clears the value of `file`. Subsequent reads from it will return its default value.
+  public mutating func clearFile() {self._file = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _brightness: Double? = nil
+  fileprivate var _file: String? = nil
+}
+
+public struct VisionLightMeterResult: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// bucket label (e.g. "low_light", "medium_light", "bright_light")
+  public var level: String = String()
+
+  /// estimated lux value
+  public var lux: Double {
+    get {_lux ?? 0}
+    set {_lux = newValue}
+  }
+  /// Returns true if `lux` has been explicitly set.
+  public var hasLux: Bool {self._lux != nil}
+  /// Clears the value of `lux`. Subsequent reads from it will return its default value.
+  public mutating func clearLux() {self._lux = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _lux: Double? = nil
+}
+
+/// Disease detection details for one diagnosed disease on a plant.
+public struct VisionDiseaseInfo: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// common name e.g. "Brown Spot"
+  public var name: String {
+    get {_name ?? String()}
+    set {_name = newValue}
+  }
+  /// Returns true if `name` has been explicitly set.
+  public var hasName: Bool {self._name != nil}
+  /// Clears the value of `name`. Subsequent reads from it will return its default value.
+  public mutating func clearName() {self._name = nil}
+
+  /// probable causes (e.g. "Poor ventilation", "Disease infected")
+  public var causes: [String] = []
+
+  /// one-line treatment summary
+  public var summary: String {
+    get {_summary ?? String()}
+    set {_summary = newValue}
+  }
+  /// Returns true if `summary` has been explicitly set.
+  public var hasSummary: Bool {self._summary != nil}
+  /// Clears the value of `summary`. Subsequent reads from it will return its default value.
+  public mutating func clearSummary() {self._summary = nil}
+
+  /// treatment / remediation steps (may be i18n keys or display strings)
+  public var treatments: [String] = []
+
+  /// detection confidence 0..1
+  public var confidence: Double {
+    get {_confidence ?? 0}
+    set {_confidence = newValue}
+  }
+  /// Returns true if `confidence` has been explicitly set.
+  public var hasConfidence: Bool {self._confidence != nil}
+  /// Clears the value of `confidence`. Subsequent reads from it will return its default value.
+  public mutating func clearConfidence() {self._confidence = nil}
+
+  /// normalized bounding box in the image: [x1, y1, x2, y2] in 0..1
+  public var bbox: [Double] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _name: String? = nil
+  fileprivate var _summary: String? = nil
+  fileprivate var _confidence: Double? = nil
+}
+
+public struct VisionDiagnoseRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// image of the plant
+  public var file: String = String()
+
+  /// previously-resolved plant id (from a prior Scan); optional
+  public var plantID: String {
+    get {_plantID ?? String()}
+    set {_plantID = newValue}
+  }
+  /// Returns true if `plantID` has been explicitly set.
+  public var hasPlantID: Bool {self._plantID != nil}
+  /// Clears the value of `plantID`. Subsequent reads from it will return its default value.
+  public mutating func clearPlantID() {self._plantID = nil}
+
+  /// ISO country code (default "US")
+  public var countryCode: String {
+    get {_countryCode ?? String()}
+    set {_countryCode = newValue}
+  }
+  /// Returns true if `countryCode` has been explicitly set.
+  public var hasCountryCode: Bool {self._countryCode != nil}
+  /// Clears the value of `countryCode`. Subsequent reads from it will return its default value.
+  public mutating func clearCountryCode() {self._countryCode = nil}
+
+  /// user latitude (WGS84); when set, the diagnosis engine factors in
+  /// local climate (humidity, rainfall) for the verdict
+  public var latitude: Double {
+    get {_latitude ?? 0}
+    set {_latitude = newValue}
+  }
+  /// Returns true if `latitude` has been explicitly set.
+  public var hasLatitude: Bool {self._latitude != nil}
+  /// Clears the value of `latitude`. Subsequent reads from it will return its default value.
+  public mutating func clearLatitude() {self._latitude = nil}
+
+  /// user longitude (WGS84); see latitude
+  public var longitude: Double {
+    get {_longitude ?? 0}
+    set {_longitude = newValue}
+  }
+  /// Returns true if `longitude` has been explicitly set.
+  public var hasLongitude: Bool {self._longitude != nil}
+  /// Clears the value of `longitude`. Subsequent reads from it will return its default value.
+  public mutating func clearLongitude() {self._longitude = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _plantID: String? = nil
+  fileprivate var _countryCode: String? = nil
+  fileprivate var _latitude: Double? = nil
+  fileprivate var _longitude: Double? = nil
+}
+
+public struct VisionDiagnoseResult: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// identified plant common name (echo from provider)
+  public var plantName: String {
+    get {_plantName ?? String()}
+    set {_plantName = newValue}
+  }
+  /// Returns true if `plantName` has been explicitly set.
+  public var hasPlantName: Bool {self._plantName != nil}
+  /// Clears the value of `plantName`. Subsequent reads from it will return its default value.
+  public mutating func clearPlantName() {self._plantName = nil}
+
+  /// identified plant latin name (echo from provider)
+  public var latinName: String {
+    get {_latinName ?? String()}
+    set {_latinName = newValue}
+  }
+  /// Returns true if `latinName` has been explicitly set.
+  public var hasLatinName: Bool {self._latinName != nil}
+  /// Clears the value of `latinName`. Subsequent reads from it will return its default value.
+  public mutating func clearLatinName() {self._latinName = nil}
+
+  /// detected diseases — empty when the plant looks healthy
+  public var diseases: [VisionDiseaseInfo] = []
+
+  /// high-level scene labels (e.g. care_situation="bad_care") with their
+  /// top-1 probability per bucket
+  public var scene: Dictionary<String,String> = [:]
+
+  /// raw JSON envelope (provider-specific extras: care schedule, etc.)
+  public var raw: String {
+    get {_raw ?? String()}
+    set {_raw = newValue}
+  }
+  /// Returns true if `raw` has been explicitly set.
+  public var hasRaw: Bool {self._raw != nil}
+  /// Clears the value of `raw`. Subsequent reads from it will return its default value.
+  public mutating func clearRaw() {self._raw = nil}
+
+  /// 12-month care schedule (one entry per calendar month, empty when the
+  /// provider doesn't expose one)
+  public var careSchedule: [VisionCareSchedule] = []
+
+  /// seasonal care tips ("Pruning time? …") — short titled blurbs
+  public var tips: [VisionTip] = []
+
+  /// plant id minted by the provider for follow-up calls (insight,
+  /// water_calc, etc.); empty when the provider didn't return one
+  public var plantID: String {
+    get {_plantID ?? String()}
+    set {_plantID = newValue}
+  }
+  /// Returns true if `plantID` has been explicitly set.
+  public var hasPlantID: Bool {self._plantID != nil}
+  /// Clears the value of `plantID`. Subsequent reads from it will return its default value.
+  public mutating func clearPlantID() {self._plantID = nil}
+
+  /// optional reference image of a healthy version of the same species
+  public var healthImageURL: String {
+    get {_healthImageURL ?? String()}
+    set {_healthImageURL = newValue}
+  }
+  /// Returns true if `healthImageURL` has been explicitly set.
+  public var hasHealthImageURL: Bool {self._healthImageURL != nil}
+  /// Clears the value of `healthImageURL`. Subsequent reads from it will return its default value.
+  public mutating func clearHealthImageURL() {self._healthImageURL = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _plantName: String? = nil
+  fileprivate var _latinName: String? = nil
+  fileprivate var _raw: String? = nil
+  fileprivate var _plantID: String? = nil
+  fileprivate var _healthImageURL: String? = nil
+}
+
+/// One month's care schedule. `care_list` is a small map of care kind
+/// label → cadence. The provider may emit -1 for "not applicable this
+/// month" (e.g. fertilize in winter) — UIs should skip those.
+public struct VisionCareSchedule: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// 1..12
+  public var month: Int32 = 0
+
+  /// care kind label (e.g. "watering", "fertilize", "pruning") → cadence
+  /// in days. Negative values mean "no action this month".
+  public var careList: Dictionary<String,Int32> = [:]
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// A single titled care tip (gardening blurb). Returned by diagnose
+/// + identify alike; provider-agnostic.
+public struct VisionTip: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// short, prompt-style title
+  public var title: String {
+    get {_title ?? String()}
+    set {_title = newValue}
+  }
+  /// Returns true if `title` has been explicitly set.
+  public var hasTitle: Bool {self._title != nil}
+  /// Clears the value of `title`. Subsequent reads from it will return its default value.
+  public mutating func clearTitle() {self._title = nil}
+
+  /// markdown body content
+  public var content: String = String()
+
+  /// priority hint when the provider sorted them (lower = more important)
+  public var priority: Int32 {
+    get {_priority ?? 0}
+    set {_priority = newValue}
+  }
+  /// Returns true if `priority` has been explicitly set.
+  public var hasPriority: Bool {self._priority != nil}
+  /// Clears the value of `priority`. Subsequent reads from it will return its default value.
+  public mutating func clearPriority() {self._priority = nil}
+
+  /// stable id when the provider exposes one (lets the UI cache)
+  public var id: String {
+    get {_id ?? String()}
+    set {_id = newValue}
+  }
+  /// Returns true if `id` has been explicitly set.
+  public var hasID: Bool {self._id != nil}
+  /// Clears the value of `id`. Subsequent reads from it will return its default value.
+  public mutating func clearID() {self._id = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _title: String? = nil
+  fileprivate var _priority: Int32? = nil
+  fileprivate var _id: String? = nil
+}
+
+/// Weather + climate context for the caller's location. Drives whether
+/// the user should water more (hot, dry) or less (rainy season), and
+/// surfaces gardening cues (hardiness zone, Köppen climate code).
+public struct VisionWeatherRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// user latitude (WGS84) — required
+  public var latitude: Double = 0
+
+  /// user longitude (WGS84) — required
+  public var longitude: Double = 0
+
+  /// ISO country code (default "US")
+  public var countryCode: String {
+    get {_countryCode ?? String()}
+    set {_countryCode = newValue}
+  }
+  /// Returns true if `countryCode` has been explicitly set.
+  public var hasCountryCode: Bool {self._countryCode != nil}
+  /// Clears the value of `countryCode`. Subsequent reads from it will return its default value.
+  public mutating func clearCountryCode() {self._countryCode = nil}
+
+  /// YYYY-MM-DD anchor day for the forecast window (default: today)
+  public var day: String {
+    get {_day ?? String()}
+    set {_day = newValue}
+  }
+  /// Returns true if `day` has been explicitly set.
+  public var hasDay: Bool {self._day != nil}
+  /// Clears the value of `day`. Subsequent reads from it will return its default value.
+  public mutating func clearDay() {self._day = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _countryCode: String? = nil
+  fileprivate var _day: String? = nil
+}
+
+public struct VisionWeatherDay: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// calendar day (YYYY-MM-DD)
+  public var day: String = String()
+
+  /// human-readable conditions (e.g. "Partially cloudy")
+  public var conditions: String {
+    get {_conditions ?? String()}
+    set {_conditions = newValue}
+  }
+  /// Returns true if `conditions` has been explicitly set.
+  public var hasConditions: Bool {self._conditions != nil}
+  /// Clears the value of `conditions`. Subsequent reads from it will return its default value.
+  public mutating func clearConditions() {self._conditions = nil}
+
+  /// max temperature for the day, °C
+  public var temperatureMax: Double {
+    get {_temperatureMax ?? 0}
+    set {_temperatureMax = newValue}
+  }
+  /// Returns true if `temperatureMax` has been explicitly set.
+  public var hasTemperatureMax: Bool {self._temperatureMax != nil}
+  /// Clears the value of `temperatureMax`. Subsequent reads from it will return its default value.
+  public mutating func clearTemperatureMax() {self._temperatureMax = nil}
+
+  /// min temperature for the day, °C
+  public var temperatureMin: Double {
+    get {_temperatureMin ?? 0}
+    set {_temperatureMin = newValue}
+  }
+  /// Returns true if `temperatureMin` has been explicitly set.
+  public var hasTemperatureMin: Bool {self._temperatureMin != nil}
+  /// Clears the value of `temperatureMin`. Subsequent reads from it will return its default value.
+  public mutating func clearTemperatureMin() {self._temperatureMin = nil}
+
+  /// current / average temperature, °C
+  public var temperature: Double {
+    get {_temperature ?? 0}
+    set {_temperature = newValue}
+  }
+  /// Returns true if `temperature` has been explicitly set.
+  public var hasTemperature: Bool {self._temperature != nil}
+  /// Clears the value of `temperature`. Subsequent reads from it will return its default value.
+  public mutating func clearTemperature() {self._temperature = nil}
+
+  /// server-defined weather condition code
+  public var conditionCode: Int32 {
+    get {_conditionCode ?? 0}
+    set {_conditionCode = newValue}
+  }
+  /// Returns true if `conditionCode` has been explicitly set.
+  public var hasConditionCode: Bool {self._conditionCode != nil}
+  /// Clears the value of `conditionCode`. Subsequent reads from it will return its default value.
+  public mutating func clearConditionCode() {self._conditionCode = nil}
+
+  /// CDN URL of an icon representing the conditions
+  public var iconURL: String {
+    get {_iconURL ?? String()}
+    set {_iconURL = newValue}
+  }
+  /// Returns true if `iconURL` has been explicitly set.
+  public var hasIconURL: Bool {self._iconURL != nil}
+  /// Clears the value of `iconURL`. Subsequent reads from it will return its default value.
+  public mutating func clearIconURL() {self._iconURL = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _conditions: String? = nil
+  fileprivate var _temperatureMax: Double? = nil
+  fileprivate var _temperatureMin: Double? = nil
+  fileprivate var _temperature: Double? = nil
+  fileprivate var _conditionCode: Int32? = nil
+  fileprivate var _iconURL: String? = nil
+}
+
+public struct VisionClimateMonth: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// month of year (1..12)
+  public var month: Int32 = 0
+
+  /// historical max temperature for the month, °C
+  public var temperatureMax: Double {
+    get {_temperatureMax ?? 0}
+    set {_temperatureMax = newValue}
+  }
+  /// Returns true if `temperatureMax` has been explicitly set.
+  public var hasTemperatureMax: Bool {self._temperatureMax != nil}
+  /// Clears the value of `temperatureMax`. Subsequent reads from it will return its default value.
+  public mutating func clearTemperatureMax() {self._temperatureMax = nil}
+
+  /// historical min temperature for the month, °C
+  public var temperatureMin: Double {
+    get {_temperatureMin ?? 0}
+    set {_temperatureMin = newValue}
+  }
+  /// Returns true if `temperatureMin` has been explicitly set.
+  public var hasTemperatureMin: Bool {self._temperatureMin != nil}
+  /// Clears the value of `temperatureMin`. Subsequent reads from it will return its default value.
+  public mutating func clearTemperatureMin() {self._temperatureMin = nil}
+
+  /// historical average temperature for the month, °C
+  public var temperatureAvg: Double {
+    get {_temperatureAvg ?? 0}
+    set {_temperatureAvg = newValue}
+  }
+  /// Returns true if `temperatureAvg` has been explicitly set.
+  public var hasTemperatureAvg: Bool {self._temperatureAvg != nil}
+  /// Clears the value of `temperatureAvg`. Subsequent reads from it will return its default value.
+  public mutating func clearTemperatureAvg() {self._temperatureAvg = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _temperatureMax: Double? = nil
+  fileprivate var _temperatureMin: Double? = nil
+  fileprivate var _temperatureAvg: Double? = nil
+}
+
+public struct VisionWeatherResult: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// 9-day forecast window — typically 7 days history + today + tomorrow
+  public var forecast: [VisionWeatherDay] = []
+
+  /// monthly climatological averages (12 entries)
+  public var temperatureYear: [VisionClimateMonth] = []
+
+  /// USDA hardiness zone (e.g. "13a", "7b")
+  public var hardinessZone: String {
+    get {_hardinessZone ?? String()}
+    set {_hardinessZone = newValue}
+  }
+  /// Returns true if `hardinessZone` has been explicitly set.
+  public var hasHardinessZone: Bool {self._hardinessZone != nil}
+  /// Clears the value of `hardinessZone`. Subsequent reads from it will return its default value.
+  public mutating func clearHardinessZone() {self._hardinessZone = nil}
+
+  /// Köppen climate code (e.g. "Aw")
+  public var climateClassification: String {
+    get {_climateClassification ?? String()}
+    set {_climateClassification = newValue}
+  }
+  /// Returns true if `climateClassification` has been explicitly set.
+  public var hasClimateClassification: Bool {self._climateClassification != nil}
+  /// Clears the value of `climateClassification`. Subsequent reads from it will return its default value.
+  public mutating func clearClimateClassification() {self._climateClassification = nil}
+
+  /// confidence on the climate classification, 0..100
+  public var climateConfidence: Int32 {
+    get {_climateConfidence ?? 0}
+    set {_climateConfidence = newValue}
+  }
+  /// Returns true if `climateConfidence` has been explicitly set.
+  public var hasClimateConfidence: Bool {self._climateConfidence != nil}
+  /// Clears the value of `climateConfidence`. Subsequent reads from it will return its default value.
+  public mutating func clearClimateConfidence() {self._climateConfidence = nil}
+
+  /// server-defined season code (1..N)
+  public var seasonType: Int32 {
+    get {_seasonType ?? 0}
+    set {_seasonType = newValue}
+  }
+  /// Returns true if `seasonType` has been explicitly set.
+  public var hasSeasonType: Bool {self._seasonType != nil}
+  /// Clears the value of `seasonType`. Subsequent reads from it will return its default value.
+  public mutating func clearSeasonType() {self._seasonType = nil}
+
+  /// raw JSON envelope (provider-specific extras)
+  public var raw: String {
+    get {_raw ?? String()}
+    set {_raw = newValue}
+  }
+  /// Returns true if `raw` has been explicitly set.
+  public var hasRaw: Bool {self._raw != nil}
+  /// Clears the value of `raw`. Subsequent reads from it will return its default value.
+  public mutating func clearRaw() {self._raw = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _hardinessZone: String? = nil
+  fileprivate var _climateClassification: String? = nil
+  fileprivate var _climateConfidence: Int32? = nil
+  fileprivate var _seasonType: Int32? = nil
+  fileprivate var _raw: String? = nil
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "asyncify.vision"
 
 extension VisionScanRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ScanRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}file\0\u{1}category\0\u{1}language\0\u{1}prompt\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}file\0\u{1}category\0\u{1}language\0\u{1}prompt\0\u{1}latitude\0\u{1}longitude\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1065,6 +2018,8 @@ extension VisionScanRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       case 2: try { try decoder.decodeSingularStringField(value: &self._category) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self._language) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self._prompt) }()
+      case 5: try { try decoder.decodeSingularDoubleField(value: &self._latitude) }()
+      case 6: try { try decoder.decodeSingularDoubleField(value: &self._longitude) }()
       default: break
       }
     }
@@ -1087,14 +2042,25 @@ extension VisionScanRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     try { if let v = self._prompt {
       try visitor.visitSingularStringField(value: v, fieldNumber: 4)
     } }()
+    try { if let v = self._latitude {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 5)
+    } }()
+    try { if let v = self._longitude {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 6)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionScanRequest, rhs: VisionScanRequest) -> Bool {
+  public static func ==(
+lhs: VisionScanRequest, 
+rhs: VisionScanRequest
+) -> Bool {
     if lhs.file != rhs.file {return false}
     if lhs._category != rhs._category {return false}
     if lhs._language != rhs._language {return false}
     if lhs._prompt != rhs._prompt {return false}
+    if lhs._latitude != rhs._latitude {return false}
+    if lhs._longitude != rhs._longitude {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1102,7 +2068,7 @@ extension VisionScanRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
 
 extension VisionScanResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ScanResult"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}description\0\u{3}suggested_questions\0\u{1}title\0\u{3}category_type\0\u{3}image_url\0\u{1}characteristics\0\u{1}nutrition\0\u{1}physical\0\u{1}price\0\u{3}discover_more\0\u{3}buy_now\0\u{1}sources\0\u{3}ai_commentary\0\u{3}category_info\0\u{1}raw\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}description\0\u{3}suggested_questions\0\u{1}title\0\u{3}category_type\0\u{3}image_url\0\u{1}characteristics\0\u{1}nutrition\0\u{1}physical\0\u{1}price\0\u{3}discover_more\0\u{3}buy_now\0\u{1}sources\0\u{3}ai_commentary\0\u{3}category_info\0\u{1}raw\0\u{1}probability\0\u{1}alternatives\0\u{1}facts\0\u{1}confusions\0")
 
   fileprivate class _StorageClass {
     var _description_p: String = String()
@@ -1120,6 +2086,10 @@ extension VisionScanResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     var _aiCommentary: VisionAICommentary? = nil
     var _categoryInfo: VisionCategoryInfo? = nil
     var _raw: String? = nil
+    var _probability: Double? = nil
+    var _alternatives: [VisionScanResult] = []
+    var _facts: Dictionary<String,String> = [:]
+    var _confusions: [VisionScanResult] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1145,6 +2115,10 @@ extension VisionScanResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       _aiCommentary = source._aiCommentary
       _categoryInfo = source._categoryInfo
       _raw = source._raw
+      _probability = source._probability
+      _alternatives = source._alternatives
+      _facts = source._facts
+      _confusions = source._confusions
     }
   }
 
@@ -1178,6 +2152,10 @@ extension VisionScanResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
         case 13: try { try decoder.decodeSingularMessageField(value: &_storage._aiCommentary) }()
         case 14: try { try decoder.decodeSingularMessageField(value: &_storage._categoryInfo) }()
         case 15: try { try decoder.decodeSingularStringField(value: &_storage._raw) }()
+        case 16: try { try decoder.decodeSingularDoubleField(value: &_storage._probability) }()
+        case 17: try { try decoder.decodeRepeatedMessageField(value: &_storage._alternatives) }()
+        case 18: try { try decoder.decodeMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufString>.self, value: &_storage._facts) }()
+        case 19: try { try decoder.decodeRepeatedMessageField(value: &_storage._confusions) }()
         default: break
         }
       }
@@ -1235,11 +2213,26 @@ extension VisionScanResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       try { if let v = _storage._raw {
         try visitor.visitSingularStringField(value: v, fieldNumber: 15)
       } }()
+      try { if let v = _storage._probability {
+        try visitor.visitSingularDoubleField(value: v, fieldNumber: 16)
+      } }()
+      if !_storage._alternatives.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._alternatives, fieldNumber: 17)
+      }
+      if !_storage._facts.isEmpty {
+        try visitor.visitMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufString>.self, value: _storage._facts, fieldNumber: 18)
+      }
+      if !_storage._confusions.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._confusions, fieldNumber: 19)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionScanResult, rhs: VisionScanResult) -> Bool {
+  public static func ==(
+lhs: VisionScanResult, 
+rhs: VisionScanResult
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -1259,6 +2252,10 @@ extension VisionScanResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
         if _storage._aiCommentary != rhs_storage._aiCommentary {return false}
         if _storage._categoryInfo != rhs_storage._categoryInfo {return false}
         if _storage._raw != rhs_storage._raw {return false}
+        if _storage._probability != rhs_storage._probability {return false}
+        if _storage._alternatives != rhs_storage._alternatives {return false}
+        if _storage._facts != rhs_storage._facts {return false}
+        if _storage._confusions != rhs_storage._confusions {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -1291,7 +2288,10 @@ extension VisionCharacteristics: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionCharacteristics, rhs: VisionCharacteristics) -> Bool {
+  public static func ==(
+lhs: VisionCharacteristics, 
+rhs: VisionCharacteristics
+) -> Bool {
     if lhs.fields != rhs.fields {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -1349,7 +2349,10 @@ extension VisionNutritionInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionNutritionInfo, rhs: VisionNutritionInfo) -> Bool {
+  public static func ==(
+lhs: VisionNutritionInfo, 
+rhs: VisionNutritionInfo
+) -> Bool {
     if lhs._kcal != rhs._kcal {return false}
     if lhs._calories != rhs._calories {return false}
     if lhs._protein != rhs._protein {return false}
@@ -1513,7 +2516,10 @@ extension VisionPhysicalFeatures: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionPhysicalFeatures, rhs: VisionPhysicalFeatures) -> Bool {
+  public static func ==(
+lhs: VisionPhysicalFeatures, 
+rhs: VisionPhysicalFeatures
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -1575,7 +2581,10 @@ extension VisionPriceInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionPriceInfo, rhs: VisionPriceInfo) -> Bool {
+  public static func ==(
+lhs: VisionPriceInfo, 
+rhs: VisionPriceInfo
+) -> Bool {
     if lhs._averageFairMarketPrice != rhs._averageFairMarketPrice {return false}
     if lhs._webPurchaseURL != rhs._webPurchaseURL {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -1622,7 +2631,10 @@ extension VisionLink: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionLink, rhs: VisionLink) -> Bool {
+  public static func ==(
+lhs: VisionLink, 
+rhs: VisionLink
+) -> Bool {
     if lhs._title != rhs._title {return false}
     if lhs._url != rhs._url {return false}
     if lhs._description_p != rhs._description_p {return false}
@@ -1687,7 +2699,10 @@ extension VisionAICommentary: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionAICommentary, rhs: VisionAICommentary) -> Bool {
+  public static func ==(
+lhs: VisionAICommentary, 
+rhs: VisionAICommentary
+) -> Bool {
     if lhs._aiAssistantSays != rhs._aiAssistantSays {return false}
     if lhs._aiSuggests != rhs._aiSuggests {return false}
     if lhs._expertInsights != rhs._expertInsights {return false}
@@ -1736,7 +2751,10 @@ extension VisionCategoryInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionCategoryInfo, rhs: VisionCategoryInfo) -> Bool {
+  public static func ==(
+lhs: VisionCategoryInfo, 
+rhs: VisionCategoryInfo
+) -> Bool {
     if lhs.type != rhs.type {return false}
     if lhs.fields != rhs.fields {return false}
     if lhs._metadata != rhs._metadata {return false}
@@ -1800,7 +2818,10 @@ extension VisionShoppingProduct: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionShoppingProduct, rhs: VisionShoppingProduct) -> Bool {
+  public static func ==(
+lhs: VisionShoppingProduct, 
+rhs: VisionShoppingProduct
+) -> Bool {
     if lhs._title != rhs._title {return false}
     if lhs._price != rhs._price {return false}
     if lhs._currency != rhs._currency {return false}
@@ -1845,7 +2866,10 @@ extension VisionShoppingResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionShoppingResult, rhs: VisionShoppingResult) -> Bool {
+  public static func ==(
+lhs: VisionShoppingResult, 
+rhs: VisionShoppingResult
+) -> Bool {
     if lhs.products != rhs.products {return false}
     if lhs._query != rhs._query {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -1896,7 +2920,10 @@ extension VisionVideoResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionVideoResult, rhs: VisionVideoResult) -> Bool {
+  public static func ==(
+lhs: VisionVideoResult, 
+rhs: VisionVideoResult
+) -> Bool {
     if lhs._title != rhs._title {return false}
     if lhs._url != rhs._url {return false}
     if lhs._thumbnail != rhs._thumbnail {return false}
@@ -1954,7 +2981,10 @@ extension VisionRecipeResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionRecipeResult, rhs: VisionRecipeResult) -> Bool {
+  public static func ==(
+lhs: VisionRecipeResult, 
+rhs: VisionRecipeResult
+) -> Bool {
     if lhs._title != rhs._title {return false}
     if lhs._url != rhs._url {return false}
     if lhs._image != rhs._image {return false}
@@ -2001,7 +3031,10 @@ extension VisionDiscoverResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionDiscoverResult, rhs: VisionDiscoverResult) -> Bool {
+  public static func ==(
+lhs: VisionDiscoverResult, 
+rhs: VisionDiscoverResult
+) -> Bool {
     if lhs.products != rhs.products {return false}
     if lhs.videos != rhs.videos {return false}
     if lhs.recipes != rhs.recipes {return false}
@@ -2046,7 +3079,10 @@ extension VisionExtendedScanResult: SwiftProtobuf.Message, SwiftProtobuf._Messag
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionExtendedScanResult, rhs: VisionExtendedScanResult) -> Bool {
+  public static func ==(
+lhs: VisionExtendedScanResult, 
+rhs: VisionExtendedScanResult
+) -> Bool {
     if lhs._scan != rhs._scan {return false}
     if lhs._shopping != rhs._shopping {return false}
     if lhs._discover != rhs._discover {return false}
@@ -2102,7 +3138,10 @@ extension VisionScanHistoryItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionScanHistoryItem, rhs: VisionScanHistoryItem) -> Bool {
+  public static func ==(
+lhs: VisionScanHistoryItem, 
+rhs: VisionScanHistoryItem
+) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.title != rhs.title {return false}
     if lhs._categoryType != rhs._categoryType {return false}
@@ -2137,8 +3176,1036 @@ extension VisionScanHistoryList: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisionScanHistoryList, rhs: VisionScanHistoryList) -> Bool {
+  public static func ==(
+lhs: VisionScanHistoryList, 
+rhs: VisionScanHistoryList
+) -> Bool {
     if lhs.items != rhs.items {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionVisualSearchRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".VisualSearchRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}file\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.file) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.file.isEmpty {
+      try visitor.visitSingularStringField(value: self.file, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionVisualSearchRequest, 
+rhs: VisionVisualSearchRequest
+) -> Bool {
+    if lhs.file != rhs.file {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionShoppingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ShoppingRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}query\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.query) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.query.isEmpty {
+      try visitor.visitSingularStringField(value: self.query, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionShoppingRequest, 
+rhs: VisionShoppingRequest
+) -> Bool {
+    if lhs.query != rhs.query {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionDescribeRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DescribeRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}file\0\u{1}category\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.file) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.category) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.file.isEmpty {
+      try visitor.visitSingularStringField(value: self.file, fieldNumber: 1)
+    }
+    if !self.category.isEmpty {
+      try visitor.visitSingularStringField(value: self.category, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionDescribeRequest, 
+rhs: VisionDescribeRequest
+) -> Bool {
+    if lhs.file != rhs.file {return false}
+    if lhs.category != rhs.category {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionWaterCalcRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WaterCalcRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}file\0\u{3}plant_id\0\u{1}settings\0\u{3}country_code\0\u{1}latitude\0\u{1}longitude\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._file) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._plantID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._settings) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._countryCode) }()
+      case 5: try { try decoder.decodeSingularDoubleField(value: &self._latitude) }()
+      case 6: try { try decoder.decodeSingularDoubleField(value: &self._longitude) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._file {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._plantID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._settings {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._countryCode {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._latitude {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 5)
+    } }()
+    try { if let v = self._longitude {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 6)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionWaterCalcRequest, 
+rhs: VisionWaterCalcRequest
+) -> Bool {
+    if lhs._file != rhs._file {return false}
+    if lhs._plantID != rhs._plantID {return false}
+    if lhs._settings != rhs._settings {return false}
+    if lhs._countryCode != rhs._countryCode {return false}
+    if lhs._latitude != rhs._latitude {return false}
+    if lhs._longitude != rhs._longitude {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionWaterCalcResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WaterCalcResult"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}water_amount_ml\0\u{3}frequency_days\0\u{3}care_type\0\u{3}plant_name\0\u{3}latin_name\0\u{3}plant_id\0\u{1}raw\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularDoubleField(value: &self._waterAmountMl) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self._frequencyDays) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._careType) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._plantName) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self._latinName) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self._plantID) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self._raw) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._waterAmountMl {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._frequencyDays {
+      try visitor.visitSingularInt32Field(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._careType {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._plantName {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._latinName {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 5)
+    } }()
+    try { if let v = self._plantID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 6)
+    } }()
+    try { if let v = self._raw {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 7)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionWaterCalcResult, 
+rhs: VisionWaterCalcResult
+) -> Bool {
+    if lhs._waterAmountMl != rhs._waterAmountMl {return false}
+    if lhs._frequencyDays != rhs._frequencyDays {return false}
+    if lhs._careType != rhs._careType {return false}
+    if lhs._plantName != rhs._plantName {return false}
+    if lhs._latinName != rhs._latinName {return false}
+    if lhs._plantID != rhs._plantID {return false}
+    if lhs._raw != rhs._raw {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionRepottingCheckerRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RepottingCheckerRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}file\0\u{3}plant_id\0\u{3}plant_name\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.file) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._plantID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._plantName) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.file.isEmpty {
+      try visitor.visitSingularStringField(value: self.file, fieldNumber: 1)
+    }
+    try { if let v = self._plantID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._plantName {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionRepottingCheckerRequest, 
+rhs: VisionRepottingCheckerRequest
+) -> Bool {
+    if lhs.file != rhs.file {return false}
+    if lhs._plantID != rhs._plantID {return false}
+    if lhs._plantName != rhs._plantName {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionRepottingCheckerResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RepottingCheckerResult"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}is_plant\0\u{3}is_repottable\0\u{1}status\0\u{1}topics\0\u{1}raw\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.isPlant) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.isRepottable) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._status) }()
+      case 4: try { try decoder.decodeRepeatedMessageField(value: &self.topics) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self._raw) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.isPlant != false {
+      try visitor.visitSingularBoolField(value: self.isPlant, fieldNumber: 1)
+    }
+    if self.isRepottable != false {
+      try visitor.visitSingularBoolField(value: self.isRepottable, fieldNumber: 2)
+    }
+    try { if let v = self._status {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    if !self.topics.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.topics, fieldNumber: 4)
+    }
+    try { if let v = self._raw {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 5)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionRepottingCheckerResult, 
+rhs: VisionRepottingCheckerResult
+) -> Bool {
+    if lhs.isPlant != rhs.isPlant {return false}
+    if lhs.isRepottable != rhs.isRepottable {return false}
+    if lhs._status != rhs._status {return false}
+    if lhs.topics != rhs.topics {return false}
+    if lhs._raw != rhs._raw {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionRepotTopic: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RepotTopic"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}sections\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.sections) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
+    }
+    if !self.sections.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.sections, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionRepotTopic, 
+rhs: VisionRepotTopic
+) -> Bool {
+    if lhs.name != rhs.name {return false}
+    if lhs.sections != rhs.sections {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionRepotTopicSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RepotTopicSection"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}title\0\u{1}content\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._title) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.content) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._title {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    if !self.content.isEmpty {
+      try visitor.visitSingularStringField(value: self.content, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionRepotTopicSection, 
+rhs: VisionRepotTopicSection
+) -> Bool {
+    if lhs._title != rhs._title {return false}
+    if lhs.content != rhs.content {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionLightMeterRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".LightMeterRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}brightness\0\u{1}file\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularDoubleField(value: &self._brightness) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._file) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._brightness {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._file {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionLightMeterRequest, 
+rhs: VisionLightMeterRequest
+) -> Bool {
+    if lhs._brightness != rhs._brightness {return false}
+    if lhs._file != rhs._file {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionLightMeterResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".LightMeterResult"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}level\0\u{1}lux\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.level) }()
+      case 2: try { try decoder.decodeSingularDoubleField(value: &self._lux) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.level.isEmpty {
+      try visitor.visitSingularStringField(value: self.level, fieldNumber: 1)
+    }
+    try { if let v = self._lux {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionLightMeterResult, 
+rhs: VisionLightMeterResult
+) -> Bool {
+    if lhs.level != rhs.level {return false}
+    if lhs._lux != rhs._lux {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionDiseaseInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DiseaseInfo"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}causes\0\u{1}summary\0\u{1}treatments\0\u{1}confidence\0\u{1}bbox\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._name) }()
+      case 2: try { try decoder.decodeRepeatedStringField(value: &self.causes) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._summary) }()
+      case 4: try { try decoder.decodeRepeatedStringField(value: &self.treatments) }()
+      case 5: try { try decoder.decodeSingularDoubleField(value: &self._confidence) }()
+      case 6: try { try decoder.decodeRepeatedDoubleField(value: &self.bbox) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._name {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    if !self.causes.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.causes, fieldNumber: 2)
+    }
+    try { if let v = self._summary {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    if !self.treatments.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.treatments, fieldNumber: 4)
+    }
+    try { if let v = self._confidence {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 5)
+    } }()
+    if !self.bbox.isEmpty {
+      try visitor.visitPackedDoubleField(value: self.bbox, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionDiseaseInfo, 
+rhs: VisionDiseaseInfo
+) -> Bool {
+    if lhs._name != rhs._name {return false}
+    if lhs.causes != rhs.causes {return false}
+    if lhs._summary != rhs._summary {return false}
+    if lhs.treatments != rhs.treatments {return false}
+    if lhs._confidence != rhs._confidence {return false}
+    if lhs.bbox != rhs.bbox {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionDiagnoseRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DiagnoseRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}file\0\u{3}plant_id\0\u{3}country_code\0\u{1}latitude\0\u{1}longitude\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.file) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._plantID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._countryCode) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self._latitude) }()
+      case 5: try { try decoder.decodeSingularDoubleField(value: &self._longitude) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.file.isEmpty {
+      try visitor.visitSingularStringField(value: self.file, fieldNumber: 1)
+    }
+    try { if let v = self._plantID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._countryCode {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._latitude {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._longitude {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 5)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionDiagnoseRequest, 
+rhs: VisionDiagnoseRequest
+) -> Bool {
+    if lhs.file != rhs.file {return false}
+    if lhs._plantID != rhs._plantID {return false}
+    if lhs._countryCode != rhs._countryCode {return false}
+    if lhs._latitude != rhs._latitude {return false}
+    if lhs._longitude != rhs._longitude {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionDiagnoseResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DiagnoseResult"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}plant_name\0\u{3}latin_name\0\u{1}diseases\0\u{1}scene\0\u{1}raw\0\u{3}care_schedule\0\u{1}tips\0\u{3}plant_id\0\u{3}health_image_url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._plantName) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._latinName) }()
+      case 3: try { try decoder.decodeRepeatedMessageField(value: &self.diseases) }()
+      case 4: try { try decoder.decodeMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufString>.self, value: &self.scene) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self._raw) }()
+      case 6: try { try decoder.decodeRepeatedMessageField(value: &self.careSchedule) }()
+      case 7: try { try decoder.decodeRepeatedMessageField(value: &self.tips) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self._plantID) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self._healthImageURL) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._plantName {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._latinName {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    if !self.diseases.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.diseases, fieldNumber: 3)
+    }
+    if !self.scene.isEmpty {
+      try visitor.visitMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufString>.self, value: self.scene, fieldNumber: 4)
+    }
+    try { if let v = self._raw {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 5)
+    } }()
+    if !self.careSchedule.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.careSchedule, fieldNumber: 6)
+    }
+    if !self.tips.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.tips, fieldNumber: 7)
+    }
+    try { if let v = self._plantID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 8)
+    } }()
+    try { if let v = self._healthImageURL {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 9)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionDiagnoseResult, 
+rhs: VisionDiagnoseResult
+) -> Bool {
+    if lhs._plantName != rhs._plantName {return false}
+    if lhs._latinName != rhs._latinName {return false}
+    if lhs.diseases != rhs.diseases {return false}
+    if lhs.scene != rhs.scene {return false}
+    if lhs._raw != rhs._raw {return false}
+    if lhs.careSchedule != rhs.careSchedule {return false}
+    if lhs.tips != rhs.tips {return false}
+    if lhs._plantID != rhs._plantID {return false}
+    if lhs._healthImageURL != rhs._healthImageURL {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionCareSchedule: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CareSchedule"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}month\0\u{3}care_list\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt32Field(value: &self.month) }()
+      case 2: try { try decoder.decodeMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufInt32>.self, value: &self.careList) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.month != 0 {
+      try visitor.visitSingularInt32Field(value: self.month, fieldNumber: 1)
+    }
+    if !self.careList.isEmpty {
+      try visitor.visitMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufInt32>.self, value: self.careList, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionCareSchedule, 
+rhs: VisionCareSchedule
+) -> Bool {
+    if lhs.month != rhs.month {return false}
+    if lhs.careList != rhs.careList {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionTip: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Tip"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}title\0\u{1}content\0\u{1}priority\0\u{1}id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._title) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.content) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self._priority) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._id) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._title {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    if !self.content.isEmpty {
+      try visitor.visitSingularStringField(value: self.content, fieldNumber: 2)
+    }
+    try { if let v = self._priority {
+      try visitor.visitSingularInt32Field(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._id {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionTip, 
+rhs: VisionTip
+) -> Bool {
+    if lhs._title != rhs._title {return false}
+    if lhs.content != rhs.content {return false}
+    if lhs._priority != rhs._priority {return false}
+    if lhs._id != rhs._id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionWeatherRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WeatherRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}latitude\0\u{1}longitude\0\u{3}country_code\0\u{1}day\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularDoubleField(value: &self.latitude) }()
+      case 2: try { try decoder.decodeSingularDoubleField(value: &self.longitude) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._countryCode) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._day) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.latitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.latitude, fieldNumber: 1)
+    }
+    if self.longitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.longitude, fieldNumber: 2)
+    }
+    try { if let v = self._countryCode {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._day {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionWeatherRequest, 
+rhs: VisionWeatherRequest
+) -> Bool {
+    if lhs.latitude != rhs.latitude {return false}
+    if lhs.longitude != rhs.longitude {return false}
+    if lhs._countryCode != rhs._countryCode {return false}
+    if lhs._day != rhs._day {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionWeatherDay: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WeatherDay"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}day\0\u{1}conditions\0\u{3}temperature_max\0\u{3}temperature_min\0\u{1}temperature\0\u{3}condition_code\0\u{3}icon_url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.day) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._conditions) }()
+      case 3: try { try decoder.decodeSingularDoubleField(value: &self._temperatureMax) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self._temperatureMin) }()
+      case 5: try { try decoder.decodeSingularDoubleField(value: &self._temperature) }()
+      case 6: try { try decoder.decodeSingularInt32Field(value: &self._conditionCode) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self._iconURL) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.day.isEmpty {
+      try visitor.visitSingularStringField(value: self.day, fieldNumber: 1)
+    }
+    try { if let v = self._conditions {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._temperatureMax {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._temperatureMin {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._temperature {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 5)
+    } }()
+    try { if let v = self._conditionCode {
+      try visitor.visitSingularInt32Field(value: v, fieldNumber: 6)
+    } }()
+    try { if let v = self._iconURL {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 7)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionWeatherDay, 
+rhs: VisionWeatherDay
+) -> Bool {
+    if lhs.day != rhs.day {return false}
+    if lhs._conditions != rhs._conditions {return false}
+    if lhs._temperatureMax != rhs._temperatureMax {return false}
+    if lhs._temperatureMin != rhs._temperatureMin {return false}
+    if lhs._temperature != rhs._temperature {return false}
+    if lhs._conditionCode != rhs._conditionCode {return false}
+    if lhs._iconURL != rhs._iconURL {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionClimateMonth: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ClimateMonth"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}month\0\u{3}temperature_max\0\u{3}temperature_min\0\u{3}temperature_avg\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt32Field(value: &self.month) }()
+      case 2: try { try decoder.decodeSingularDoubleField(value: &self._temperatureMax) }()
+      case 3: try { try decoder.decodeSingularDoubleField(value: &self._temperatureMin) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self._temperatureAvg) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.month != 0 {
+      try visitor.visitSingularInt32Field(value: self.month, fieldNumber: 1)
+    }
+    try { if let v = self._temperatureMax {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._temperatureMin {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._temperatureAvg {
+      try visitor.visitSingularDoubleField(value: v, fieldNumber: 4)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionClimateMonth, 
+rhs: VisionClimateMonth
+) -> Bool {
+    if lhs.month != rhs.month {return false}
+    if lhs._temperatureMax != rhs._temperatureMax {return false}
+    if lhs._temperatureMin != rhs._temperatureMin {return false}
+    if lhs._temperatureAvg != rhs._temperatureAvg {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisionWeatherResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WeatherResult"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}forecast\0\u{3}temperature_year\0\u{3}hardiness_zone\0\u{3}climate_classification\0\u{3}climate_confidence\0\u{3}season_type\0\u{1}raw\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.forecast) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.temperatureYear) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._hardinessZone) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._climateClassification) }()
+      case 5: try { try decoder.decodeSingularInt32Field(value: &self._climateConfidence) }()
+      case 6: try { try decoder.decodeSingularInt32Field(value: &self._seasonType) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self._raw) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.forecast.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.forecast, fieldNumber: 1)
+    }
+    if !self.temperatureYear.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.temperatureYear, fieldNumber: 2)
+    }
+    try { if let v = self._hardinessZone {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._climateClassification {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._climateConfidence {
+      try visitor.visitSingularInt32Field(value: v, fieldNumber: 5)
+    } }()
+    try { if let v = self._seasonType {
+      try visitor.visitSingularInt32Field(value: v, fieldNumber: 6)
+    } }()
+    try { if let v = self._raw {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 7)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisionWeatherResult, 
+rhs: VisionWeatherResult
+) -> Bool {
+    if lhs.forecast != rhs.forecast {return false}
+    if lhs.temperatureYear != rhs.temperatureYear {return false}
+    if lhs._hardinessZone != rhs._hardinessZone {return false}
+    if lhs._climateClassification != rhs._climateClassification {return false}
+    if lhs._climateConfidence != rhs._climateConfidence {return false}
+    if lhs._seasonType != rhs._seasonType {return false}
+    if lhs._raw != rhs._raw {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

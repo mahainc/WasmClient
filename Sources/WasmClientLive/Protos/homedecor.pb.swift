@@ -879,39 +879,64 @@ public enum HomedecorSurfaceType: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
-/// All possible fields for generate action.
-/// Providers use a subset; unused fields are ignored.
-/// Plugins map enum values to provider-specific API strings.
+/// All possible fields for generate actions. Providers consume a
+/// subset based on each process type's supported_fields.
+///
+/// Enum-shaped fields (room_style, room_type, color, surface_type,
+/// style_selection) are proto-typed — the proto schema is the single
+/// source of truth for the enum universe; each plugin advertises a
+/// subset via the `supported_*(pt)` trait methods. SwiftProtobuf
+/// JSON-encodes these as the value name in SCREAMING_SNAKE_CASE
+/// (e.g. "MODERN", "LIVING_ROOM", "MILLENNIAL_GRAY"); the Rust
+/// executor reads that name from the args bag and resolves it through
+/// `enum_names`. Callers pass the typed enum case directly on the
+/// Swift API surface — no PascalCase round-trip.
 public struct HomedecorGenerateRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  /// Source image — `file://` URL of a local capture, or `http(s)://`.
   public var file: String = String()
 
+  /// Target interior style for the redesign.
   public var roomStyle: HomedecorRoomStyle = .unspecified
 
+  /// Target room/space type the redesign targets.
   public var roomType: HomedecorRoomType = .unspecified
 
-  public var processType: HomedecorProcessType = .unspecified
-
-  public var styleSelection: HomedecorStyleSelection = .unspecified
-
+  /// Free-text prompt / extra direction for the provider.
   public var prompt: String = String()
 
+  /// Color palette — only relevant for the Paint process type.
   public var color: HomedecorColorPalette = .unspecified
 
+  /// Mask file URL — only for Paint / Replace.
   public var mask: String = String()
 
+  /// Surface to repaint — only for Paint.
   public var surfaceType: HomedecorSurfaceType = .unspecified
 
+  /// Reference image URL — only for the Reference process type.
   public var refImage: String = String()
 
-  public var cacheDir: String = String()
+  /// Provider-specific structural/renovation toggle for Interior.
+  public var styleSelection: HomedecorStyleSelection = .unspecified
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
 }
 
 /// Wrapped in task.Task.value as Any
@@ -982,7 +1007,7 @@ extension HomedecorSurfaceType: SwiftProtobuf._ProtoNameProviding {
 
 extension HomedecorGenerateRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GenerateRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}file\0\u{3}room_style\0\u{3}room_type\0\u{3}process_type\0\u{3}style_selection\0\u{1}prompt\0\u{1}color\0\u{1}mask\0\u{3}surface_type\0\u{3}ref_image\0\u{3}cache_dir\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}file\0\u{3}room_style\0\u{3}room_type\0\u{1}prompt\0\u{1}color\0\u{1}mask\0\u{3}surface_type\0\u{1}ref_image\0\u{3}style_selection\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -990,71 +1015,73 @@ extension HomedecorGenerateRequest: SwiftProtobuf.Message, SwiftProtobuf._Messag
       // allocates stack space for every case branch when no optimizations are
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.file) }()
-      case 2: try { try decoder.decodeSingularEnumField(value: &self.roomStyle) }()
-      case 3: try { try decoder.decodeSingularEnumField(value: &self.roomType) }()
-      case 4: try { try decoder.decodeSingularEnumField(value: &self.processType) }()
-      case 5: try { try decoder.decodeSingularEnumField(value: &self.styleSelection) }()
-      case 6: try { try decoder.decodeSingularStringField(value: &self.prompt) }()
-      case 7: try { try decoder.decodeSingularEnumField(value: &self.color) }()
-      case 8: try { try decoder.decodeSingularStringField(value: &self.mask) }()
-      case 9: try { try decoder.decodeSingularEnumField(value: &self.surfaceType) }()
-      case 10: try { try decoder.decodeSingularStringField(value: &self.refImage) }()
-      case 11: try { try decoder.decodeSingularStringField(value: &self.cacheDir) }()
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.file) }()
+      case 3: try { try decoder.decodeSingularEnumField(value: &self.roomStyle) }()
+      case 4: try { try decoder.decodeSingularEnumField(value: &self.roomType) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.prompt) }()
+      case 6: try { try decoder.decodeSingularEnumField(value: &self.color) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.mask) }()
+      case 8: try { try decoder.decodeSingularEnumField(value: &self.surfaceType) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.refImage) }()
+      case 10: try { try decoder.decodeSingularEnumField(value: &self.styleSelection) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
     if !self.file.isEmpty {
-      try visitor.visitSingularStringField(value: self.file, fieldNumber: 1)
+      try visitor.visitSingularStringField(value: self.file, fieldNumber: 2)
     }
     if self.roomStyle != .unspecified {
-      try visitor.visitSingularEnumField(value: self.roomStyle, fieldNumber: 2)
+      try visitor.visitSingularEnumField(value: self.roomStyle, fieldNumber: 3)
     }
     if self.roomType != .unspecified {
-      try visitor.visitSingularEnumField(value: self.roomType, fieldNumber: 3)
-    }
-    if self.processType != .unspecified {
-      try visitor.visitSingularEnumField(value: self.processType, fieldNumber: 4)
-    }
-    if self.styleSelection != .unspecified {
-      try visitor.visitSingularEnumField(value: self.styleSelection, fieldNumber: 5)
+      try visitor.visitSingularEnumField(value: self.roomType, fieldNumber: 4)
     }
     if !self.prompt.isEmpty {
-      try visitor.visitSingularStringField(value: self.prompt, fieldNumber: 6)
+      try visitor.visitSingularStringField(value: self.prompt, fieldNumber: 5)
     }
     if self.color != .unspecified {
-      try visitor.visitSingularEnumField(value: self.color, fieldNumber: 7)
+      try visitor.visitSingularEnumField(value: self.color, fieldNumber: 6)
     }
     if !self.mask.isEmpty {
-      try visitor.visitSingularStringField(value: self.mask, fieldNumber: 8)
+      try visitor.visitSingularStringField(value: self.mask, fieldNumber: 7)
     }
     if self.surfaceType != .unspecified {
-      try visitor.visitSingularEnumField(value: self.surfaceType, fieldNumber: 9)
+      try visitor.visitSingularEnumField(value: self.surfaceType, fieldNumber: 8)
     }
     if !self.refImage.isEmpty {
-      try visitor.visitSingularStringField(value: self.refImage, fieldNumber: 10)
+      try visitor.visitSingularStringField(value: self.refImage, fieldNumber: 9)
     }
-    if !self.cacheDir.isEmpty {
-      try visitor.visitSingularStringField(value: self.cacheDir, fieldNumber: 11)
+    if self.styleSelection != .unspecified {
+      try visitor.visitSingularEnumField(value: self.styleSelection, fieldNumber: 10)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: HomedecorGenerateRequest, rhs: HomedecorGenerateRequest) -> Bool {
+  public static func ==(
+lhs: HomedecorGenerateRequest, 
+rhs: HomedecorGenerateRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
     if lhs.file != rhs.file {return false}
     if lhs.roomStyle != rhs.roomStyle {return false}
     if lhs.roomType != rhs.roomType {return false}
-    if lhs.processType != rhs.processType {return false}
-    if lhs.styleSelection != rhs.styleSelection {return false}
     if lhs.prompt != rhs.prompt {return false}
     if lhs.color != rhs.color {return false}
     if lhs.mask != rhs.mask {return false}
     if lhs.surfaceType != rhs.surfaceType {return false}
     if lhs.refImage != rhs.refImage {return false}
-    if lhs.cacheDir != rhs.cacheDir {return false}
+    if lhs.styleSelection != rhs.styleSelection {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1103,7 +1130,10 @@ extension HomedecorGenerateResult: SwiftProtobuf.Message, SwiftProtobuf._Message
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: HomedecorGenerateResult, rhs: HomedecorGenerateResult) -> Bool {
+  public static func ==(
+lhs: HomedecorGenerateResult, 
+rhs: HomedecorGenerateResult
+) -> Bool {
     if lhs._result != rhs._result {return false}
     if lhs._input != rhs._input {return false}
     if lhs.roomStyle != rhs.roomStyle {return false}
