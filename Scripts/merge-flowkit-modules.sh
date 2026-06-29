@@ -89,17 +89,28 @@ fi
 
 # 4) Broad fallback — find under known DerivedData / temp roots.
 #    Capped maxdepth keeps this cheap even when /tmp is busy.
+#    SPM's plugin sandbox scrubs $HOME, so derive it via passwd (tilde) and
+#    guard each root with an existence check before handing it to find.
+#    Includes SwiftBuildShared, where the swift-build wrapper places DerivedData.
 if [ -z "$XCFW" ]; then
-  while IFS= read -r candidate; do
-    if [ -d "$candidate" ]; then XCFW="$candidate"; break; fi
-  done < <(find \
-    "$HOME/Library/Developer/Xcode/DerivedData" \
+  HOME_DIR="${HOME:-$(cd ~ && pwd)}"
+  SEARCH_ROOTS=()
+  for root in \
+    "$HOME_DIR/Library/Developer/Xcode/DerivedData" \
+    "$HOME_DIR/Library/Developer/SwiftBuildShared" \
     "${TMPDIR:-/tmp}" \
-    /tmp \
-    -maxdepth 8 \
-    \( -path '*/SourcePackages/artifacts/*/FlowKit/FlowKit.xcframework' \
-       -o -path '*/artifacts/*/FlowKit/FlowKit.xcframework' \) \
-    -type d 2>/dev/null | sort -u)
+    /tmp; do
+    [ -d "$root" ] && SEARCH_ROOTS+=("$root")
+  done
+  if [ "${#SEARCH_ROOTS[@]}" -gt 0 ]; then
+    while IFS= read -r candidate; do
+      if [ -d "$candidate" ]; then XCFW="$candidate"; break; fi
+    done < <(find "${SEARCH_ROOTS[@]}" \
+      -maxdepth 8 \
+      \( -path '*/SourcePackages/artifacts/*/FlowKit/FlowKit.xcframework' \
+         -o -path '*/artifacts/*/FlowKit/FlowKit.xcframework' \) \
+      -type d 2>/dev/null | sort -u)
+  fi
 fi
 
 if [ -z "$XCFW" ]; then
