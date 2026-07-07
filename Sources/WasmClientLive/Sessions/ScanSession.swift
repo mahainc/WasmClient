@@ -70,15 +70,18 @@ extension WasmActor {
 
     /// Run visual search on an already-uploaded image URL.
     ///
-    /// Dispatches via the method-name route (`asyncify.vision.VisionService/VisualSearch`)
-    /// rather than legacy UUID discovery — the dispatcher routes by method name and picks
-    /// the provider via the persisted `provider_strategy`.
+    /// Dispatches via the method-name `run` route (`asyncify.vision.VisionService/VisualSearch`),
+    /// which resolves the provider by the persisted `provider_strategy` and awaits the completed,
+    /// unpacked result. This mirrors flow-kit-example's `vision.visualSearch(file:)` (which calls
+    /// `_wasm.run(method:args:)`) and the package's own AiArt/Music sessions (`instance.run(action:)`).
     ///
-    /// `provider` is intentionally NOT forwarded as the providerId: VisualSearch is served
-    /// by different providers than Scan, so pinning the caller's scan provider here makes the
-    /// engine answer 502 "unsupported". Mirrors flow-kit-example, which always lets the
-    /// strategy choose for this RPC (`vision.visualSearch(file:)`). The parameter is kept for
-    /// source compatibility.
+    /// Do NOT use `instance.create(providerId:"", actionId:)` here: that is the `*Task` variant —
+    /// it returns a raw `WaTTask` that comes back non-`.completed`, so the old `.completed` guard
+    /// threw `taskFailed` and the caller saw empty results.
+    ///
+    /// `provider` is intentionally NOT forwarded: VisualSearch is served by different providers
+    /// than Scan, so pinning the caller's scan provider makes the engine answer 502 "unsupported".
+    /// Kept for source compatibility.
     func visualSearch(
         imageURL: String,
         provider: String
@@ -89,31 +92,24 @@ extension WasmActor {
             "file": Google_Protobuf_Value(stringValue: imageURL)
         ]
         logger("visualSearch: dispatch method=\(WasmClient.VisionMethod.visualSearch.rawValue) file=\(imageURL)")
-        let task = try await instance.create(
-            providerId: "",
-            actionId: WasmClient.VisionMethod.visualSearch.rawValue,
+        let result: VisionDiscoverResult = try await instance.run(
+            method: WasmClient.VisionMethod.visualSearch.rawValue,
             args: args
         )
-        logger("visualSearch: task status=\(task.status) hasValue=\(task.hasValue)")
-        guard task.status == .completed, task.hasValue else {
-            let err = task.metadata.fields["error"]?.stringValue ?? "—"
-            logger("visualSearch: FAILED status=\(task.status) error=\(err) — throwing taskFailed")
-            throw WasmClient.Error.taskFailed(status: "\(task.status)")
-        }
-        let result = try VisionDiscoverResult(unpackingAny: task.value)
         logger("visualSearch: decoded \(result.products.count) product(s)")
         return result.products.map(Self.mapShoppingProduct)
     }
 
     /// Search for shopping products by text query.
     ///
-    /// Dispatches via the method-name route (`asyncify.vision.VisionService/Shopping`)
-    /// rather than legacy UUID discovery — the dispatcher picks the provider via the
-    /// persisted `provider_strategy`.
+    /// Dispatches via the method-name `run` route (`asyncify.vision.VisionService/Shopping`) —
+    /// same rationale as `visualSearch` above: `run` resolves the provider via the persisted
+    /// `provider_strategy` and returns the completed, unpacked result, mirroring
+    /// flow-kit-example's `vision.shopping(query:)`. The `create(providerId:"", actionId:)`
+    /// `*Task` variant returns a non-`.completed` task and must not be used here.
     ///
-    /// `provider` is intentionally NOT forwarded as the providerId (see `visualSearch` —
-    /// Shopping is served by different providers than Scan; pinning the scan provider yields
-    /// a 502). Mirrors flow-kit-example's `vision.shopping(query:)`. Kept for source compat.
+    /// `provider` is intentionally NOT forwarded (Shopping is served by different providers
+    /// than Scan; pinning the scan provider yields a 502). Kept for source compatibility.
     func shopping(
         query: String,
         provider: String
@@ -124,18 +120,11 @@ extension WasmActor {
             "query": Google_Protobuf_Value(stringValue: query)
         ]
         logger("shopping: dispatch method=\(WasmClient.VisionMethod.shopping.rawValue) query=\(query)")
-        let task = try await instance.create(
-            providerId: "",
-            actionId: WasmClient.VisionMethod.shopping.rawValue,
+        let result: VisionShoppingResult = try await instance.run(
+            method: WasmClient.VisionMethod.shopping.rawValue,
             args: args
         )
-        logger("shopping: task status=\(task.status) hasValue=\(task.hasValue)")
-        guard task.status == .completed, task.hasValue else {
-            let err = task.metadata.fields["error"]?.stringValue ?? "—"
-            logger("shopping: FAILED status=\(task.status) error=\(err) — throwing taskFailed")
-            throw WasmClient.Error.taskFailed(status: "\(task.status)")
-        }
-        let result = try VisionShoppingResult(unpackingAny: task.value)
+        logger("shopping: decoded \(result.products.count) product(s)")
         return result.products.map(Self.mapShoppingProduct)
     }
 }
