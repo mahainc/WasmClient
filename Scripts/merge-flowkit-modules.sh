@@ -11,6 +11,11 @@
 
 set -euo pipefail
 
+# Build sandboxes may invoke us without HOME exported; bind it (from the passwd
+# DB, independent of env) so the `set -u` DerivedData fallback search below
+# doesn't abort with "HOME: unbound variable".
+: "${HOME:=$(eval echo "~$(id -un)")}"
+
 PACKAGE_DIR="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
 OUTPUT_DIR="${2:-$PACKAGE_DIR/.build/flowkit-merged-modules}"
 
