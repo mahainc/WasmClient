@@ -137,6 +137,7 @@ extension WasmClient {
             WasmClient.LiveScore.Team(id: id)
         },
         liveMatchEvents: { AsyncStream { $0.finish() } },
+        newsList: { _, _, _, _, _, _, _ in [] },
         submitSurvey: { _, _ in },
         setNotification: { _, _, _, _ in },
         getNotificationSettings: { NotificationSettings(enabled: false, topics: []) },
@@ -750,6 +751,31 @@ extension WasmClient {
                 )
                 continuation.finish()
             }
+        },
+        newsList: { _, _, _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return [
+                News.Item(
+                    id: "news/health-sodium",
+                    title: "Where sodium hides in everyday foods",
+                    url: "https://example.com/news/sodium",
+                    source: "runners-world",
+                    publishedAt: "2026-06-25T07:40:40Z",
+                    category: "health",
+                    tags: ["nutrition", "blood-pressure"],
+                    summary: "The everyday foods quietly pushing your sodium past the line."
+                ),
+                News.Item(
+                    id: "news/health-morning-bp",
+                    title: "Why blood pressure runs higher in the morning",
+                    url: "https://example.com/news/morning-bp",
+                    source: "heart-health-today",
+                    publishedAt: "2026-06-24T06:10:00Z",
+                    category: "health",
+                    tags: ["blood-pressure", "cardiovascular"],
+                    summary: "The cortisol surge and routines that smooth your readings."
+                ),
+            ]
         },
         submitSurvey: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)

@@ -287,6 +287,12 @@ extension WasmClient: DependencyKey {
             liveMatchEvents: {
                 await actor.liveMatchEvents()
             },
+            newsList: { category, limit, offset, q, tags, sort, params in
+                try await actor.newsList(
+                    category: category, limit: limit, offset: offset,
+                    q: q, tags: tags, sort: sort, params: params
+                )
+            },
             submitSurvey: { questions, answers in
                 try await actor.submitSurvey(questions: questions, answers: answers)
             },

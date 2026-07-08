@@ -675,6 +675,24 @@ public struct WasmClient: Sendable {
     /// the noop default.
     public var liveMatchEvents: @Sendable () async -> AsyncStream<WasmClient.LiveScore.LiveEvent> = { AsyncStream { $0.finish() } }
 
+    // MARK: - News
+
+    /// Fetch the category-agnostic news feed (the wasm `news.list` action,
+    /// proxying the backend `/mobile/news` route). `category` is required —
+    /// the backend 400s on an empty category. `limit` is clamped server-side
+    /// to `[1, 100]` (default 30); `offset` is the pagination cursor (rows <
+    /// limit ⇒ end of feed). `q` is full-text search (≤200 chars). `tags`
+    /// OR-matches the category's closed vocabulary (e.g. health:
+    /// `blood-pressure`, `nutrition`, `sleep`…). `params` carries
+    /// category-specific snake_case filter keys forwarded to the backend
+    /// verbatim. Returns mapped `News.Item` rows (tags/summary lifted out of
+    /// each row's metadata struct).
+    public var newsList: @Sendable (
+        _ category: WasmClient.News.Category,
+        _ limit: Int?, _ offset: Int?, _ q: String?,
+        _ tags: [String], _ sort: WasmClient.News.Sort, _ params: [String: String]
+    ) async throws -> [WasmClient.News.Item] = { _, _, _, _, _, _, _ in [] }
+
     // MARK: - Survey
 
     /// Submit a completed survey. Builds the `qa_json` payload (a flat
