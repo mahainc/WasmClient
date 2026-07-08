@@ -20,6 +20,9 @@ extension WasmClient {
         public var fiber: Double?
         /// Total sodium in milligrams.
         public var sodium: Double?
+        /// Total potassium in milligrams (providers report it via result
+        /// metadata; nil when absent).
+        public var potassium: Double?
         /// Number of servings the macros represent (e.g. 1.0 = single serving).
         public var servings: Double?
         /// Provider's healthiness rating on a 1-10 scale (higher = healthier).
@@ -36,6 +39,7 @@ extension WasmClient {
             sugar: Double? = nil,
             fiber: Double? = nil,
             sodium: Double? = nil,
+            potassium: Double? = nil,
             servings: Double? = nil,
             healthScore: Int? = nil,
             ingredients: [FoodIngredient] = []
@@ -48,6 +52,7 @@ extension WasmClient {
             self.sugar = sugar
             self.fiber = fiber
             self.sodium = sodium
+            self.potassium = potassium
             self.servings = servings
             self.healthScore = healthScore
             self.ingredients = ingredients

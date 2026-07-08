@@ -218,10 +218,33 @@ extension WasmActor {
             sugar: p.hasSugar ? p.sugar : nil,
             fiber: p.hasFiber ? p.fiber : nil,
             sodium: p.hasSodium ? p.sodium : nil,
+            potassium: metadataNumber(p, keys: ["potassium", "potassium_mg", "potassiumMg"]),
             servings: p.hasServings ? p.servings : nil,
             healthScore: p.hasHealthScore ? Int(p.healthScore) : nil,
             ingredients: p.ingredients.map(mapIngredient)
         )
+    }
+
+    /// Nutrients outside the fixed proto schema (e.g. potassium) arrive in the
+    /// result's free-form `metadata` struct; providers vary in key naming, so
+    /// probe the known spellings. Accepts numbers or numeric strings.
+    private static func metadataNumber(
+        _ p: CaloriesFoodResult,
+        keys: [String]
+    ) -> Double? {
+        guard p.hasMetadata else { return nil }
+        for key in keys {
+            guard let value = p.metadata.fields[key] else { continue }
+            switch value.kind {
+            case .numberValue(let number):
+                return number
+            case .stringValue(let string):
+                if let number = Double(string) { return number }
+            default:
+                continue
+            }
+        }
+        return nil
     }
 
     private static func mapIngredient(_ i: CaloriesIngredient) -> WasmClient.FoodIngredient {
