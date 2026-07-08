@@ -10,6 +10,7 @@ let package = Package(
     name: "WasmClient",
     platforms: [
         .iOS(.v17),
+        .macOS(.v14),
     ],
     products: [
         .library(name: "WasmClient", targets: ["WasmClient"]),
