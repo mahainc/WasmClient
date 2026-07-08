@@ -79,6 +79,11 @@ let package = Package(
             dependencies: [
                 .product(name: "FlowKit", package: "flow-kit"),
                 .product(name: "FlowKitCModules", package: "flow-kit"),
+                // FlowKit's binary swiftmodule declares a module dependency on
+                // SwiftProtobuf; under Xcode's explicit-modules build every
+                // target that imports FlowKit must resolve it, even though this
+                // target's own source only imports FlowKit + WebKit.
+                .product(name: "SwiftProtobuf", package: "swift-protobuf"),
             ],
             swiftSettings: [
                 .unsafeFlags([
