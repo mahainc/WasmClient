@@ -44,8 +44,8 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     private var engineDidReachRunning = false
     private let runningLock = NSLock()
     /// Host-supplied closure returning the wasm version the app expects.
-    /// Consulted inside `ensureStarted` before `TaskWasm.default()`; a mismatch
-    /// with `AsyncifyWasm.currentVersionID` triggers `AsyncifyWasm.resetDownloads()`.
+    /// Consulted inside `ensureStarted` before `FlowKit.default()`; a mismatch
+    /// with `AsyncifyWasmCompat.currentVersionID` triggers `AsyncifyWasmCompat.resetDownloads(...)`.
     /// Persists across `resetEngine()` — registered once at app launch.
     /// Lock-protected so a nonisolated setter can race-free coexist with the
     /// actor-context reader inside `ensureStarted`.
@@ -133,7 +133,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     // MARK: - WasmInstanceDelegate
     // Matches flow-kit-example's WasmEngine.stateChanged.
 
-    func stateChanged(state: AsyncWasm.EngineState) {
+    func stateChanged(state: EngineState) {
         logger?("Engine state: \(state)")
         let mapped: WasmClient.EngineState
         switch state {
@@ -194,7 +194,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         self.logger = logger
 
         do {
-            let cachedID = AsyncifyWasm.currentVersionID
+            let cachedID = AsyncifyWasmCompat.currentVersionID
 
             // Ask the host for the expected wasm version. nil / throw = no-op policy.
             var expectedID: String?
@@ -209,18 +209,18 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             switch (cachedID, expectedID) {
                 case (nil, _):
                     logger("No cached wasm version — resetting downloads to force fresh download")
-                    AsyncifyWasm.resetDownloads()
+                    AsyncifyWasmCompat.resetDownloads(wasmDir: nil, provider: nil)
                 case let (.some(cached), .some(expected)) where cached != expected:
                     logger("Wasm version mismatch (cached=\(cached), expected=\(expected)) — resetting downloads")
-                    AsyncifyWasm.resetDownloads()
+                    AsyncifyWasmCompat.resetDownloads(wasmDir: nil, provider: nil)
                 case let (.some(cached), _):
                     logger("Using cached wasm version: \(cached)")
             }
 
             // Direct async calls — exactly like flow-kit-example's WasmEngine.load()
-            logger("Building engine via TaskWasm.default()...")
+            logger("Building engine via FlowKit.default()...")
             yieldState(.starting)
-            var instance = try await TaskWasm.default()
+            var instance = try await FlowKit.default()
             instance.premium = true
             instance.delegate = self
 
@@ -543,11 +543,11 @@ actor WasmActor {
     }
 
     func engineVersion() -> String? {
-        AsyncifyWasm.currentVersionID
+        AsyncifyWasmCompat.currentVersionID
     }
 
     func resetDownloads() {
-        AsyncifyWasm.resetDownloads()
+        AsyncifyWasmCompat.resetDownloads(wasmDir: nil, provider: nil)
     }
 
     nonisolated func setExpectedVersionProvider(_ provider: (@Sendable () async throws -> String?)?) {

@@ -2,9 +2,6 @@
 import PackageDescription
 
 let packageDir = Context.packageDirectory
-let flowKitVersion = "1.2.60-26.1.1-ffi"
-let flowKitChecksum = "94859ff5e77c659443356b3c0aac4d7cf085735ff71a891a46fa93335aa33fd6"
-let flowKitURL = "https://github.com/mahainc/flow-kit/releases/download/\(flowKitVersion)/FlowKit.xcframework.zip"
 
 let package = Package(
     name: "WasmClient",
@@ -20,28 +17,28 @@ let package = Package(
         .package(
             url: "https://github.com/pointfreeco/swift-dependencies.git",
             from: "1.9.0"
-        )
+        ),
+        // FlowKit (binary xcframework + asyncify_wasmFFI + CModules) is consumed
+        // from the canonical mahainc/flow-kit SPM package rather than vendored
+        // in-repo, so an app that also depends on FlowKit (directly or via
+        // FunnelWasm) shares a single FlowKit target graph instead of hitting
+        // duplicate-target resolution errors. Pinned exact to match the version
+        // any sibling FlowKit consumer pins.
+        .package(
+            url: "https://github.com/mahainc/flow-kit.git",
+            exact: "1.2.62-26.1.1-ffi"
+        ),
+        // SwiftProtobuf for the generated `*.pb.swift` runtime. FlowKit's
+        // xcframework stopped vending its own SwiftProtobuf sub-module interface
+        // as of 1.2.62-26.1.1-ffi, so consumers bring their own (matching how
+        // FunnelWasm declares it). SPM dedupes this with any sibling
+        // swift-protobuf consumer in the app graph.
+        .package(
+            url: "https://github.com/apple/swift-protobuf.git",
+            from: "1.22.0"
+        ),
     ],
     targets: [
-        .binaryTarget(
-            name: "FlowKit",
-            url: flowKitURL,
-            checksum: flowKitChecksum
-        ),
-        .target(
-            name: "FlowKitCModules",
-            path: "Vendor/FlowKitPackage/Sources/CModules",
-            publicHeadersPath: "."
-        ),
-        // C shim that exposes the uniffi-generated `asyncify_wasmFFI` Clang
-        // module that FlowKit's `MobileFFI.swiftmodule` links against. The
-        // FFI symbols themselves live in the FlowKit binary; this target only
-        // ships headers + modulemap. Mirrors mahainc/flow-kit's Package.swift.
-        .target(
-            name: "asyncify_wasmFFI",
-            path: "Vendor/FlowKitFFI/asyncify_wasmFFI",
-            publicHeadersPath: "."
-        ),
         .target(
             name: "WasmClient",
             dependencies: [
@@ -53,9 +50,9 @@ let package = Package(
             name: "WasmClientLive",
             dependencies: [
                 .product(name: "Dependencies", package: "swift-dependencies"),
-                "FlowKit",
-                "FlowKitCModules",
-                "asyncify_wasmFFI",
+                .product(name: "FlowKit", package: "flow-kit"),
+                .product(name: "FlowKitCModules", package: "flow-kit"),
+                .product(name: "SwiftProtobuf", package: "swift-protobuf"),
                 "WasmClient",
             ],
             swiftSettings: [
@@ -80,9 +77,8 @@ let package = Package(
         .target(
             name: "WasmClientWebKit",
             dependencies: [
-                "FlowKit",
-                "FlowKitCModules",
-                "asyncify_wasmFFI",
+                .product(name: "FlowKit", package: "flow-kit"),
+                .product(name: "FlowKitCModules", package: "flow-kit"),
             ],
             swiftSettings: [
                 .unsafeFlags([
