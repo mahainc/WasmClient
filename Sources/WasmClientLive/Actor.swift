@@ -221,7 +221,12 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             logger("Building engine via FlowKit.default()...")
             yieldState(.starting)
             var instance = try await FlowKit.default()
-            instance.premium = true
+            // Non-premium: the host filters premium users BEFORE the funnel runs
+            // (LaunchStore short-circuits `if state.isPremium`, and AdRules gate on
+            // premium), so any gate that reaches the guest is a non-premium user.
+            // Hard-setting `true` here made the guest SKIP every gate with
+            // `user_is_premium`, suppressing all funnel ads.
+            instance.premium = false
             instance.delegate = self
 
             logger("Starting engine (delegate set)...")

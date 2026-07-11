@@ -19,14 +19,14 @@ swift build --target WasmClient
 # Must build via Xcode or xcodebuild for iOS simulator/device
 ```
 
-WasmClientLive requires a build plugin (`MergeFlowKitModules`) that merges FlowKit's sub-modules into a directory. The plugin runs automatically during build.
+WasmClientLive links FlowKit directly (`import FlowKit`). As of FlowKit `1.2.62-26.1.1-ffi` the xcframework ships a single `FlowKit.swiftmodule` with all sub-modules folded in, so no build plugin or `-I` include paths are needed.
 
 ## Key Constraints
 
 - Swift 6.2 tools version, Swift 6.0 language mode with strict concurrency
 - iOS 17.0 / macOS 14.0 minimum
 - All public types are `Sendable` and `Equatable`
-- Do NOT add a separate `swift-protobuf` SPM dependency — SwiftProtobuf is provided by FlowKit's merged modules. Adding it causes duplicate ObjC class registrations.
+- The `apple/swift-protobuf` dependency is REQUIRED on every FlowKit-linking target (`WasmClientLive`, `WasmClientWebKit`). FlowKit's `.swiftmodule` declares a module dependency on SwiftProtobuf but does not bundle/re-export it, so the module must be present in the package graph or the build fails with `Unable to find module dependency: 'SwiftProtobuf'`.
 - Do NOT depend on `swift-composable-architecture` — only `swift-dependencies` is needed.
 
 ## LLDB / Debugger Compatibility
