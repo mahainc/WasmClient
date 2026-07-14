@@ -169,18 +169,25 @@ extension WasmActor {
                     let deadline = Date().addingTimeInterval(60)
                     let quietWindow: TimeInterval = 2.5
                     log("chatStream: entering WS-stream wait (60s deadline, 2.5s quiet window)")
+                    var exitReason = "deadline"
                     while Date() < deadline {
                         try await Task.sleep(nanoseconds: 200_000_000)
                         if lastChunkAt.finished {
-                            log("chatStream: saw finish_reason:'stop', exiting wait")
+                            exitReason = "finish_reason:stop"
                             break
                         }
                         if !didReceiveChunks.value { continue }
                         if Date().timeIntervalSince(lastChunkAt.value) >= quietWindow {
-                            log("chatStream: quiet window elapsed, exiting wait")
+                            exitReason = "quiet_window"
                             break
                         }
                     }
+                    // Distinguish a healthy exit (stop / quiet window after real
+                    // chunks) from hitting the 60s deadline with nothing — the
+                    // latter is the transient that bubbles up as an empty reply.
+                    log(
+                        "chatStream: WS-stream wait exited via \(exitReason), didReceiveChunks=\(didReceiveChunks.value)"
+                    )
                 }
 
                 // If no SSE chunks arrived, fall back to the task result
@@ -200,10 +207,24 @@ extension WasmActor {
                         continuation.yield(choice.message.content)
                     } else if let text = String(data: data, encoding: .utf8), !text.isEmpty {
                         continuation.yield(text)
+                    } else {
+                        // Completed task but neither a parseable completion nor
+                        // plain text — the caller sees an empty stream and shows
+                        // its fallback. Log the payload shape to catch it.
+                        log(
+                            "chatStream: WARN — fallback task value unparseable (\(data.count) bytes), yielding nothing"
+                        )
                     }
+                } else if !didReceiveChunks.value {
+                    // No chunks AND no usable task value — the definitive
+                    // "empty reply" case the app turns into the reach-failure
+                    // message. Record why (status / hasValue) for on-device triage.
+                    log(
+                        "chatStream: WARN — empty stream, no fallback (status=\(task.status), hasValue=\(task.hasValue))"
+                    )
                 }
                 continuation.finish()
-                log("chatStream: finished successfully")
+                log("chatStream: finished successfully (didReceiveChunks=\(didReceiveChunks.value))")
             } catch {
                 log("chatStream: error — \(error)")
                 continuation.finish(throwing: error)
@@ -261,7 +282,7 @@ extension WasmActor {
         let bodyString = String(data: bodyData, encoding: .utf8)!
 
         var streamArgs: [String: Google_Protobuf_Value] = [
-            "body": Google_Protobuf_Value(stringValue: bodyString),
+            "body": Google_Protobuf_Value(stringValue: bodyString)
         ]
         if !config.endpoint.isEmpty {
             streamArgs["url"] = Google_Protobuf_Value(stringValue: config.endpoint)
@@ -290,16 +311,19 @@ extension WasmActor {
             // ── DEBUG: every raw SSE chunk the engine emits ──
             log("[chatToolCall] rawChunk: \(chunk)")
             guard let data = chunk.data(using: .utf8),
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let choices = json["choices"] as? [[String: Any]] else { return }
+                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let choices = json["choices"] as? [[String: Any]]
+            else { return }
             lastChunkAt.touch()
             // Terminator chunk: Rust sets finish_reason "stop" or "tool_calls";
             // when the model picked a tool, it carries delta.tool_calls[].
             if let finish = choices.first?["finish_reason"] as? String,
-               finish == "stop" || finish == "tool_calls" {
+                finish == "stop" || finish == "tool_calls"
+            {
                 if let delta = choices.first?["delta"] as? [String: Any],
-                   let calls = delta["tool_calls"] as? [[String: Any]],
-                   !calls.isEmpty {
+                    let calls = delta["tool_calls"] as? [[String: Any]],
+                    !calls.isEmpty
+                {
                     pendingToolCalls.set(calls)
                     log("[chatToolCall] terminator finish=\(finish) CAPTURED tool_calls=\(calls.count)")
                 } else {
@@ -310,8 +334,9 @@ extension WasmActor {
                 return
             }
             guard let delta = choices.first?["delta"] as? [String: Any],
-                  let content = delta["content"] as? String,
-                  !content.isEmpty else { return }
+                let content = delta["content"] as? String,
+                !content.isEmpty
+            else { return }
             didReceiveChunks.set()
             accumulated.append(content)
         }
@@ -360,14 +385,18 @@ extension WasmActor {
         }
         // Fallback: full ChatCompletion proto in the task value (offline/mocked).
         if task.hasValue,
-           let result = try? TypesBytes(unpackingAny: task.value),
-           case .raw(let data) = result.data {
+            let result = try? TypesBytes(unpackingAny: task.value),
+            case .raw(let data) = result.data
+        {
             // ── DEBUG: when no SSE chunk arrived, what (if anything) is in task.value ──
-            log("[chatToolCall] task.value raw (\(data.count)b): \(String(data: data.prefix(800), encoding: .utf8) ?? "<binary>")")
+            log(
+                "[chatToolCall] task.value raw (\(data.count)b): \(String(data: data.prefix(800), encoding: .utf8) ?? "<binary>")"
+            )
             var opts = JSONDecodingOptions()
             opts.ignoreUnknownFields = true
             if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
-               let choice = completion.choices.first {
+                let choice = completion.choices.first
+            {
                 return Self.mapMessage(choice.message)
             }
         } else {
@@ -448,8 +477,9 @@ extension WasmActor {
         // function name + arguments matter for the caller. Requiring `id` here was
         // silently dropping every tool call.
         guard let function = dict["function"] as? [String: Any],
-              let name = function["name"] as? String,
-              !name.isEmpty else { return nil }
+            let name = function["name"] as? String,
+            !name.isEmpty
+        else { return nil }
         return WasmClient.ToolCall(
             id: (dict["id"] as? String) ?? "",
             type: (dict["type"] as? String) ?? "function",
@@ -587,28 +617,56 @@ extension WasmActor {
         guard task.hasValue else {
             throw WasmClient.Error.missingValue
         }
-        guard let payload = try? Google_Protobuf_Struct(unpackingAny: task.value) else {
-            throw WasmClient.Error.unexpectedResponseFormat
-        }
 
+        // The engine returns listModels as the typed `asyncify.types.ListModels`
+        // proto (`TypesListModels`), NOT a generic `Struct`. Unpacking only as
+        // `Struct` threw `unexpectedResponseFormat` on-device, so model
+        // resolution failed → chat had no model+provider → the wasm runtime
+        // trapped (~2ms "instant error, no loading"). Decode the real proto
+        // first, then keep Struct / raw-JSON fallbacks for other engine builds.
         var models: [WasmClient.ChatModelInfo] = []
-        if case .listValue(let list)? = payload.fields["data"]?.kind {
-            for value in list.values {
-                guard case .structValue(let row)? = value.kind else { continue }
-                guard let model = Self.mapModelRow(row.fields, providerNames: providerNames) else {
-                    continue
+        var total = 0
+
+        if let list = try? TypesListModels(unpackingAny: task.value) {
+            total = Int(list.total)
+            for row in list.data {
+                if let model = Self.mapModelInfo(row, providerNames: providerNames) {
+                    models.append(model)
                 }
-                models.append(model)
+            }
+            if total == 0 { total = models.count }
+        } else {
+            let payload: Google_Protobuf_Struct
+            if let asStruct = try? Google_Protobuf_Struct(unpackingAny: task.value) {
+                payload = asStruct
+            } else if let bytes = try? TypesBytes(unpackingAny: task.value),
+                case .raw(let data) = bytes.data,
+                let parsed = Self.parseModelsJSON(data)
+            {
+                payload = parsed
+            } else {
+                logger(
+                    "chatModels: unexpected response — typeURL=\(task.value.typeURL), hasValue=\(task.hasValue)"
+                )
+                throw WasmClient.Error.unexpectedResponseFormat
+            }
+            if case .listValue(let list)? = payload.fields["data"]?.kind {
+                for value in list.values {
+                    guard case .structValue(let row)? = value.kind else { continue }
+                    guard let model = Self.mapModelRow(row.fields, providerNames: providerNames) else {
+                        continue
+                    }
+                    models.append(model)
+                }
+            }
+            if case .numberValue(let t)? = payload.fields["total"]?.kind {
+                total = Int(t)
+            } else {
+                total = models.count
             }
         }
 
-        let total: Int = {
-            if case .numberValue(let t)? = payload.fields["total"]?.kind {
-                return Int(t)
-            }
-            return models.count
-        }()
-
+        logger("chatModels: parsed \(models.count) models (total=\(total))")
         return (models, total)
     }
 
@@ -745,6 +803,47 @@ extension WasmActor {
                 continue
             }
         }
+    }
+
+    /// Map a typed `TypesModelInfo` proto row into the app's `ChatModelInfo`.
+    /// `id`/`name` are top-level proto fields; everything else (is_pro, vision,
+    /// provider_id, …) lives in the `metadata` Struct. Rebuild the flat field
+    /// dict `mapModelRow` expects so the two code paths stay in one place.
+    private static func mapModelInfo(
+        _ info: TypesModelInfo,
+        providerNames: [String: String]
+    ) -> WasmClient.ChatModelInfo? {
+        guard !info.id.isEmpty else { return nil }
+        var fields: [String: Google_Protobuf_Value] = [
+            "id": Google_Protobuf_Value(stringValue: info.id),
+            "name": Google_Protobuf_Value(
+                stringValue: info.name.isEmpty ? info.id : info.name
+            ),
+        ]
+        if info.hasMetadata {
+            fields["metadata"] = Google_Protobuf_Value(structValue: info.metadata)
+        }
+        return mapModelRow(fields, providerNames: providerNames)
+    }
+
+    /// Parse a raw-JSON listModels payload into a `Google_Protobuf_Struct` so
+    /// the existing `data[]`/`total` extraction path can consume it unchanged.
+    /// Used for engine builds that return the model catalog as a JSON blob
+    /// (via `TypesBytes.raw`) instead of a proto `Struct`.
+    private static func parseModelsJSON(_ data: Data) -> Google_Protobuf_Struct? {
+        guard let object = try? JSONSerialization.jsonObject(with: data) else { return nil }
+        // The catalog may arrive either as a bare `{data:[...],total:N}` object
+        // or as a top-level array of model rows. Normalize to the object shape.
+        let normalized: Any
+        if object is [Any] {
+            normalized = ["data": object]
+        } else {
+            normalized = object
+        }
+        guard let dict = normalized as? [String: Any],
+            let struct_ = try? Google_Protobuf_Struct(jsonUTF8Data: JSONSerialization.data(withJSONObject: dict))
+        else { return nil }
+        return struct_
     }
 
     private static func mapModelRow(
@@ -899,13 +998,13 @@ extension WasmActor {
             // A bare name becomes the OpenAI `{type:function,function:{name}}` form.
             if !config.toolChoice.isEmpty {
                 switch config.toolChoice {
-                case "auto", "required", "none":
-                    body["tool_choice"] = config.toolChoice
-                default:
-                    body["tool_choice"] = [
-                        "type": "function",
-                        "function": ["name": config.toolChoice],
-                    ]
+                    case "auto", "required", "none":
+                        body["tool_choice"] = config.toolChoice
+                    default:
+                        body["tool_choice"] = [
+                            "type": "function",
+                            "function": ["name": config.toolChoice],
+                        ]
                 }
             }
         }

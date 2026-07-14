@@ -503,6 +503,9 @@ actor WasmActor {
         logger: @escaping @Sendable (String) -> Void = { message in
             #if DEBUG
                 print("[WasmClient]: \(message)")
+                // Flush so piped stdout (devicectl --console) streams live
+                // instead of buffering until the app exits.
+                fflush(stdout)
             #endif
         }
     ) {
