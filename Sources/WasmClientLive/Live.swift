@@ -107,6 +107,30 @@ extension WasmClient: DependencyKey {
             ttsVoices: { providerId, modelId in
                 try await actor.ttsVoices(providerId: providerId, modelId: modelId)
             },
+            listVoices: { keyword, offset, limit in
+                try await actor.listVoices(keyword: keyword, offset: offset, limit: limit)
+            },
+            voiceTTS: { providerId, input, voiceID, format in
+                try await actor.voiceTTS(providerId: providerId, input: input, voiceID: voiceID, format: format)
+            },
+            listVoiceProviders: {
+                try await actor.listVoiceProviders()
+            },
+            createVoice: { providerId, name, audio, gender, visibility in
+                try await actor.createVoice(
+                    providerId: providerId,
+                    name: name,
+                    audio: audio,
+                    gender: gender,
+                    visibility: visibility
+                )
+            },
+            deleteVoice: { providerId, id in
+                try await actor.deleteVoice(providerId: providerId, id: id)
+            },
+            updateVoice: { providerId, id, name in
+                try await actor.updateVoice(providerId: providerId, id: id, name: name)
+            },
             aiartGenerate: { actionID, args in
                 try await actor.aiartGenerate(actionID: actionID, args: args)
             },

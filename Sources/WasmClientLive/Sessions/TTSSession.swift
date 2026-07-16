@@ -85,33 +85,7 @@ extension WasmActor {
         guard task.hasValue else {
             throw WasmClient.Error.missingValue
         }
-        guard let payload = try? Google_Protobuf_Struct(unpackingAny: task.value) else {
-            throw WasmClient.Error.unexpectedResponseFormat
-        }
-
-        // Prefer audio_url — streamable, no decode cost.
-        if case .stringValue(let urlString)? = payload.fields["audio_url"]?.kind,
-           !urlString.isEmpty,
-           let url = URL(string: urlString) {
-            return .url(url)
-        }
-
-        // Fallback: base64 bytes + optional MIME hint. Default to "mp3"
-        // when audio_mime is absent, matching flow-kit-example's extension logic.
-        if case .stringValue(let b64)? = payload.fields["audio_b64"]?.kind,
-           !b64.isEmpty,
-           let data = Data(base64Encoded: b64) {
-            let mime: String = {
-                if case .stringValue(let m)? = payload.fields["audio_mime"]?.kind,
-                   !m.isEmpty {
-                    return m
-                }
-                return "mp3"
-            }()
-            return .data(data, mime: mime)
-        }
-
-        throw WasmClient.Error.unexpectedResponseFormat
+        return try Self.decodeTtsResponse([UInt8](task.value.value))
     }
 
     /// Look up the voice presets for a specific (provider, model) pair by

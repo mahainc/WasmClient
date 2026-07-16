@@ -264,6 +264,98 @@ public struct WasmClient: Sendable {
         _ providerId: String, _ modelId: String
     ) async throws -> [String]
 
+    // MARK: - Voice Catalog (OpenAI-plugin)
+
+    /// Fetch the backend voice catalog via the OpenAI-plugin `ListVoices`
+    /// method (`/serverless/mobile/voices`). Unlike `ttsVoices` (which returns
+    /// bare CAI preset name strings usable only with replay-`readOutLoud`),
+    /// each `VoiceInfo` carries a provider-assigned voice UUID (`id`) plus an
+    /// optional pre-rendered `previewAudioURL` / `previewText`. Pair with
+    /// `voiceTTS` for arbitrary-text synthesis, or play `previewAudioURL`
+    /// directly for a zero-synthesis preview. Mirrors flow-kit-example's
+    /// `VoiceView.loadVoices()`.
+    ///
+    /// - Parameters:
+    ///   - keyword: optional name filter (`nil`/empty = all).
+    ///   - offset / limit: pagination window.
+    public var listVoices: @Sendable (
+        _ keyword: String?, _ offset: Int, _ limit: Int
+    ) async throws -> [WasmClient.VoiceInfo]
+
+    /// Synthesize `input` against a specific voice UUID via the OpenAI-plugin
+    /// `Tts` method. Unlike `readOutLoud` (CAI *replay*-tts, which only re-
+    /// serves audio from a prior chat message and rejects arbitrary preview
+    /// text), this accepts any text plus a real `voiceID` from
+    /// `listVoices(...)` and returns freshly-synthesized audio. Mirrors
+    /// flow-kit-example's `VoiceView.playVoice`.
+    ///
+    /// - Parameters:
+    ///   - providerId: the voice's owning provider (`VoiceInfo.providerId`);
+    ///     empty falls back to the backend's provider picker.
+    ///   - input: text to speak.
+    ///   - voiceID: provider-assigned voice UUID (`VoiceInfo.id`).
+    ///   - format: output container hint forwarded to the `Tts` request
+    ///     (`"mp3"`, `"wav"`, `"flac"`, `"opus"`, `"pcm16"`); empty lets the
+    ///     provider pick its default. Pass `"mp3"` when the bytes must feed a
+    ///     consumer that only accepts `audio/mpeg` (e.g. the Avatar-FX video
+    ///     engine, which rejects WAV/M4A).
+    public var voiceTTS: @Sendable (
+        _ providerId: String, _ input: String, _ voiceID: String, _ format: String
+    ) async throws -> WasmClient.TTSAudio
+
+    /// List the OpenAI-plugin providers, filtered to those that can create
+    /// voices (`voiceCreatable == true`). Mirrors flow-kit-example's
+    /// `VoiceView` provider picker (`listProviders().filter(\.voiceCreatable)`).
+    /// Pair with `createVoice` to let the user pick which provider to clone
+    /// their recorded/uploaded audio against.
+    public var listVoiceProviders: @Sendable ()
+        async throws -> [WasmClient.VoiceProviderInfo]
+
+    /// Clone a new voice from a recording or uploaded audio file via the
+    /// OpenAI-plugin `CreateVoice` method. Mirrors flow-kit-example's
+    /// `VoiceView.createVoice`. Returns the freshly-created `VoiceInfo`
+    /// (carrying the provider-assigned voice UUID) on success.
+    ///
+    /// - Parameters:
+    ///   - providerId: provider to create the voice on (from
+    ///     `listVoiceProviders`); empty falls back to the backend's picker.
+    ///   - name: display name (3–20 chars per flow-kit-example).
+    ///   - audio: audio source — a `file://` URL string or a `data:` URI.
+    ///   - gender: optional raw gender name (`"male"`/`"female"`/`"neutral"`).
+    ///   - visibility: optional raw visibility (`"public"`/`"private"`).
+    public var createVoice: @Sendable (
+        _ providerId: String,
+        _ name: String,
+        _ audio: String,
+        _ gender: String?,
+        _ visibility: String?
+    ) async throws -> WasmClient.VoiceInfo
+
+    /// Delete a previously-created voice by its provider-assigned id via the
+    /// OpenAI-plugin `DeleteVoice` method. Mirrors flow-kit-example's
+    /// `VoiceView` swipe-to-delete.
+    ///
+    /// - Parameters:
+    ///   - providerId: the voice's owning provider (`VoiceInfo.providerId`);
+    ///     empty falls back to the backend's picker.
+    ///   - id: provider-assigned voice UUID (`VoiceInfo.id`).
+    public var deleteVoice: @Sendable (
+        _ providerId: String, _ id: String
+    ) async throws -> Void
+
+    /// Rename a previously-created voice via the OpenAI-plugin `UpdateVoice`
+    /// method. Only the display name is changed here. Returns the updated
+    /// `VoiceInfo`.
+    ///
+    /// - Parameters:
+    ///   - providerId: the voice's owning provider (`VoiceInfo.providerId`);
+    ///     empty falls back to the backend's picker.
+    ///   - id: provider-assigned voice UUID (`VoiceInfo.id`).
+    ///   - name: the new display name.
+    public var updateVoice: @Sendable (
+        _ providerId: String, _ id: String, _ name: String
+    ) async throws -> WasmClient.VoiceInfo
+
     // MARK: - AI Art
 
     /// Generate AI art using the specified action (stamp or normal).

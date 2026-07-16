@@ -305,29 +305,17 @@ extension WasmActor {
         guard task.hasValue else {
             throw WasmClient.Error.missingValue
         }
-        guard let payload = try? Google_Protobuf_Struct(unpackingAny: task.value) else {
-            throw WasmClient.Error.unexpectedResponseFormat
-        }
 
-        var models: [WasmClient.ChatModelInfo] = []
-        if case .listValue(let list)? = payload.fields["data"]?.kind {
-            for value in list.values {
-                guard case .structValue(let row)? = value.kind else { continue }
-                guard let model = Self.mapModelRow(row.fields, providerNames: providerNames) else {
-                    continue
-                }
-                models.append(model)
-            }
-        }
-
-        let total: Int = {
-            if case .numberValue(let t)? = payload.fields["total"]?.kind {
-                return Int(t)
-            }
-            return models.count
-        }()
-
-        return (models, total)
+        // The backend returns a typed `asyncify.types.ListModels` message rather
+        // than a generic Struct: top-level field 1 = repeated model rows, field
+        // 2 = total count, field 4 = number returned in this page. Each model row
+        // is field 1 = id, field 2 = name, field 3 = owned_by, field 4 = metadata
+        // (a google.protobuf.Struct). Decode it directly from the wire bytes.
+        let decoded = Self.decodeListModels(
+            [UInt8](task.value.value),
+            providerNames: providerNames
+        )
+        return (decoded.models, decoded.total == 0 ? decoded.models.count : decoded.total)
     }
 
     /// Create a custom chat model (persona) on a specific provider.
@@ -382,13 +370,16 @@ extension WasmActor {
         guard task.hasValue else {
             throw WasmClient.Error.missingValue
         }
-        guard let payload = try? Google_Protobuf_Struct(unpackingAny: task.value) else {
+        // The engine returns a typed `asyncify.openai.CreateModelResponse`
+        // (field 1 = server-assigned model id), NOT a generic Struct. Unpack
+        // it from the Any envelope and read `modelID`.
+        guard let payload = try? OpenAICreateModelResponse(unpackingAny: task.value) else {
             throw WasmClient.Error.unexpectedResponseFormat
         }
-        if case .stringValue(let id)? = payload.fields["id"]?.kind, !id.isEmpty {
-            return id
+        guard !payload.modelID.isEmpty else {
+            throw WasmClient.Error.missingValue
         }
-        throw WasmClient.Error.missingValue
+        return payload.modelID
     }
 
     /// Pre-flight init for chat providers — invokes the `providerInit`
@@ -463,89 +454,6 @@ extension WasmActor {
                 continue
             }
         }
-    }
-
-    private static func mapModelRow(
-        _ fields: [String: Google_Protobuf_Value],
-        providerNames: [String: String]
-    ) -> WasmClient.ChatModelInfo? {
-        guard case .stringValue(let modelId)? = fields["id"]?.kind, !modelId.isEmpty else {
-            return nil
-        }
-        let name: String = {
-            if case .stringValue(let n)? = fields["name"]?.kind, !n.isEmpty { return n }
-            return modelId
-        }()
-        let ownedBy: String = {
-            if case .stringValue(let s)? = fields["owned_by"]?.kind { return s }
-            return ""
-        }()
-        let meta: [String: Google_Protobuf_Value] = {
-            if case .structValue(let s)? = fields["metadata"]?.kind { return s.fields }
-            return [:]
-        }()
-        let isPro: Bool = {
-            if case .boolValue(let b)? = meta["is_pro"]?.kind { return b }
-            return false
-        }()
-        let vision: Bool = {
-            if case .boolValue(let b)? = meta["vision"]?.kind { return b }
-            return false
-        }()
-        let voices: [String] = {
-            guard case .listValue(let l)? = meta["voices"]?.kind else { return [] }
-            return l.values.compactMap { v in
-                if case .stringValue(let s) = v.kind { return s }
-                return nil
-            }
-        }()
-        let greetings: [String] = {
-            guard case .listValue(let l)? = meta["greetings"]?.kind else { return [] }
-            return l.values.compactMap { v in
-                if case .stringValue(let s) = v.kind { return s }
-                return nil
-            }
-        }()
-        let image: String = {
-            if case .stringValue(let s)? = meta["image"]?.kind { return s }
-            return ""
-        }()
-        let interactions: Int = {
-            if case .numberValue(let n)? = meta["interactions"]?.kind { return Int(n) }
-            return 0
-        }()
-        let description: String = {
-            if case .stringValue(let s)? = meta["description"]?.kind { return s }
-            return ""
-        }()
-        let tags: [String] = {
-            guard case .listValue(let l)? = meta["tags"]?.kind else { return [] }
-            return l.values.compactMap {
-                if case .stringValue(let s) = $0.kind { return s }
-                return nil
-            }
-        }()
-        let providerId: String = {
-            if case .stringValue(let s)? = meta["provider_id"]?.kind { return s }
-            return ""
-        }()
-        let providerName = providerNames[providerId] ?? ""
-
-        return WasmClient.ChatModelInfo(
-            modelId: modelId,
-            name: name,
-            ownedBy: ownedBy,
-            isPro: isPro,
-            vision: vision,
-            voices: voices,
-            greetings: greetings,
-            image: image,
-            interactions: interactions,
-            description: description,
-            tags: tags,
-            providerId: providerId,
-            providerName: providerName
-        )
     }
 
     // MARK: - Private Chat Helpers

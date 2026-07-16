@@ -93,7 +93,7 @@ if [ -z "$XCFW" ]; then
   while IFS= read -r candidate; do
     if [ -d "$candidate" ]; then XCFW="$candidate"; break; fi
   done < <(find \
-    "$HOME/Library/Developer/Xcode/DerivedData" \
+    "${HOME:-/nonexistent}/Library/Developer/Xcode/DerivedData" \
     "${TMPDIR:-/tmp}" \
     /tmp \
     -maxdepth 8 \

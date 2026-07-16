@@ -68,6 +68,32 @@ extension WasmClient {
         suggest: { _, _ in [] },
         readOutLoud: { _, _, _ in .data(Data(), mime: "") },
         ttsVoices: { _, _ in [] },
+        listVoices: { _, _, _ in [] },
+        voiceTTS: { _, _, _, _ in .data(Data(), mime: "") },
+        listVoiceProviders: { [] },
+        createVoice: { _, name, _, gender, visibility in
+            WasmClient.VoiceInfo(
+                id: "mock-voice-id",
+                name: name,
+                previewText: "",
+                previewAudioURL: nil,
+                gender: gender ?? "",
+                visibility: visibility ?? "",
+                providerId: ""
+            )
+        },
+        deleteVoice: { _, _ in },
+        updateVoice: { _, id, name in
+            WasmClient.VoiceInfo(
+                id: id,
+                name: name,
+                previewText: "",
+                previewAudioURL: nil,
+                gender: "",
+                visibility: "",
+                providerId: ""
+            )
+        },
         aiartGenerate: { _, _ in AiartResult() },
         aiartStyles: { _ in [] },
         aiartVideoCreate: { _ in AiartVideoResult(status: .processing) },
@@ -330,6 +356,59 @@ extension WasmClient {
         ttsVoices: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
             return ["alloy", "echo", "shimmer"]
+        },
+        listVoices: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return [
+                WasmClient.VoiceInfo(
+                    id: "aria", name: "Aria", previewText: "Hi, this is Aria.",
+                    previewAudioURL: URL(string: "https://example.com/aria.mp3"),
+                    gender: "female", visibility: "public", providerId: "openai"
+                ),
+                WasmClient.VoiceInfo(
+                    id: "cosmo", name: "Cosmo", previewText: "Hey, I'm Cosmo.",
+                    previewAudioURL: URL(string: "https://example.com/cosmo.mp3"),
+                    gender: "male", visibility: "public", providerId: "openai"
+                ),
+            ]
+        },
+        voiceTTS: { _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return .url(URL(string: "https://example.com/mock-voice-tts.mp3")!)
+        },
+        listVoiceProviders: {
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return [
+                WasmClient.VoiceProviderInfo(id: "openai", name: "OpenAI"),
+                WasmClient.VoiceProviderInfo(id: "elevenlabs", name: "ElevenLabs"),
+            ]
+        },
+        createVoice: { providerId, name, _, gender, visibility in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return WasmClient.VoiceInfo(
+                id: "created-\(name.lowercased())",
+                name: name,
+                previewText: "Hi, this is \(name).",
+                previewAudioURL: URL(string: "https://example.com/\(name.lowercased()).mp3"),
+                gender: gender ?? "neutral",
+                visibility: visibility ?? "private",
+                providerId: providerId.isEmpty ? "openai" : providerId
+            )
+        },
+        deleteVoice: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+        },
+        updateVoice: { providerId, id, name in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.VoiceInfo(
+                id: id,
+                name: name,
+                previewText: "Hi, this is \(name).",
+                previewAudioURL: URL(string: "https://example.com/\(name.lowercased()).mp3"),
+                gender: "neutral",
+                visibility: "private",
+                providerId: providerId.isEmpty ? "openai" : providerId
+            )
         },
         aiartGenerate: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)

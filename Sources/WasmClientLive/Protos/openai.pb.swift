@@ -2860,3 +2860,71 @@ extension OpenAIChatCompletion: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     return true
   }
 }
+
+/// CreateModel response — `asyncify.openai.CreateModelResponse`. The engine
+/// returns this typed message (NOT a generic Struct) from the `createModel`
+/// action. Field 1 = server-assigned model/character id.
+public struct OpenAICreateModelResponse: Sendable {
+  /// server-assigned model/character id
+  public var modelID: String = String()
+
+  /// optional opening greeting echoed back
+  public var greeting: String {
+    get {_greeting ?? String()}
+    set {_greeting = newValue}
+  }
+  public var hasGreeting: Bool {self._greeting != nil}
+  public mutating func clearGreeting() {self._greeting = nil}
+
+  /// optional provider-specific extras
+  public var extras: SwiftProtobuf.Google_Protobuf_Struct {
+    get {_extras ?? SwiftProtobuf.Google_Protobuf_Struct()}
+    set {_extras = newValue}
+  }
+  public var hasExtras: Bool {self._extras != nil}
+  public mutating func clearExtras() {self._extras = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _greeting: String? = nil
+  fileprivate var _extras: SwiftProtobuf.Google_Protobuf_Struct? = nil
+}
+
+extension OpenAICreateModelResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CreateModelResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}model_id\0\u{1}greeting\0\u{1}extras\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.modelID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._greeting) }()
+      case 3: try { try decoder.decodeSingularMessageField(value: &self._extras) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.modelID.isEmpty {
+      try visitor.visitSingularStringField(value: self.modelID, fieldNumber: 1)
+    }
+    try { if let v = self._greeting {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._extras {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: OpenAICreateModelResponse, rhs: OpenAICreateModelResponse) -> Bool {
+    if lhs.modelID != rhs.modelID {return false}
+    if lhs._greeting != rhs._greeting {return false}
+    if lhs._extras != rhs._extras {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
