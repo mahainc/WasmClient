@@ -29,15 +29,20 @@ WasmClientLive requires a build plugin (`MergeFlowKitModules`) that merges FlowK
 - Do NOT add a separate `swift-protobuf` SPM dependency — SwiftProtobuf is provided by FlowKit's merged modules. Adding it causes duplicate ObjC class registrations.
 - Do NOT depend on `swift-composable-architecture` — only `swift-dependencies` is needed.
 
-## LLDB / Debugger Incompatibility
+## LLDB / Debugger Compatibility
 
-**FlowKit's WASM runtime crashes when LLDB is attached.** The WASM engine uses SIGSEGV signal handlers for memory bounds checking; LLDB intercepts these signals, causing `WasmParser.WasmParserError` at startup.
+The current **`-ffi`** FlowKit engine (uniffi/Rust backend, e.g. `1.2.59-26.1.1-ffi`) is
+**LLDB-safe** — you can Run from Xcode with the debugger attached and set breakpoints in
+WasmClient/app code normally. The default scheme (`selectedDebuggerIdentifier=…LLDB`) is fine; no
+`debugEnabled: false` / PosixSpawn launcher workaround is needed.
 
-Consumer apps must disable the debugger in their Xcode scheme:
-- XcodeGen: `run: { debugEnabled: false, launchAutomaticallySubstyle: 2 }`
-- Xcode scheme XML: `selectedDebuggerIdentifier=""` + `selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.PosixSpawn"`
-
-To debug app code, attach the debugger manually after the WASM engine has started (`Debug > Attach to Process`).
+**Historical note (pre-`-ffi` engines only):** the older WASM runtime crashed when LLDB was
+attached — it used SIGSEGV signal handlers for memory bounds checking, LLDB intercepted those
+signals, and startup failed with `WasmParser.WasmParserError`. On such an engine, consumer apps had
+to disable the debugger in their scheme (XcodeGen `run: { debugEnabled: false, launchAutomaticallySubstyle: 2 }`;
+scheme XML `selectedDebuggerIdentifier=""` + `selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.PosixSpawn"`)
+and attach manually after the engine started. If you ever pin back to a non-`-ffi` build, restore
+that workaround.
 
 ## Architecture
 

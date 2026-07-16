@@ -124,6 +124,8 @@ public enum AiartMode: SwiftProtobuf.Enum, Swift.CaseIterable {
   case unspecified // = 0
   case normal // = 1
   case stamps // = 2
+  case avatar // = 3
+  case video // = 4
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -135,6 +137,8 @@ public enum AiartMode: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 0: self = .unspecified
     case 1: self = .normal
     case 2: self = .stamps
+    case 3: self = .avatar
+    case 4: self = .video
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -144,6 +148,8 @@ public enum AiartMode: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .unspecified: return 0
     case .normal: return 1
     case .stamps: return 2
+    case .avatar: return 3
+    case .video: return 4
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -153,6 +159,8 @@ public enum AiartMode: SwiftProtobuf.Enum, Swift.CaseIterable {
     .unspecified,
     .normal,
     .stamps,
+    .avatar,
+    .video,
   ]
 
 }
@@ -354,6 +362,418 @@ public struct AiartVideoGenerateResult: Sendable {
   fileprivate var _metadata: SwiftProtobuf.Google_Protobuf_Struct? = nil
 }
 
+/// Stamps mode (frame artwork with placeholder cutout). Plugins read
+/// `prompt` for the figure description and may use plugin-specific
+/// extras (stamp shape / placeholder size) the form drives.
+public struct AiartStampRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  /// Subject of the generation, e.g. "a fox in a cyberpunk city".
+  public var prompt: String {
+    get {_prompt ?? String()}
+    set {_prompt = newValue}
+  }
+  /// Returns true if `prompt` has been explicitly set.
+  public var hasPrompt: Bool {self._prompt != nil}
+  /// Clears the value of `prompt`. Subsequent reads from it will return its default value.
+  public mutating func clearPrompt() {self._prompt = nil}
+
+  /// Visual style preset.
+  public var style: AiartStyle {
+    get {_style ?? .unspecified}
+    set {_style = newValue}
+  }
+  /// Returns true if `style` has been explicitly set.
+  public var hasStyle: Bool {self._style != nil}
+  /// Clears the value of `style`. Subsequent reads from it will return its default value.
+  public mutating func clearStyle() {self._style = nil}
+
+  /// Reference image URL — http(s)/data URI/file URL the provider
+  /// downloads. Mutually exclusive with `image_path`.
+  public var imageURL: String {
+    get {_imageURL ?? String()}
+    set {_imageURL = newValue}
+  }
+  /// Returns true if `imageURL` has been explicitly set.
+  public var hasImageURL: Bool {self._imageURL != nil}
+  /// Clears the value of `imageURL`. Subsequent reads from it will return its default value.
+  public mutating func clearImageURL() {self._imageURL = nil}
+
+  /// Local file path (file://) when the host already has the bytes
+  /// staged. Mutually exclusive with `image_url`.
+  public var imagePath: String {
+    get {_imagePath ?? String()}
+    set {_imagePath = newValue}
+  }
+  /// Returns true if `imagePath` has been explicitly set.
+  public var hasImagePath: Bool {self._imagePath != nil}
+  /// Clears the value of `imagePath`. Subsequent reads from it will return its default value.
+  public mutating func clearImagePath() {self._imagePath = nil}
+
+  /// Provider model id (e.g. "fal-ai/flux-pro"). Plugin's default
+  /// applies when empty.
+  public var model: String {
+    get {_model ?? String()}
+    set {_model = newValue}
+  }
+  /// Returns true if `model` has been explicitly set.
+  public var hasModel: Bool {self._model != nil}
+  /// Clears the value of `model`. Subsequent reads from it will return its default value.
+  public mutating func clearModel() {self._model = nil}
+
+  /// Per-model aspect-ratio string (e.g. "1:1", "16:9"). Plugin
+  /// default applies when empty. Discovered values per model live
+  /// in `ListModelsResponse.models[].metadata["aspect_ratios"]`.
+  public var aspectRatio: String {
+    get {_aspectRatio ?? String()}
+    set {_aspectRatio = newValue}
+  }
+  /// Returns true if `aspectRatio` has been explicitly set.
+  public var hasAspectRatio: Bool {self._aspectRatio != nil}
+  /// Clears the value of `aspectRatio`. Subsequent reads from it will return its default value.
+  public mutating func clearAspectRatio() {self._aspectRatio = nil}
+
+  /// Number-of-images hint as a string (matches the existing dict path).
+  public var numImages: String {
+    get {_numImages ?? String()}
+    set {_numImages = newValue}
+  }
+  /// Returns true if `numImages` has been explicitly set.
+  public var hasNumImages: Bool {self._numImages != nil}
+  /// Clears the value of `numImages`. Subsequent reads from it will return its default value.
+  public mutating func clearNumImages() {self._numImages = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+  fileprivate var _prompt: String? = nil
+  fileprivate var _style: AiartStyle? = nil
+  fileprivate var _imageURL: String? = nil
+  fileprivate var _imagePath: String? = nil
+  fileprivate var _model: String? = nil
+  fileprivate var _aspectRatio: String? = nil
+  fileprivate var _numImages: String? = nil
+}
+
+/// Normal mode (full image generation). Same fields as Stamp; the
+/// plugin's mode selection drives the system-prompt + endpoint.
+public struct AiartNormalRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  public var prompt: String {
+    get {_prompt ?? String()}
+    set {_prompt = newValue}
+  }
+  /// Returns true if `prompt` has been explicitly set.
+  public var hasPrompt: Bool {self._prompt != nil}
+  /// Clears the value of `prompt`. Subsequent reads from it will return its default value.
+  public mutating func clearPrompt() {self._prompt = nil}
+
+  public var style: AiartStyle {
+    get {_style ?? .unspecified}
+    set {_style = newValue}
+  }
+  /// Returns true if `style` has been explicitly set.
+  public var hasStyle: Bool {self._style != nil}
+  /// Clears the value of `style`. Subsequent reads from it will return its default value.
+  public mutating func clearStyle() {self._style = nil}
+
+  public var imageURL: String {
+    get {_imageURL ?? String()}
+    set {_imageURL = newValue}
+  }
+  /// Returns true if `imageURL` has been explicitly set.
+  public var hasImageURL: Bool {self._imageURL != nil}
+  /// Clears the value of `imageURL`. Subsequent reads from it will return its default value.
+  public mutating func clearImageURL() {self._imageURL = nil}
+
+  public var imagePath: String {
+    get {_imagePath ?? String()}
+    set {_imagePath = newValue}
+  }
+  /// Returns true if `imagePath` has been explicitly set.
+  public var hasImagePath: Bool {self._imagePath != nil}
+  /// Clears the value of `imagePath`. Subsequent reads from it will return its default value.
+  public mutating func clearImagePath() {self._imagePath = nil}
+
+  public var model: String {
+    get {_model ?? String()}
+    set {_model = newValue}
+  }
+  /// Returns true if `model` has been explicitly set.
+  public var hasModel: Bool {self._model != nil}
+  /// Clears the value of `model`. Subsequent reads from it will return its default value.
+  public mutating func clearModel() {self._model = nil}
+
+  public var aspectRatio: String {
+    get {_aspectRatio ?? String()}
+    set {_aspectRatio = newValue}
+  }
+  /// Returns true if `aspectRatio` has been explicitly set.
+  public var hasAspectRatio: Bool {self._aspectRatio != nil}
+  /// Clears the value of `aspectRatio`. Subsequent reads from it will return its default value.
+  public mutating func clearAspectRatio() {self._aspectRatio = nil}
+
+  public var numImages: String {
+    get {_numImages ?? String()}
+    set {_numImages = newValue}
+  }
+  /// Returns true if `numImages` has been explicitly set.
+  public var hasNumImages: Bool {self._numImages != nil}
+  /// Clears the value of `numImages`. Subsequent reads from it will return its default value.
+  public mutating func clearNumImages() {self._numImages = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+  fileprivate var _prompt: String? = nil
+  fileprivate var _style: AiartStyle? = nil
+  fileprivate var _imageURL: String? = nil
+  fileprivate var _imagePath: String? = nil
+  fileprivate var _model: String? = nil
+  fileprivate var _aspectRatio: String? = nil
+  fileprivate var _numImages: String? = nil
+}
+
+/// Avatar mode (head-and-shoulders portrait). Same field set as
+/// Normal; only the system prompt differs in the executor.
+public struct AiartAvatarRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  public var prompt: String {
+    get {_prompt ?? String()}
+    set {_prompt = newValue}
+  }
+  /// Returns true if `prompt` has been explicitly set.
+  public var hasPrompt: Bool {self._prompt != nil}
+  /// Clears the value of `prompt`. Subsequent reads from it will return its default value.
+  public mutating func clearPrompt() {self._prompt = nil}
+
+  public var style: AiartStyle {
+    get {_style ?? .unspecified}
+    set {_style = newValue}
+  }
+  /// Returns true if `style` has been explicitly set.
+  public var hasStyle: Bool {self._style != nil}
+  /// Clears the value of `style`. Subsequent reads from it will return its default value.
+  public mutating func clearStyle() {self._style = nil}
+
+  public var imageURL: String {
+    get {_imageURL ?? String()}
+    set {_imageURL = newValue}
+  }
+  /// Returns true if `imageURL` has been explicitly set.
+  public var hasImageURL: Bool {self._imageURL != nil}
+  /// Clears the value of `imageURL`. Subsequent reads from it will return its default value.
+  public mutating func clearImageURL() {self._imageURL = nil}
+
+  public var imagePath: String {
+    get {_imagePath ?? String()}
+    set {_imagePath = newValue}
+  }
+  /// Returns true if `imagePath` has been explicitly set.
+  public var hasImagePath: Bool {self._imagePath != nil}
+  /// Clears the value of `imagePath`. Subsequent reads from it will return its default value.
+  public mutating func clearImagePath() {self._imagePath = nil}
+
+  public var model: String {
+    get {_model ?? String()}
+    set {_model = newValue}
+  }
+  /// Returns true if `model` has been explicitly set.
+  public var hasModel: Bool {self._model != nil}
+  /// Clears the value of `model`. Subsequent reads from it will return its default value.
+  public mutating func clearModel() {self._model = nil}
+
+  public var aspectRatio: String {
+    get {_aspectRatio ?? String()}
+    set {_aspectRatio = newValue}
+  }
+  /// Returns true if `aspectRatio` has been explicitly set.
+  public var hasAspectRatio: Bool {self._aspectRatio != nil}
+  /// Clears the value of `aspectRatio`. Subsequent reads from it will return its default value.
+  public mutating func clearAspectRatio() {self._aspectRatio = nil}
+
+  public var numImages: String {
+    get {_numImages ?? String()}
+    set {_numImages = newValue}
+  }
+  /// Returns true if `numImages` has been explicitly set.
+  public var hasNumImages: Bool {self._numImages != nil}
+  /// Clears the value of `numImages`. Subsequent reads from it will return its default value.
+  public mutating func clearNumImages() {self._numImages = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+  fileprivate var _prompt: String? = nil
+  fileprivate var _style: AiartStyle? = nil
+  fileprivate var _imageURL: String? = nil
+  fileprivate var _imagePath: String? = nil
+  fileprivate var _model: String? = nil
+  fileprivate var _aspectRatio: String? = nil
+  fileprivate var _numImages: String? = nil
+}
+
+/// Per-mode model discovery — replaces the metadata-driven
+/// `model_infos`/`default_model` lookup off the Action descriptor.
+/// Returns the active provider's model list for `mode` plus the
+/// suggested default id. Each `ModelInfo.metadata["aspect_ratios"]`
+/// carries the per-model aspect-ratio list so the UI can render the
+/// ratio picker filtered by the selected model.
+public struct AiartListModelsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  /// Which mode's model list to return.
+  public var mode: AiartMode {
+    get {_mode ?? .unspecified}
+    set {_mode = newValue}
+  }
+  /// Returns true if `mode` has been explicitly set.
+  public var hasMode: Bool {self._mode != nil}
+  /// Clears the value of `mode`. Subsequent reads from it will return its default value.
+  public mutating func clearMode() {self._mode = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+  fileprivate var _mode: AiartMode? = nil
+}
+
+public struct AiartListModelsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var models: [TypesModelInfo] = []
+
+  public var defaultModelID: String {
+    get {_defaultModelID ?? String()}
+    set {_defaultModelID = newValue}
+  }
+  /// Returns true if `defaultModelID` has been explicitly set.
+  public var hasDefaultModelID: Bool {self._defaultModelID != nil}
+  /// Clears the value of `defaultModelID`. Subsequent reads from it will return its default value.
+  public mutating func clearDefaultModelID() {self._defaultModelID = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _defaultModelID: String? = nil
+}
+
+/// Video generation (Character.AI Avatar FX pipeline). The host calls
+/// `create()` for this rpc and polls via `getStatus` — `Video` is
+/// `skip_flow_kit` so the plugin doesn't emit a typed wrapper.
+public struct AiartVideoRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  /// Local file path (file://) of the source image — the pipeline
+  /// describes it, style-transfers it, and animates the result.
+  public var imagePath: String {
+    get {_imagePath ?? String()}
+    set {_imagePath = newValue}
+  }
+  /// Returns true if `imagePath` has been explicitly set.
+  public var hasImagePath: Bool {self._imagePath != nil}
+  /// Clears the value of `imagePath`. Subsequent reads from it will return its default value.
+  public mutating func clearImagePath() {self._imagePath = nil}
+
+  /// Display name of the art style preset (e.g. "Ghibli").
+  public var artStyle: String {
+    get {_artStyle ?? String()}
+    set {_artStyle = newValue}
+  }
+  /// Returns true if `artStyle` has been explicitly set.
+  public var hasArtStyle: Bool {self._artStyle != nil}
+  /// Clears the value of `artStyle`. Subsequent reads from it will return its default value.
+  public mutating func clearArtStyle() {self._artStyle = nil}
+
+  /// Optional caller-supplied audio path; empty = the pipeline runs
+  /// its own TTS step to generate audio from the auto-prompt.
+  public var audioPath: String {
+    get {_audioPath ?? String()}
+    set {_audioPath = newValue}
+  }
+  /// Returns true if `audioPath` has been explicitly set.
+  public var hasAudioPath: Bool {self._audioPath != nil}
+  /// Clears the value of `audioPath`. Subsequent reads from it will return its default value.
+  public mutating func clearAudioPath() {self._audioPath = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+  fileprivate var _imagePath: String? = nil
+  fileprivate var _artStyle: String? = nil
+  fileprivate var _audioPath: String? = nil
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "asyncify.aiart"
@@ -363,7 +783,7 @@ extension AiartStyle: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension AiartMode: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MODE_UNSPECIFIED\0\u{1}NORMAL\0\u{1}STAMPS\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MODE_UNSPECIFIED\0\u{1}NORMAL\0\u{1}STAMPS\0\u{1}AVATAR\0\u{1}VIDEO\0")
 }
 
 extension AiartGenerateResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -425,7 +845,10 @@ extension AiartGenerateResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: AiartGenerateResult, rhs: AiartGenerateResult) -> Bool {
+  public static func ==(
+lhs: AiartGenerateResult, 
+rhs: AiartGenerateResult
+) -> Bool {
     if lhs.images != rhs.images {return false}
     if lhs._prompt != rhs._prompt {return false}
     if lhs._style != rhs._style {return false}
@@ -499,7 +922,10 @@ extension AiartVideoGenerateResult: SwiftProtobuf.Message, SwiftProtobuf._Messag
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: AiartVideoGenerateResult, rhs: AiartVideoGenerateResult) -> Bool {
+  public static func ==(
+lhs: AiartVideoGenerateResult, 
+rhs: AiartVideoGenerateResult
+) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
     if lhs._videoURL != rhs._videoURL {return false}
     if lhs._status != rhs._status {return false}
@@ -509,6 +935,358 @@ extension AiartVideoGenerateResult: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs._audioURL != rhs._audioURL {return false}
     if lhs._artStyle != rhs._artStyle {return false}
     if lhs._metadata != rhs._metadata {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension AiartStampRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".StampRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}prompt\0\u{1}style\0\u{1}image_url\0\u{1}image_path\0\u{1}model\0\u{1}aspect_ratio\0\u{1}num_images\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._prompt) }()
+      case 3: try { try decoder.decodeSingularEnumField(value: &self._style) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._imageURL) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self._imagePath) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self._model) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self._aspectRatio) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self._numImages) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._prompt {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._style {
+      try visitor.visitSingularEnumField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._imageURL {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._imagePath {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 5)
+    } }()
+    try { if let v = self._model {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 6)
+    } }()
+    try { if let v = self._aspectRatio {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 7)
+    } }()
+    try { if let v = self._numImages {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 8)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: AiartStampRequest, 
+rhs: AiartStampRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs._prompt != rhs._prompt {return false}
+    if lhs._style != rhs._style {return false}
+    if lhs._imageURL != rhs._imageURL {return false}
+    if lhs._imagePath != rhs._imagePath {return false}
+    if lhs._model != rhs._model {return false}
+    if lhs._aspectRatio != rhs._aspectRatio {return false}
+    if lhs._numImages != rhs._numImages {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension AiartNormalRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".NormalRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}prompt\0\u{1}style\0\u{1}image_url\0\u{1}image_path\0\u{1}model\0\u{1}aspect_ratio\0\u{1}num_images\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._prompt) }()
+      case 3: try { try decoder.decodeSingularEnumField(value: &self._style) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._imageURL) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self._imagePath) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self._model) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self._aspectRatio) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self._numImages) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._prompt {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._style {
+      try visitor.visitSingularEnumField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._imageURL {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._imagePath {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 5)
+    } }()
+    try { if let v = self._model {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 6)
+    } }()
+    try { if let v = self._aspectRatio {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 7)
+    } }()
+    try { if let v = self._numImages {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 8)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: AiartNormalRequest, 
+rhs: AiartNormalRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs._prompt != rhs._prompt {return false}
+    if lhs._style != rhs._style {return false}
+    if lhs._imageURL != rhs._imageURL {return false}
+    if lhs._imagePath != rhs._imagePath {return false}
+    if lhs._model != rhs._model {return false}
+    if lhs._aspectRatio != rhs._aspectRatio {return false}
+    if lhs._numImages != rhs._numImages {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension AiartAvatarRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AvatarRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}prompt\0\u{1}style\0\u{1}image_url\0\u{1}image_path\0\u{1}model\0\u{1}aspect_ratio\0\u{1}num_images\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._prompt) }()
+      case 3: try { try decoder.decodeSingularEnumField(value: &self._style) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._imageURL) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self._imagePath) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self._model) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self._aspectRatio) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self._numImages) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._prompt {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._style {
+      try visitor.visitSingularEnumField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._imageURL {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._imagePath {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 5)
+    } }()
+    try { if let v = self._model {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 6)
+    } }()
+    try { if let v = self._aspectRatio {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 7)
+    } }()
+    try { if let v = self._numImages {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 8)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: AiartAvatarRequest, 
+rhs: AiartAvatarRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs._prompt != rhs._prompt {return false}
+    if lhs._style != rhs._style {return false}
+    if lhs._imageURL != rhs._imageURL {return false}
+    if lhs._imagePath != rhs._imagePath {return false}
+    if lhs._model != rhs._model {return false}
+    if lhs._aspectRatio != rhs._aspectRatio {return false}
+    if lhs._numImages != rhs._numImages {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension AiartListModelsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListModelsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}mode\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self._mode) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._mode {
+      try visitor.visitSingularEnumField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: AiartListModelsRequest, 
+rhs: AiartListModelsRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs._mode != rhs._mode {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension AiartListModelsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListModelsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}models\0\u{1}default_model_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.models) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._defaultModelID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.models.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.models, fieldNumber: 1)
+    }
+    try { if let v = self._defaultModelID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: AiartListModelsResponse, 
+rhs: AiartListModelsResponse
+) -> Bool {
+    if lhs.models != rhs.models {return false}
+    if lhs._defaultModelID != rhs._defaultModelID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension AiartVideoRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".VideoRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}image_path\0\u{1}art_style\0\u{1}audio_path\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._imagePath) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._artStyle) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._audioPath) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._imagePath {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._artStyle {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._audioPath {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: AiartVideoRequest, 
+rhs: AiartVideoRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs._imagePath != rhs._imagePath {return false}
+    if lhs._artStyle != rhs._artStyle {return false}
+    if lhs._audioPath != rhs._audioPath {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
