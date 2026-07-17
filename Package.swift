@@ -25,7 +25,7 @@ let package = Package(
         // resolves one shared FlowKit target.
         .package(
             url: "https://github.com/mahainc/flow-kit.git",
-            exact: "1.2.63-26.1.1-ffi"
+            exact: "1.2.64-26.1.1-ffi"
         ),
         // SwiftProtobuf for the generated `*.pb.swift` runtime. FlowKit's
         // compiled `.swiftmodule` declares a module dependency on SwiftProtobuf
