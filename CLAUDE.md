@@ -11,15 +11,24 @@ WasmClient wraps FlowKit's WASM engine as a dependency client using [swift-depen
 
 ## Build
 
-```bash
-# Interface only (macOS/iOS)
-swift build --target WasmClient
+This package has a **side-by-side Bazel setup** (`MODULE.bazel` at the repo root — additive, it does NOT touch SPM/Xcode; consuming apps still resolve WasmClient via SPM). Compile-verification goes through **Bazel**, whose content-addressed cache survives `clean` / worktrees / CI / cross-machine.
 
-# Live implementation (iOS only — FlowKit xcframework has no macOS slice)
-# Must build via Xcode or xcodebuild for iOS simulator/device
+**Route compile-verification through the `bazel-builder` subagent** (it drives the `bazel-build` CLI). For this package this OVERRIDES the global `swift-builder` rule. Targets live at `//Sources/<Name>`:
+
+```
+bazel-build WasmClient       # interface only (Dependencies + DependenciesMacros)
+bazel-build WasmClientLive   # live impl (FlowKit + protos)
+bazel-build WasmClientWebKit # WebKit no-proxy helper (FlowKit)
+bazel-build --all            # all three in one invocation
+bazel-build --list           # per-target route table
 ```
 
-WasmClientLive links FlowKit directly (`import FlowKit`). As of FlowKit `1.2.62-26.1.1-ffi` the xcframework ships a single `FlowKit.swiftmodule` with all sub-modules folded in, so no build plugin or `-I` include paths are needed.
+All three targets build under Bazel for the iOS simulator (`--config=ios_sim`); there is no `--app` (a package has no app scheme). **Never run raw `swift build` / `xcodebuild`** — go through `bazel-builder`. WasmClientLive links FlowKit directly (`import FlowKit`); the `-ffi` xcframework ships a single `FlowKit.swiftmodule` with all sub-modules folded in, so no build plugin or `-I` include paths are needed.
+
+**Bazel-specific wiring** (already in the checked-in BUILD files — do not re-discover):
+- FlowKit's binary swiftmodule + the generated `*.pb.swift` both `import WasmSwiftProtobuf` (swift-protobuf under an alias). A `# gazelle:resolve swift WasmSwiftProtobuf @swiftpkg_swift_protobuf//:SwiftProtobuf` in the root `BUILD.bazel` wires it.
+- `WasmClientWebKit`'s source imports only FlowKit + WebKit, so gazelle would drop the required SwiftProtobuf dep — it is pinned with `# keep` in `Sources/WasmClientWebKit/BUILD.bazel`.
+- flow-kit's `asyncify_wasmFFI` modulemap uses Clang `use` directives rspm rejects; stripped for the Bazel build only via `third-party/flow-kit/module.modulemap.patch`.
 
 ## Key Constraints
 
