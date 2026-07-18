@@ -15,8 +15,11 @@ build:ios_sim --platforms=//:ios_sim_arm64
 build:ios_sim --apple_platform_type=ios
 
 # Cache lives under ~/.cache (user data, NOT ~/Library/Developer "System Data").
-# Per-package disk cache so it never collides with an app's cache (e.g. matchai-disk).
-build --disk_cache=~/.cache/bazel/wasmclient-disk
+# Shared across every Bazelified repo on this machine: the disk cache is
+# content-addressed, so repos that pin the same toolchain (Bazel 8.7.0 /
+# rules_swift 3.6.1) dedupe their common deps (swift-syntax, TCA, protobuf, …)
+# into one store instead of N copies. GC via `clean-dev-cache --bazel-cache`.
+build --disk_cache=~/.cache/bazel/disk
 
 # ── Remote cache (shared across machines / CI) — opt in: bazel build --config=remote ──
 # The disk_cache above already survives `bazel clean`; the remote cache extends
