@@ -195,9 +195,9 @@ extension WasmActor {
                     opts.ignoreUnknownFields = true
                     if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
                         let choice = completion.choices.first,
-                        !choice.message.content.stringValue.isEmpty
+                        !choice.message.content.isEmpty
                     {
-                        continuation.yield(choice.message.content.stringValue)
+                        continuation.yield(choice.message.content)
                     } else if let text = String(data: data, encoding: .utf8), !text.isEmpty {
                         continuation.yield(text)
                     }
@@ -529,7 +529,7 @@ extension WasmActor {
     private static func mapMessage(_ proto: OpenAIChatMessage) -> WasmClient.ChatMessage {
         WasmClient.ChatMessage(
             role: WasmClient.ChatRole(rawValue: proto.role) ?? .assistant,
-            content: proto.content.stringValue,
+            content: proto.content,
             toolCalls: proto.toolCalls.map { tc in
                 WasmClient.ToolCall(
                     id: tc.id,
