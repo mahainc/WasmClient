@@ -126,13 +126,13 @@ extension WasmClient.LiveScore {
     }
 }
 
-// MARK: - Livescore Webpage
+// MARK: - Livescore Entry
 
 extension WasmClient.LiveScore {
-    /// A webpage entry returned by `lsWebpage`. Mirrors `LivescoreWebPage`
+    /// A content entry returned by `lsWebpage`. Mirrors the `LivescoreWebPage`
     /// proto from FlowKit. The same type backs every `WebPageType` variant
     /// (leagues, competitions, teams, page, discovers, videos, news).
-    public struct WebPage: Sendable, Equatable, Identifiable {
+    public struct Entry: Sendable, Equatable, Identifiable {
         /// Slug identifier (e.g. "team/real-madrid", "competition/england-premier-league").
         public let id: String
         /// Thumbnail / logo URL for list display.
@@ -145,13 +145,22 @@ extension WasmClient.LiveScore {
         public let url: String
         /// UNIX seconds; populated for Highlights/news items, 0 otherwise.
         public let datetime: Int64
+        /// Highlight clips for this entry. Populated only for `webpageVideos`
+        /// (Highlights) rows; empty for all other WebPage variants.
+        public let videos: [Video]
+        /// Parent competition of this row. Populated only for `webpageVideos`
+        /// (Highlights) rows; `nil` for all other WebPage variants. Its `slug`
+        /// is usable as `webpageVideos(competitionID:)` to fetch related videos.
+        public let competition: Competition?
 
         public init(
             id: String = "", image: String = "", title: String = "",
-            subtitle: String = "", url: String = "", datetime: Int64 = 0
+            subtitle: String = "", url: String = "", datetime: Int64 = 0,
+            videos: [Video] = [], competition: Competition? = nil
         ) {
             self.id = id; self.image = image; self.title = title
             self.subtitle = subtitle; self.url = url; self.datetime = datetime
+            self.videos = videos; self.competition = competition
         }
     }
 }

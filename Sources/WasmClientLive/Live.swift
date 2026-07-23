@@ -42,6 +42,17 @@ extension WasmClient: DependencyKey {
             refreshActions: {
                 try await actor.refreshActions()
             },
+            funnelEngine: {
+                let engine = try await actor.readyEngine()
+                // `TaskWasmProtocol` is not `Sendable`, but the interface vends
+                // the started engine as an opaque `(any Sendable)?` handle that
+                // the consumer casts back to `TaskWasmProtocol`. `any Sendable`
+                // is a marker existential with the same layout as `Any`, so
+                // bridge through `Any` (preserving the dynamic type for the
+                // consumer's `as? TaskWasmProtocol`). Sharing the one engine is
+                // safe here — the delegate that owns it is `@unchecked Sendable`.
+                return unsafeBitCast(engine as Any, to: (any Sendable).self)
+            },
             scan: { imageData, category, language in
                 try await actor.scan(imageData: imageData, category: category, language: language)
             },

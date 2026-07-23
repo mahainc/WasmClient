@@ -207,6 +207,42 @@ public struct VisualPhotoLinks: Sendable {
   fileprivate var _download: String? = nil
 }
 
+public struct VisualSearchPhotosRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Free-text search query.
+  public var query: String = String()
+
+  /// 1-based page index; 0 / unset = 1.
+  public var page: Int32 = 0
+
+  /// Page size; 0 / unset = 20.
+  public var perPage: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct VisualPhotoVisualSearchRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Image URL (file://, data:, or http(s)://) to visually match.
+  public var file: String = String()
+
+  public var page: Int32 = 0
+
+  public var perPage: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "asyncify.visual"
@@ -242,7 +278,10 @@ extension VisualPhotoSearchResult: SwiftProtobuf.Message, SwiftProtobuf._Message
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisualPhotoSearchResult, rhs: VisualPhotoSearchResult) -> Bool {
+  public static func ==(
+lhs: VisualPhotoSearchResult, 
+rhs: VisualPhotoSearchResult
+) -> Bool {
     if lhs.total != rhs.total {return false}
     if lhs.totalPages != rhs.totalPages {return false}
     if lhs.results != rhs.results {return false}
@@ -366,7 +405,10 @@ extension VisualPhoto: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisualPhoto, rhs: VisualPhoto) -> Bool {
+  public static func ==(
+lhs: VisualPhoto, 
+rhs: VisualPhoto
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -430,7 +472,10 @@ extension VisualPhotoUrls: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisualPhotoUrls, rhs: VisualPhotoUrls) -> Bool {
+  public static func ==(
+lhs: VisualPhotoUrls, 
+rhs: VisualPhotoUrls
+) -> Bool {
     if lhs.raw != rhs.raw {return false}
     if lhs.full != rhs.full {return false}
     if lhs.regular != rhs.regular {return false}
@@ -476,7 +521,10 @@ extension VisualPhotoUser: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisualPhotoUser, rhs: VisualPhotoUser) -> Bool {
+  public static func ==(
+lhs: VisualPhotoUser, 
+rhs: VisualPhotoUser
+) -> Bool {
     if lhs.username != rhs.username {return false}
     if lhs.name != rhs.name {return false}
     if lhs._profileImage != rhs._profileImage {return false}
@@ -516,9 +564,98 @@ extension VisualPhotoLinks: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: VisualPhotoLinks, rhs: VisualPhotoLinks) -> Bool {
+  public static func ==(
+lhs: VisualPhotoLinks, 
+rhs: VisualPhotoLinks
+) -> Bool {
     if lhs._html != rhs._html {return false}
     if lhs._download != rhs._download {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisualSearchPhotosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SearchPhotosRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}query\0\u{1}page\0\u{1}per_page\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.query) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.page) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.perPage) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.query.isEmpty {
+      try visitor.visitSingularStringField(value: self.query, fieldNumber: 1)
+    }
+    if self.page != 0 {
+      try visitor.visitSingularInt32Field(value: self.page, fieldNumber: 2)
+    }
+    if self.perPage != 0 {
+      try visitor.visitSingularInt32Field(value: self.perPage, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisualSearchPhotosRequest, 
+rhs: VisualSearchPhotosRequest
+) -> Bool {
+    if lhs.query != rhs.query {return false}
+    if lhs.page != rhs.page {return false}
+    if lhs.perPage != rhs.perPage {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension VisualPhotoVisualSearchRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PhotoVisualSearchRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}file\0\u{1}page\0\u{1}per_page\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.file) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.page) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.perPage) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.file.isEmpty {
+      try visitor.visitSingularStringField(value: self.file, fieldNumber: 1)
+    }
+    if self.page != 0 {
+      try visitor.visitSingularInt32Field(value: self.page, fieldNumber: 2)
+    }
+    if self.perPage != 0 {
+      try visitor.visitSingularInt32Field(value: self.perPage, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: VisualPhotoVisualSearchRequest, 
+rhs: VisualPhotoVisualSearchRequest
+) -> Bool {
+    if lhs.file != rhs.file {return false}
+    if lhs.page != rhs.page {return false}
+    if lhs.perPage != rhs.perPage {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -149,6 +149,241 @@ public struct InpaintErase: Sendable {
   fileprivate var _metadata: SwiftProtobuf.Google_Protobuf_Struct? = nil
 }
 
+public struct InpaintAutoSuggestionRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  /// Source image URL — `file://`, `data:` URI, or `http(s)://`.
+  public var image: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+}
+
+public struct InpaintEnhanceRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  public var image: String = String()
+
+  /// 2 / 4 / 8 — sent as a string to match the wire (Rust reads via
+  /// `string_for_field`). Empty defaults to 2 on the Rust side.
+  public var zoomFactor: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+}
+
+public struct InpaintRemoveBgRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  public var image: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+}
+
+/// Either `image` (start a new erase session) or `session_id`
+/// (continue a session from `AutoSuggestion`); never both. The mask
+/// arrives as either `mask_brush` (drawn mask file URL) or
+/// `mask_objects` (comma-joined ids from `AutoSuggestion.segments`).
+public struct InpaintEraseRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  public var image: String {
+    get {_image ?? String()}
+    set {_image = newValue}
+  }
+  /// Returns true if `image` has been explicitly set.
+  public var hasImage: Bool {self._image != nil}
+  /// Clears the value of `image`. Subsequent reads from it will return its default value.
+  public mutating func clearImage() {self._image = nil}
+
+  public var sessionID: String {
+    get {_sessionID ?? String()}
+    set {_sessionID = newValue}
+  }
+  /// Returns true if `sessionID` has been explicitly set.
+  public var hasSessionID: Bool {self._sessionID != nil}
+  /// Clears the value of `sessionID`. Subsequent reads from it will return its default value.
+  public mutating func clearSessionID() {self._sessionID = nil}
+
+  public var maskBrush: String {
+    get {_maskBrush ?? String()}
+    set {_maskBrush = newValue}
+  }
+  /// Returns true if `maskBrush` has been explicitly set.
+  public var hasMaskBrush: Bool {self._maskBrush != nil}
+  /// Clears the value of `maskBrush`. Subsequent reads from it will return its default value.
+  public mutating func clearMaskBrush() {self._maskBrush = nil}
+
+  public var maskObjects: String {
+    get {_maskObjects ?? String()}
+    set {_maskObjects = newValue}
+  }
+  /// Returns true if `maskObjects` has been explicitly set.
+  public var hasMaskObjects: Bool {self._maskObjects != nil}
+  /// Clears the value of `maskObjects`. Subsequent reads from it will return its default value.
+  public mutating func clearMaskObjects() {self._maskObjects = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+  fileprivate var _image: String? = nil
+  fileprivate var _sessionID: String? = nil
+  fileprivate var _maskBrush: String? = nil
+  fileprivate var _maskObjects: String? = nil
+}
+
+public struct InpaintSkinBeautyRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  public var image: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+}
+
+public struct InpaintSkyRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  public var image: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+}
+
+public struct InpaintTryOnRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  /// Person/model photo.
+  public var image: String = String()
+
+  /// Garment image to dress the model in.
+  public var clothImage: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+}
+
+public struct InpaintClothesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  public var image: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "asyncify.inpaint"
@@ -166,7 +401,10 @@ extension InpaintOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: InpaintOptions, rhs: InpaintOptions) -> Bool {
+  public static func ==(
+lhs: InpaintOptions, 
+rhs: InpaintOptions
+) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -215,7 +453,10 @@ extension InpaintObjectSegments: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: InpaintObjectSegments, rhs: InpaintObjectSegments) -> Bool {
+  public static func ==(
+lhs: InpaintObjectSegments, 
+rhs: InpaintObjectSegments
+) -> Bool {
     if lhs.sessionID != rhs.sessionID {return false}
     if lhs.segments != rhs.segments {return false}
     if lhs.suggestMask != rhs.suggestMask {return false}
@@ -261,7 +502,10 @@ extension InpaintSegment: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: InpaintSegment, rhs: InpaintSegment) -> Bool {
+  public static func ==(
+lhs: InpaintSegment, 
+rhs: InpaintSegment
+) -> Bool {
     if lhs._bbox != rhs._bbox {return false}
     if lhs._mask != rhs._mask {return false}
     if lhs._metadata != rhs._metadata {return false}
@@ -309,11 +553,375 @@ extension InpaintErase: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: InpaintErase, rhs: InpaintErase) -> Bool {
+  public static func ==(
+lhs: InpaintErase, 
+rhs: InpaintErase
+) -> Bool {
     if lhs.sessionID != rhs.sessionID {return false}
     if lhs._image != rhs._image {return false}
     if lhs._mask != rhs._mask {return false}
     if lhs._metadata != rhs._metadata {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension InpaintAutoSuggestionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".AutoSuggestionRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}image\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.image) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.image.isEmpty {
+      try visitor.visitSingularStringField(value: self.image, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: InpaintAutoSuggestionRequest, 
+rhs: InpaintAutoSuggestionRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs.image != rhs.image {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension InpaintEnhanceRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EnhanceRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}image\0\u{1}zoom_factor\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.image) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.zoomFactor) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.image.isEmpty {
+      try visitor.visitSingularStringField(value: self.image, fieldNumber: 2)
+    }
+    if !self.zoomFactor.isEmpty {
+      try visitor.visitSingularStringField(value: self.zoomFactor, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: InpaintEnhanceRequest, 
+rhs: InpaintEnhanceRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs.image != rhs.image {return false}
+    if lhs.zoomFactor != rhs.zoomFactor {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension InpaintRemoveBgRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RemoveBgRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}image\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.image) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.image.isEmpty {
+      try visitor.visitSingularStringField(value: self.image, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: InpaintRemoveBgRequest, 
+rhs: InpaintRemoveBgRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs.image != rhs.image {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension InpaintEraseRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EraseRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}image\0\u{1}session_id\0\u{1}mask_brush\0\u{1}mask_objects\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._image) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._sessionID) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._maskBrush) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self._maskObjects) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._image {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._sessionID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._maskBrush {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._maskObjects {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 5)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: InpaintEraseRequest, 
+rhs: InpaintEraseRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs._image != rhs._image {return false}
+    if lhs._sessionID != rhs._sessionID {return false}
+    if lhs._maskBrush != rhs._maskBrush {return false}
+    if lhs._maskObjects != rhs._maskObjects {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension InpaintSkinBeautyRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SkinBeautyRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}image\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.image) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.image.isEmpty {
+      try visitor.visitSingularStringField(value: self.image, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: InpaintSkinBeautyRequest, 
+rhs: InpaintSkinBeautyRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs.image != rhs.image {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension InpaintSkyRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SkyRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}image\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.image) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.image.isEmpty {
+      try visitor.visitSingularStringField(value: self.image, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: InpaintSkyRequest, 
+rhs: InpaintSkyRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs.image != rhs.image {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension InpaintTryOnRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".TryOnRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}image\0\u{1}cloth_image\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.image) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.clothImage) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.image.isEmpty {
+      try visitor.visitSingularStringField(value: self.image, fieldNumber: 2)
+    }
+    if !self.clothImage.isEmpty {
+      try visitor.visitSingularStringField(value: self.clothImage, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: InpaintTryOnRequest, 
+rhs: InpaintTryOnRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs.image != rhs.image {return false}
+    if lhs.clothImage != rhs.clothImage {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension InpaintClothesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ClothesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}base\0\u{1}image\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.image) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.image.isEmpty {
+      try visitor.visitSingularStringField(value: self.image, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: InpaintClothesRequest, 
+rhs: InpaintClothesRequest
+) -> Bool {
+    if lhs._base != rhs._base {return false}
+    if lhs.image != rhs.image {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

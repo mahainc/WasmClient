@@ -5,37 +5,77 @@ import WasmClient
 
 extension WasmActor {
 
+    // MARK: - Action execution
+
+    /// Run a Livescore action end-to-end with a bounded retry, returning the
+    /// completed task's payload.
+    ///
+    /// On a fresh install the WASM engine reaches `.running`, but in the brief
+    /// window after its `reload → running` transition the action is not yet
+    /// ready to *execute*. Two distinct failures occur in that window, at two
+    /// different layers:
+    ///   1. provider resolution — `action(for:)` throws `noProviderFound`
+    ///      because the provider hasn't registered yet;
+    ///   2. task execution — `create(...)` throws a `MobileFFI` `WasmRuntime`
+    ///      "error while executing at wasm backtrace…" fault, or returns a
+    ///      non-`.completed` status, because the just-reloaded module isn't
+    ///      ready to run the action.
+    /// Both previously surfaced as a "Couldn't load" card that a manual Retry
+    /// cleared a few seconds later. Retrying only resolution (the earlier fix)
+    /// missed case 2, which is the one Highlights actually hits. This retries
+    /// the *whole* resolve→create→complete sequence, reproducing the manual
+    /// retry automatically. These are read-only GET-style actions, so retrying
+    /// is side-effect-free; warm launches succeed on the first attempt and add
+    /// no latency.
+    private func runLivescoreAction(
+        _ actionID: String,
+        args: [String: Google_Protobuf_Value] = [:]
+    ) async throws -> Google_Protobuf_Any {
+        var lastError: Error?
+        for attempt in 1...10 {  // 10 × 500ms = up to 5s
+            do {
+                let instance = try await readyEngine()
+                let action = try await instance.action(for: actionID, strategy: .roundRobin)
+                let argsCopy = args
+                let task = try await Task.detached {
+                    try await instance.create(action: action, args: argsCopy)
+                }.value
+                let status = task.status
+                guard status == .completed, task.hasValue else {
+                    throw WasmClient.Error.taskFailed(status: "\(status)")
+                }
+                return task.value
+            } catch {
+                lastError = error
+                logger("livescore '\(actionID)' attempt \(attempt)/10 failed: \(error)")
+                try await Task.sleep(nanoseconds: 500_000_000)
+            }
+        }
+        throw lastError ?? WasmClient.Error.taskFailed(status: "unknown")
+    }
+
     // MARK: - Webpage
 
     private func webpageList(
         type: LivescoreWebPageType,
         extraArgs: [String: Google_Protobuf_Value] = [:]
-    ) async throws -> [WasmClient.LiveScore.WebPage] {
-        let instance = try await readyEngine()
-        let action = try await instance.action(for: WasmClient.ActionID.lsWebpage.rawValue, strategy: .roundRobin)
+    ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [
             "type": Google_Protobuf_Value(numberValue: Double(type.rawValue)),
         ]
         for (k, v) in extraArgs { args[k] = v }
-        let argsCopy = args
-        let task = try await Task.detached {
-            try await instance.create(action: action, args: argsCopy)
-        }.value
-        let taskStatus = task.status
-        guard taskStatus == .completed, task.hasValue else {
-            throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
-        }
+        let value = try await runLivescoreAction(WasmClient.ActionID.lsWebpage.rawValue, args: args)
         let list: LivescoreWebPageList
         do {
-            list = try LivescoreWebPageList(unpackingAny: task.value)
+            list = try LivescoreWebPageList(unpackingAny: value)
         } catch {
-            logger("lsWebpage(type=\(type)) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreWebPageList.protoMessageName) error=\(error)")
+            logger("lsWebpage(type=\(type)) unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreWebPageList.protoMessageName) error=\(error)")
             throw error
         }
-        return list.pages.map(mapWebPage)
+        return list.pages.map(mapEntry)
     }
 
-    func webpageLeagues() async throws -> [WasmClient.LiveScore.WebPage] {
+    func webpageLeagues() async throws -> [WasmClient.LiveScore.Entry] {
         try await webpageList(type: .leagues)
     }
 
@@ -46,7 +86,7 @@ extension WasmActor {
         q: String? = nil,
         limit: Int64? = nil,
         offset: Int64? = nil
-    ) async throws -> [WasmClient.LiveScore.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
         if let q, !q.isEmpty { args["q"] = Google_Protobuf_Value(stringValue: q) }
         if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
@@ -65,7 +105,7 @@ extension WasmActor {
         limit: Int64? = nil,
         offset: Int64? = nil,
         competitionId: String? = nil
-    ) async throws -> [WasmClient.LiveScore.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
         if let q, !q.isEmpty { args["q"] = Google_Protobuf_Value(stringValue: q) }
         if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
@@ -76,20 +116,20 @@ extension WasmActor {
         return try await webpageList(type: .teams, extraArgs: args)
     }
 
-    func webpage(url: String) async throws -> [WasmClient.LiveScore.WebPage] {
+    func webpage(url: String) async throws -> [WasmClient.LiveScore.Entry] {
         try await webpageList(type: .page, extraArgs: ["url": Google_Protobuf_Value(stringValue: url)])
     }
 
-    func webpageDiscovers() async throws -> [WasmClient.LiveScore.WebPage] {
+    func webpageDiscovers() async throws -> [WasmClient.LiveScore.Entry] {
         try await webpageList(type: .discovers)
     }
 
     // MARK: - Single-item lookups (id-filtered)
 
     /// Fetch one competition by numeric Scorebat id. Returns the matching
-    /// `WebPage` (with composed embed URL) or nil when the backend doesn't
+    /// `Entry` (with composed embed URL) or nil when the backend doesn't
     /// know it.
-    func webpageCompetition(id: String) async throws -> WasmClient.LiveScore.WebPage? {
+    func webpageCompetition(id: String) async throws -> WasmClient.LiveScore.Entry? {
         try await webpageList(
             type: .competitions,
             extraArgs: ["id": Google_Protobuf_Value(stringValue: id)]
@@ -97,8 +137,8 @@ extension WasmActor {
     }
 
     /// Fetch one team by numeric Scorebat id. Returns the matching
-    /// `WebPage` or nil when the backend doesn't know it.
-    func webpageTeam(id: String) async throws -> WasmClient.LiveScore.WebPage? {
+    /// `Entry` or nil when the backend doesn't know it.
+    func webpageTeam(id: String) async throws -> WasmClient.LiveScore.Entry? {
         try await webpageList(
             type: .teams,
             extraArgs: ["id": Google_Protobuf_Value(stringValue: id)]
@@ -114,7 +154,7 @@ extension WasmActor {
         q: String? = nil,
         page: Int64? = nil,
         pageSize: Int64? = nil
-    ) async throws -> [WasmClient.LiveScore.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
         if let videoType, !videoType.isEmpty {
             args["video_type"] = Google_Protobuf_Value(stringValue: videoType)
@@ -143,7 +183,7 @@ extension WasmActor {
         q: String? = nil,
         competitionID: String? = nil,
         teamID: String? = nil
-    ) async throws -> [WasmClient.LiveScore.WebPage] {
+    ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
         if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
         if let offset { args["offset"] = Google_Protobuf_Value(numberValue: Double(offset)) }
@@ -160,22 +200,12 @@ extension WasmActor {
     // MARK: - Upcoming
 
     func upcoming() async throws -> [WasmClient.LiveScore.MatchSummary] {
-        let instance = try await readyEngine()
-        let action = try await instance.action(for: WasmClient.ActionID.lsUpcoming.rawValue, strategy: .roundRobin)
-        let args: [String: Google_Protobuf_Value] = [:]
-        let argsCopy = args
-        let task = try await Task.detached {
-            try await instance.create(action: action, args: argsCopy)
-        }.value
-        let taskStatus = task.status
-        guard taskStatus == .completed, task.hasValue else {
-            throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
-        }
+        let value = try await runLivescoreAction(WasmClient.ActionID.lsUpcoming.rawValue)
         let list: LivescoreMatchSummaryList
         do {
-            list = try LivescoreMatchSummaryList(unpackingAny: task.value)
+            list = try LivescoreMatchSummaryList(unpackingAny: value)
         } catch {
-            logger("lsUpcoming unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreMatchSummaryList.protoMessageName) error=\(error)")
+            logger("lsUpcoming unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreMatchSummaryList.protoMessageName) error=\(error)")
             throw error
         }
         return list.matches.map(mapMatchSummary)
@@ -187,27 +217,15 @@ extension WasmActor {
     /// referee, venue, h2h, highlight videos). Backed by `lsMatchDetail` →
     /// `LivescoreMatch` proto. Independent of the WebPage flow.
     func matchDetail(id: String) async throws -> WasmClient.LiveScore.Match {
-        let instance = try await readyEngine()
-        let action = try await instance.action(
-            for: WasmClient.ActionID.lsMatchDetail.rawValue,
-            strategy: .roundRobin
+        let value = try await runLivescoreAction(
+            WasmClient.ActionID.lsMatchDetail.rawValue,
+            args: ["id": Google_Protobuf_Value(stringValue: id)]
         )
-        let args: [String: Google_Protobuf_Value] = [
-            "id": Google_Protobuf_Value(stringValue: id),
-        ]
-        let argsCopy = args
-        let task = try await Task.detached {
-            try await instance.create(action: action, args: argsCopy)
-        }.value
-        let taskStatus = task.status
-        guard taskStatus == .completed, task.hasValue else {
-            throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
-        }
         let proto: LivescoreMatch
         do {
-            proto = try LivescoreMatch(unpackingAny: task.value)
+            proto = try LivescoreMatch(unpackingAny: value)
         } catch {
-            logger("lsMatchDetail(id=\(id)) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreMatch.protoMessageName) error=\(error)")
+            logger("lsMatchDetail(id=\(id)) unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreMatch.protoMessageName) error=\(error)")
             throw error
         }
         return mapMatch(proto)
@@ -318,23 +336,14 @@ extension WasmActor {
     // MARK: - Scores by date
 
     func scoresByDate(date: String?) async throws -> [WasmClient.LiveScore.MatchSummary] {
-        let instance = try await readyEngine()
-        let action = try await instance.action(for: WasmClient.ActionID.lsScores.rawValue, strategy: .roundRobin)
         var args: [String: Google_Protobuf_Value] = [:]
         if let date { args["date"] = Google_Protobuf_Value(stringValue: date) }
-        let argsCopy = args
-        let task = try await Task.detached {
-            try await instance.create(action: action, args: argsCopy)
-        }.value
-        let taskStatus = task.status
-        guard taskStatus == .completed, task.hasValue else {
-            throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
-        }
+        let value = try await runLivescoreAction(WasmClient.ActionID.lsScores.rawValue, args: args)
         let list: LivescoreMatchSummaryList
         do {
-            list = try LivescoreMatchSummaryList(unpackingAny: task.value)
+            list = try LivescoreMatchSummaryList(unpackingAny: value)
         } catch {
-            logger("lsScores(date=\(date ?? "nil")) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreMatchSummaryList.protoMessageName) error=\(error)")
+            logger("lsScores(date=\(date ?? "nil")) unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreMatchSummaryList.protoMessageName) error=\(error)")
             throw error
         }
         return list.matches.map(mapMatchSummary)
@@ -356,10 +365,12 @@ extension WasmActor {
         )
     }
 
-    private func mapWebPage(_ p: LivescoreWebPage) -> WasmClient.LiveScore.WebPage {
-        WasmClient.LiveScore.WebPage(
+    private func mapEntry(_ p: LivescoreWebPage) -> WasmClient.LiveScore.Entry {
+        WasmClient.LiveScore.Entry(
             id: p.id, image: p.image, title: p.title,
-            subtitle: p.subtitle, url: p.url, datetime: p.datetime
+            subtitle: p.subtitle, url: p.url, datetime: p.datetime,
+            videos: p.videos.map(mapVideo),
+            competition: p.hasCompetition ? mapCompetition(p.competition) : nil
         )
     }
 
@@ -369,27 +380,15 @@ extension WasmActor {
     /// scorers/assists). Backed by `lsCompetitionDetail` → `LivescoreCompetition`
     /// proto. Independent of the WebPage flow.
     func competitionDetail(id: String) async throws -> WasmClient.LiveScore.Competition {
-        let instance = try await readyEngine()
-        let action = try await instance.action(
-            for: WasmClient.ActionID.lsCompetitionDetail.rawValue,
-            strategy: .roundRobin
+        let value = try await runLivescoreAction(
+            WasmClient.ActionID.lsCompetitionDetail.rawValue,
+            args: ["id": Google_Protobuf_Value(stringValue: id)]
         )
-        let args: [String: Google_Protobuf_Value] = [
-            "id": Google_Protobuf_Value(stringValue: id),
-        ]
-        let argsCopy = args
-        let task = try await Task.detached {
-            try await instance.create(action: action, args: argsCopy)
-        }.value
-        let taskStatus = task.status
-        guard taskStatus == .completed, task.hasValue else {
-            throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
-        }
         let proto: LivescoreCompetition
         do {
-            proto = try LivescoreCompetition(unpackingAny: task.value)
+            proto = try LivescoreCompetition(unpackingAny: value)
         } catch {
-            logger("lsCompetitionDetail(id=\(id)) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreCompetition.protoMessageName) error=\(error)")
+            logger("lsCompetitionDetail(id=\(id)) unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreCompetition.protoMessageName) error=\(error)")
             throw error
         }
         return mapCompetition(proto)
@@ -400,27 +399,15 @@ extension WasmActor {
     /// Enriched team payload (aka, fixtures, results, tables). Backed by
     /// `lsTeamDetail` → `LivescoreTeam` proto. Independent of the WebPage flow.
     func teamDetail(id: String) async throws -> WasmClient.LiveScore.Team {
-        let instance = try await readyEngine()
-        let action = try await instance.action(
-            for: WasmClient.ActionID.lsTeamDetail.rawValue,
-            strategy: .roundRobin
+        let value = try await runLivescoreAction(
+            WasmClient.ActionID.lsTeamDetail.rawValue,
+            args: ["id": Google_Protobuf_Value(stringValue: id)]
         )
-        let args: [String: Google_Protobuf_Value] = [
-            "id": Google_Protobuf_Value(stringValue: id),
-        ]
-        let argsCopy = args
-        let task = try await Task.detached {
-            try await instance.create(action: action, args: argsCopy)
-        }.value
-        let taskStatus = task.status
-        guard taskStatus == .completed, task.hasValue else {
-            throw WasmClient.Error.taskFailed(status: "\(taskStatus)")
-        }
         let proto: LivescoreTeam
         do {
-            proto = try LivescoreTeam(unpackingAny: task.value)
+            proto = try LivescoreTeam(unpackingAny: value)
         } catch {
-            logger("lsTeamDetail(id=\(id)) unpack failed: typeURL='\(task.value.typeURL)' expected=\(LivescoreTeam.protoMessageName) error=\(error)")
+            logger("lsTeamDetail(id=\(id)) unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreTeam.protoMessageName) error=\(error)")
             throw error
         }
         return mapTeam(proto)

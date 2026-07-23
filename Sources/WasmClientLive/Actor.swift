@@ -44,8 +44,8 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     private var engineDidReachRunning = false
     private let runningLock = NSLock()
     /// Host-supplied closure returning the wasm version the app expects.
-    /// Consulted inside `ensureStarted` before `TaskWasm.default()`; a mismatch
-    /// with `AsyncifyWasm.currentVersionID` triggers `AsyncifyWasm.resetDownloads()`.
+    /// Consulted inside `ensureStarted` before `FlowKit.default()`; a mismatch
+    /// with `AsyncifyWasmCompat.currentVersionID` triggers `AsyncifyWasmCompat.resetDownloads(...)`.
     /// Persists across `resetEngine()` — registered once at app launch.
     /// Lock-protected so a nonisolated setter can race-free coexist with the
     /// actor-context reader inside `ensureStarted`.
@@ -133,7 +133,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     // MARK: - WasmInstanceDelegate
     // Matches flow-kit-example's WasmEngine.stateChanged.
 
-    func stateChanged(state: AsyncWasm.EngineState) {
+    func stateChanged(state: EngineState) {
         logger?("Engine state: \(state)")
         let mapped: WasmClient.EngineState
         switch state {
@@ -194,7 +194,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         self.logger = logger
 
         do {
-            let cachedID = AsyncifyWasm.currentVersionID
+            let cachedID = AsyncifyWasmCompat.currentVersionID
 
             // Ask the host for the expected wasm version. nil / throw = no-op policy.
             var expectedID: String?
@@ -209,19 +209,24 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             switch (cachedID, expectedID) {
                 case (nil, _):
                     logger("No cached wasm version — resetting downloads to force fresh download")
-                    AsyncifyWasm.resetDownloads()
+                    AsyncifyWasmCompat.resetDownloads(wasmDir: nil, provider: nil)
                 case let (.some(cached), .some(expected)) where cached != expected:
                     logger("Wasm version mismatch (cached=\(cached), expected=\(expected)) — resetting downloads")
-                    AsyncifyWasm.resetDownloads()
+                    AsyncifyWasmCompat.resetDownloads(wasmDir: nil, provider: nil)
                 case let (.some(cached), _):
                     logger("Using cached wasm version: \(cached)")
             }
 
             // Direct async calls — exactly like flow-kit-example's WasmEngine.load()
-            logger("Building engine via TaskWasm.default()...")
+            logger("Building engine via FlowKit.default()...")
             yieldState(.starting)
-            var instance = try await TaskWasm.default()
-            instance.premium = true
+            var instance = try await FlowKit.default()
+            // Non-premium: the host filters premium users BEFORE the funnel runs
+            // (LaunchStore short-circuits `if state.isPremium`, and AdRules gate on
+            // premium), so any gate that reaches the guest is a non-premium user.
+            // Hard-setting `true` here made the guest SKIP every gate with
+            // `user_is_premium`, suppressing all funnel ads.
+            instance.premium = false
             instance.delegate = self
 
             logger("Starting engine (delegate set)...")
@@ -352,24 +357,47 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         }
     }
 
-    /// Make sure providers for `actionID` are discovered before resolving.
+    /// Ensure a *specific* action provider is registered, re-polling the engine
+    /// when it's missing from the cache.
     ///
-    /// `performActionsLoad` locks the cache in after the *first* non-empty poll,
-    /// so providers that register a beat later than the first batch (the calorie
-    /// actions, and late cloud providers like Banana/Replicate/FalAI/Runware)
-    /// can be missing from it. When the requested action isn't cached, re-discover
-    /// once — `refreshActions` waits for the provider count to stabilize — before
-    /// the caller reports it as missing. Skipped entirely on the happy path.
+    /// On a fresh install providers register over the network *after* the engine
+    /// reaches `.running`. The initial discovery poll (`performActionsLoad`)
+    /// breaks on the first-any provider, so it can cache a partial set that omits
+    /// a still-registering provider — and because `actionCache` is then non-empty,
+    /// `ensureActionsLoaded` early-returns on every later call, freezing that gap.
+    /// A caller asking for the missing action would throw `noProviderFound` and
+    /// keep throwing until the app is restarted. This re-polls for the specific
+    /// action so a late provider self-heals instead of requiring a relaunch. On
+    /// warm launches the action is already cached, so this returns immediately.
     private func ensureActionAvailable(
         actionID: String,
         logger: @escaping @Sendable (String) -> Void
     ) async throws {
+        if actionCache[actionID]?.isEmpty == false { return }
+        // First call on an empty cache — run the normal discovery poll.
         if actionCache.isEmpty {
             try await ensureActionsLoaded(logger: logger)
+            if actionCache[actionID]?.isEmpty == false { return }
         }
-        if (actionCache[actionID] ?? []).isEmpty {
-            logger("\(actionID) not in cache — re-discovering providers")
-            try await refreshActions(logger: logger)
+        // Cached but this action is absent — provider may be registering late.
+        // Re-poll the engine directly (bypassing the non-empty-cache guard) and
+        // refresh the cache until the action appears or we time out.
+        for attempt in 1...10 {  // 10 × 500ms = up to 5s
+            guard let engine else { throw WasmClient.Error.engineNotStarted }
+            let all = try await engine.actions()
+            if !all.actions.isEmpty {
+                var cache: [String: [WaTAction]] = [:]
+                for action in all.actions {
+                    cache[action.id, default: []].append(action)
+                }
+                actionCache = cache
+                if cache[actionID]?.isEmpty == false {
+                    logger("action '\(actionID)' available after refresh poll \(attempt)")
+                    return
+                }
+            }
+            logger("action '\(actionID)' missing — refresh poll \(attempt)/10")
+            try await Task.sleep(nanoseconds: 500_000_000)
         }
     }
 
@@ -542,11 +570,11 @@ actor WasmActor {
     }
 
     func engineVersion() -> String? {
-        AsyncifyWasm.currentVersionID
+        AsyncifyWasmCompat.currentVersionID
     }
 
     func resetDownloads() {
-        AsyncifyWasm.resetDownloads()
+        AsyncifyWasmCompat.resetDownloads(wasmDir: nil, provider: nil)
     }
 
     nonisolated func setExpectedVersionProvider(_ provider: (@Sendable () async throws -> String?)?) {

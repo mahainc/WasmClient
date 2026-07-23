@@ -1,0 +1,31 @@
+load("@build_bazel_rules_swift//swift:swift_library.bzl", "swift_library")
+
+swift_library(
+    name = "WasmClient",
+    srcs = [
+        "ChatStreamSession.swift",
+        "Interface.swift",
+        "Mocks.swift",
+        "Models/AiartModels.swift",
+        "Models/ChatModels.swift",
+        "Models/CommonModels.swift",
+        "Models/EngineModels.swift",
+        "Models/HomedecorModels.swift",
+        "Models/InpaintModels.swift",
+        "Models/LiveScoreModels.swift",
+        "Models/MusicModels.swift",
+        "Models/NotificationModels.swift",
+        "Models/PendingTaskModels.swift",
+        "Models/ScanModels.swift",
+        "Models/SurveyModels.swift",
+        "Models/TTSModels.swift",
+        "Models/VisualModels.swift",
+        "Visual+Conveniences.swift",
+    ],
+    module_name = "WasmClient",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@swiftpkg_swift_dependencies//:Dependencies",
+        "@swiftpkg_swift_dependencies//:DependenciesMacros",
+    ],
+)

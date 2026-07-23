@@ -75,6 +75,14 @@ public struct WasmClient: Sendable {
     /// failure during initial startup to retry provider discovery.
     public var refreshActions: @Sendable () async throws -> Void
 
+    /// The started FlowKit engine as an opaque handle, for sibling packages
+    /// (e.g. FunnelWasm) that wrap a DIFFERENT RPC domain on the SAME engine.
+    /// Boots the engine if needed, then returns it — cast to `TaskWasmProtocol`
+    /// in a target that imports FlowKit. Returns nil only from the mock/test
+    /// clients. Sharing one engine avoids double-loading the WASM runtime and
+    /// racing the on-disk state both domains write.
+    public var funnelEngine: @Sendable () async throws -> (any Sendable)? = { nil }
+
     // MARK: - Vision / Scan
 
     /// Scan a photo: uploads to blobstore, runs vision scan, returns structured result.
@@ -557,7 +565,7 @@ public struct WasmClient: Sendable {
     // MARK: - Livescore Webpage
 
     /// Fetch the leagues directory as web pages (lsWebpage type=1).
-    public var webpageLeagues: @Sendable () async throws -> [WasmClient.LiveScore.WebPage]
+    public var webpageLeagues: @Sendable () async throws -> [WasmClient.LiveScore.Entry]
 
     /// Fetch the competitions directory as web pages (lsWebpage type=2).
     /// `q` runs a server-side full-text filter on name + region; `limit`/`offset`
@@ -567,7 +575,7 @@ public struct WasmClient: Sendable {
         _ q: String?,
         _ limit: Int64?,
         _ offset: Int64?
-    ) async throws -> [WasmClient.LiveScore.WebPage]
+    ) async throws -> [WasmClient.LiveScore.Entry]
 
     /// Fetch the teams directory as web pages (lsWebpage type=3).
     /// `q` runs a server-side full-text filter; `limit`/`offset` drive
@@ -579,35 +587,38 @@ public struct WasmClient: Sendable {
         _ limit: Int64?,
         _ offset: Int64?,
         _ competitionId: String?
-    ) async throws -> [WasmClient.LiveScore.WebPage]
+    ) async throws -> [WasmClient.LiveScore.Entry]
 
     /// Fetch a specific URL via lsWebpage (type=4).
-    public var webpage: @Sendable (_ url: String) async throws -> [WasmClient.LiveScore.WebPage]
+    public var webpage: @Sendable (_ url: String) async throws -> [WasmClient.LiveScore.Entry]
 
     /// Fetch the discover feed as web pages (lsWebpage type=5).
-    public var webpageDiscovers: @Sendable () async throws -> [WasmClient.LiveScore.WebPage]
+    public var webpageDiscovers: @Sendable () async throws -> [WasmClient.LiveScore.Entry]
 
     /// Fetch one competition by numeric Scorebat id. Routes through
     /// `lsWebpage type=2` with an `id` filter and returns the single
     /// matching row (or nil when the backend doesn't know the id).
     public var webpageCompetition: @Sendable (
         _ id: String
-    ) async throws -> WasmClient.LiveScore.WebPage?
+    ) async throws -> WasmClient.LiveScore.Entry?
 
     /// Fetch one team by numeric Scorebat id. Routes through
     /// `lsWebpage type=3` with an `id` filter and returns the single
     /// matching row (or nil when the backend doesn't know the id).
     public var webpageTeam: @Sendable (
         _ id: String
-    ) async throws -> WasmClient.LiveScore.WebPage?
+    ) async throws -> WasmClient.LiveScore.Entry?
 
     /// Fetch Scorebat highlight videos (lsWebpage type=6). All filters are
     /// optional. `videoType` is the bucket tag (`"featured"` or `"livestream"`,
     /// `nil` = all). `competitionID` / `teamID` are slug strings from
-    /// `WebPage.id` (e.g. `"team/real-madrid"`,
+    /// `Entry.id` (e.g. `"team/real-madrid"`,
     /// `"competition/england-premier-league"`) and are mutually exclusive on
     /// the server side. `page` is 1-based; `pageSize` is clamped server-side
-    /// to `[1, 60]` (default 20).
+    /// to `[1, 60]` (default 20). Each returned `Entry` carries its highlight
+    /// clips in `Entry.videos` (one `Video` per clip; empty when the row has
+    /// none) and its parent `Entry.competition` (use `competition.slug` to fetch
+    /// related videos via `competitionID`).
     public var webpageVideos: @Sendable (
         _ videoType: String?,
         _ competitionID: String?,
@@ -615,7 +626,7 @@ public struct WasmClient: Sendable {
         _ q: String?,
         _ page: Int64?,
         _ pageSize: Int64?
-    ) async throws -> [WasmClient.LiveScore.WebPage]
+    ) async throws -> [WasmClient.LiveScore.Entry]
 
     /// Fetch soccer news articles (lsWebpage type=7). Offset-based
     /// pagination — caller computes "has more" by comparing the returned
@@ -627,7 +638,7 @@ public struct WasmClient: Sendable {
     public var webpageNews: @Sendable (
         _ limit: Int64?, _ offset: Int64?, _ q: String?,
         _ competitionID: String?, _ teamID: String?
-    ) async throws -> [WasmClient.LiveScore.WebPage]
+    ) async throws -> [WasmClient.LiveScore.Entry]
 
     /// Fetch the global upcoming-matches feed (no date arg).
     /// Backed by `lsUpcoming` action returning `LivescoreMatchSummaryList`.
