@@ -458,7 +458,7 @@ extension WasmActor {
         }
         return WasmClient.ChatMessage(
             role: .assistant,
-            content: last?.content ?? streamed,
+            content: last.map { $0.contentText } ?? streamed,
             toolCalls: calls.map {
                 WasmClient.ToolCall(
                     id: $0.id,

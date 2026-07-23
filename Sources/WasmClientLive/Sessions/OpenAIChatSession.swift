@@ -133,7 +133,7 @@ public final class OpenAIChatSession: @unchecked Sendable {
     public func setSystem(_ content: String) {
         var msg = OpenAIChatMessage()
         msg.role = OpenAIChatRole.system.rawValue
-        msg.content = content
+        msg.setContent(text: content)
         messages.insert(msg, at: 0)
     }
 
@@ -159,7 +159,7 @@ public final class OpenAIChatSession: @unchecked Sendable {
         if let content = content {
             var userMsg = OpenAIChatMessage()
             userMsg.role = OpenAIChatRole.user.rawValue
-            userMsg.content = content
+            userMsg.setContent(text: content)
             messages.append(userMsg)
         }
         return try await callAPI()
@@ -196,7 +196,7 @@ public final class OpenAIChatSession: @unchecked Sendable {
         var userMsg = OpenAIChatMessage()
         userMsg.role = OpenAIChatRole.user.rawValue
         if imageURLs.isEmpty {
-            userMsg.content = text
+            userMsg.setContent(text: text)
         } else {
             var parts: [OpenAIContentPart] = []
             var textPart = OpenAIContentPart()
@@ -212,7 +212,7 @@ public final class OpenAIChatSession: @unchecked Sendable {
                 imagePart.imageURL = img
                 parts.append(imagePart)
             }
-            userMsg.contentParts = parts
+            try? userMsg.setContent(parts: parts)
         }
         messages.append(userMsg)
     }
@@ -233,7 +233,7 @@ public final class OpenAIChatSession: @unchecked Sendable {
         var msg = OpenAIChatMessage()
         msg.role = OpenAIChatRole.tool.rawValue
         msg.toolCallID = callId
-        msg.content = content
+        msg.setContent(text: content)
         messages.append(msg)
     }
 
@@ -402,14 +402,14 @@ public final class OpenAIChatSession: @unchecked Sendable {
         let streamed = accumulated.value
         if !toolCallDicts.isEmpty {
             assistantMsg.toolCalls = toolCallDicts.compactMap { toolCallFromDict($0) }
-            if !streamed.isEmpty { assistantMsg.content = streamed }
+            if !streamed.isEmpty { assistantMsg.setContent(text: streamed) }
             messages.append(assistantMsg)
             continuation.finish()
             return
         }
 
         if !streamed.isEmpty {
-            assistantMsg.content = streamed
+            assistantMsg.setContent(text: streamed)
             messages.append(assistantMsg)
             continuation.finish()
             return
@@ -428,7 +428,7 @@ public final class OpenAIChatSession: @unchecked Sendable {
                 return
             }
             let raw = String(data: data, encoding: .utf8) ?? ""
-            assistantMsg.content = raw
+            assistantMsg.setContent(text: raw)
             messages.append(assistantMsg)
             continuation.finish()
             return
@@ -469,22 +469,19 @@ public final class OpenAIChatSession: @unchecked Sendable {
         // Serialize messages, handling multimodal content_parts
         body["messages"] = messages.map { msg -> [String: Any] in
             var dict: [String: Any] = ["role": msg.role]
-            if !msg.contentParts.isEmpty {
-                // Multimodal: serialize as "content": [...]
-                dict["content"] = msg.contentParts.map { part -> [String: Any] in
-                    var p: [String: Any] = ["type": part.type]
-                    if part.hasText { p["text"] = part.text }
-                    if part.hasImageURL {
-                        var img: [String: Any] = ["url": part.imageURL.url]
-                        if part.hasImageURL && part.imageURL.hasDetail {
-                            img["detail"] = part.imageURL.detail
-                        }
-                        p["image_url"] = img
+            if msg.hasContent {
+                // `content` is google.protobuf.Value — stringValue for text
+                // turns, listValue of parts for multimodal. Its proto3 JSON
+                // form is exactly OpenAI's polymorphic `content` wire shape.
+                switch msg.content.kind {
+                case .stringValue(let s):
+                    dict["content"] = s
+                default:
+                    if let data = try? msg.content.jsonUTF8Data(),
+                        let obj = try? JSONSerialization.jsonObject(with: data) {
+                        dict["content"] = obj
                     }
-                    return p
                 }
-            } else if msg.hasContent {
-                dict["content"] = msg.content
             }
             if !msg.toolCalls.isEmpty {
                 dict["tool_calls"] = msg.toolCalls.map { tc -> [String: Any] in
@@ -585,7 +582,7 @@ public final class OpenAIChatSession: @unchecked Sendable {
         let responseText = String(data: data, encoding: .utf8) ?? ""
         var assistantMsg = OpenAIChatMessage()
         assistantMsg.role = OpenAIChatRole.assistant.rawValue
-        assistantMsg.content = responseText
+        assistantMsg.setContent(text: responseText)
         messages.append(assistantMsg)
         return assistantMsg
     }
