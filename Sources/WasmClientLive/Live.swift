@@ -1,5 +1,5 @@
-@preconcurrency import FlowKit
 import Dependencies
+@preconcurrency import FlowKit
 import Foundation
 import WasmClient
 
@@ -73,7 +73,10 @@ extension WasmClient: DependencyKey {
             },
             chatModels: { offset, limit, keyword, category in
                 try await actor.chatModels(
-                    offset: offset, limit: limit, keyword: keyword, category: category
+                    offset: offset,
+                    limit: limit,
+                    keyword: keyword,
+                    category: category
                 )
             },
             chatSend: { config, messages in
@@ -123,6 +126,9 @@ extension WasmClient: DependencyKey {
             },
             aiartStyles: { actionID in
                 try await actor.aiartStyles(actionID: actionID)
+            },
+            aiartListModels: { mode in
+                try await actor.aiartListModels(mode: mode)
             },
             aiartVideoCreate: { args in
                 try await actor.aiartVideoCreate(args: args)
@@ -196,8 +202,10 @@ extension WasmClient: DependencyKey {
             },
             erase: { image, sessionId, maskBrush, maskObjects in
                 try await actor.erase(
-                    image: image, sessionId: sessionId,
-                    maskBrush: maskBrush, maskObjects: maskObjects
+                    image: image,
+                    sessionId: sessionId,
+                    maskBrush: maskBrush,
+                    maskObjects: maskObjects
                 )
             },
             skinBeauty: { image in
@@ -220,7 +228,10 @@ extension WasmClient: DependencyKey {
             },
             webpageTeams: { q, limit, offset, competitionId in
                 try await actor.webpageTeams(
-                    q: q, limit: limit, offset: offset, competitionId: competitionId
+                    q: q,
+                    limit: limit,
+                    offset: offset,
+                    competitionId: competitionId
                 )
             },
             webpage: { url in
@@ -247,8 +258,11 @@ extension WasmClient: DependencyKey {
             },
             webpageNews: { limit, offset, q, competitionID, teamID in
                 try await actor.webpageNews(
-                    limit: limit, offset: offset, q: q,
-                    competitionID: competitionID, teamID: teamID
+                    limit: limit,
+                    offset: offset,
+                    q: q,
+                    competitionID: competitionID,
+                    teamID: teamID
                 )
             },
             upcoming: {
@@ -288,7 +302,9 @@ extension WasmClient: DependencyKey {
             },
             reportLiveActivityToken: { entity, entityId, laToken in
                 try await actor.reportLiveActivityToken(
-                    entity: entity, entityId: entityId, laToken: laToken
+                    entity: entity,
+                    entityId: entityId,
+                    laToken: laToken
                 )
             }
         )

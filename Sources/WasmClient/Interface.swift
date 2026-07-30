@@ -42,7 +42,7 @@ public struct WasmClient: Sendable {
     public var engineVersion: @Sendable () async -> String? = { nil }
 
     /// Clear the cached WASM binary, forcing re-download on next start.
-    public var resetDownloads: @Sendable () async -> Void = { }
+    public var resetDownloads: @Sendable () async -> Void = {}
 
     /// Register a callback that returns the wasm version the app expects to run.
     /// Invoked inside `start()` before `TaskWasm.default()`. If the returned ID
@@ -51,9 +51,10 @@ public struct WasmClient: Sendable {
     /// is treated as "no expectation" and preserves the default behavior.
     /// Configure once at app launch — the registered provider persists across
     /// `reset()` / `restart()`.
-    public var setExpectedVersionProvider: @Sendable (
-        _ provider: @escaping @Sendable () async throws -> String?
-    ) -> Void = { _ in }
+    public var setExpectedVersionProvider:
+        @Sendable (
+            _ provider: @escaping @Sendable () async throws -> String?
+        ) -> Void = { _ in }
 
     /// Set the display name used by auto-init paths that invoke `providerInit`
     /// internally (currently `readOutLoud`). CAI registers the user under this
@@ -66,7 +67,7 @@ public struct WasmClient: Sendable {
 
     /// Pre-warm the WASM engine. Convenience wrapper around `start` that
     /// ignores errors. Call early (e.g. on home screen appear) to avoid cold-start delay.
-    public var warmUp: @Sendable () async -> Void = { }
+    public var warmUp: @Sendable () async -> Void = {}
 
     /// List all available actions from the running engine.
     public var availableActions: @Sendable () async throws -> [WasmClient.ActionInfo]
@@ -90,29 +91,33 @@ public struct WasmClient: Sendable {
     ///   - imageData: JPEG image data
     ///   - category: scan category (default "object")
     ///   - language: result language (default "en")
-    public var scan: @Sendable (
-        _ imageData: Data, _ category: String, _ language: String
-    ) async throws -> WasmClient.ScanResult
+    public var scan:
+        @Sendable (
+            _ imageData: Data, _ category: String, _ language: String
+        ) async throws -> WasmClient.ScanResult
 
     /// Describe/enrich a previously scanned image with full details.
     /// Uses the image URL returned by a prior `scan` call and the detected category
     /// to fetch characteristics, AI commentary, and richer metadata.
     /// Pass the scan result's `provider` to ensure the same provider handles enrichment.
-    public var describe: @Sendable (
-        _ imageURL: String, _ category: String, _ language: String, _ provider: String
-    ) async throws -> WasmClient.ScanResult
+    public var describe:
+        @Sendable (
+            _ imageURL: String, _ category: String, _ language: String, _ provider: String
+        ) async throws -> WasmClient.ScanResult
 
     /// Visual search on an already-uploaded image URL. Returns matching products.
     /// Pass the scan result's `provider` for provider-consistent results.
-    public var visualSearch: @Sendable (
-        _ imageURL: String, _ provider: String
-    ) async throws -> [WasmClient.ShoppingProduct]
+    public var visualSearch:
+        @Sendable (
+            _ imageURL: String, _ provider: String
+        ) async throws -> [WasmClient.ShoppingProduct]
 
     /// Search for shopping products by text query.
     /// Pass the scan result's `provider` for provider-consistent results.
-    public var shopping: @Sendable (
-        _ query: String, _ provider: String
-    ) async throws -> [WasmClient.ShoppingProduct]
+    public var shopping:
+        @Sendable (
+            _ query: String, _ provider: String
+        ) async throws -> [WasmClient.ShoppingProduct]
 
     // MARK: - Blobstore
 
@@ -131,23 +136,26 @@ public struct WasmClient: Sendable {
     /// callers can route subsequent chat requests correctly. Returns the
     /// page of rows plus the backend-reported `total` (drives "load more"
     /// logic).
-    public var chatModels: @Sendable (
-        _ offset: Int, _ limit: Int, _ keyword: String?, _ category: String?
-    ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int)
+    public var chatModels:
+        @Sendable (
+            _ offset: Int, _ limit: Int, _ keyword: String?, _ category: String?
+        ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int)
 
     /// Send a single chat message and get the full response.
     /// Stateless — does not maintain conversation history.
-    public var chatSend: @Sendable (
-        _ config: WasmClient.ChatConfig,
-        _ messages: [WasmClient.ChatMessage]
-    ) async throws -> WasmClient.ChatMessage
+    public var chatSend:
+        @Sendable (
+            _ config: WasmClient.ChatConfig,
+            _ messages: [WasmClient.ChatMessage]
+        ) async throws -> WasmClient.ChatMessage
 
     /// Stream a chat response, yielding content deltas as they arrive via SSE.
     /// Stateless — caller manages conversation history.
-    public var chatStream: @Sendable (
-        _ config: WasmClient.ChatConfig,
-        _ messages: [WasmClient.ChatMessage]
-    ) async throws -> AsyncThrowingStream<String, Swift.Error>
+    public var chatStream:
+        @Sendable (
+            _ config: WasmClient.ChatConfig,
+            _ messages: [WasmClient.ChatMessage]
+        ) async throws -> AsyncThrowingStream<String, Swift.Error>
 
     /// Create a custom chat model on a specific provider. Returns the
     /// provider-assigned model id (used as the `modelId` for subsequent
@@ -156,10 +164,11 @@ public struct WasmClient: Sendable {
     /// pass an `ActionInfo.provider` from `availableActions()` to pin a
     /// specific one. Discover eligible providers by filtering
     /// `availableActions()` on `ActionID.createModel.rawValue`.
-    public var createChatModel: @Sendable (
-        _ providerId: String,
-        _ input: WasmClient.CreateChatModelInput
-    ) async throws -> String
+    public var createChatModel:
+        @Sendable (
+            _ providerId: String,
+            _ input: WasmClient.CreateChatModelInput
+        ) async throws -> String
 
     /// Run a chat provider's pre-flight init action. CAI registers the
     /// user via this call (using `metadata.name` as the display name);
@@ -175,55 +184,64 @@ public struct WasmClient: Sendable {
     /// exposes `providerInit`, the call is a no-op success (the requested
     /// provider is marked as "tried" so auto-init from `readOutLoud`
     /// doesn't waste round-trips).
-    public var initializeChatProvider: @Sendable (
-        _ providerId: String,
-        _ userName: String
-    ) async throws -> Void
+    public var initializeChatProvider:
+        @Sendable (
+            _ providerId: String,
+            _ userName: String
+        ) async throws -> Void
 
     // MARK: - Music
 
     /// Discover music tracks by category.
-    public var musicDiscover: @Sendable (
-        _ category: String, _ continuation: String?
-    ) async throws -> WasmClient.MusicTrackList
+    public var musicDiscover:
+        @Sendable (
+            _ category: String, _ continuation: String?
+        ) async throws -> WasmClient.MusicTrackList
 
     /// Get detailed info for a music track.
-    public var musicDetails: @Sendable (
-        _ trackID: String
-    ) async throws -> WasmClient.MusicTrackDetail
+    public var musicDetails:
+        @Sendable (
+            _ trackID: String
+        ) async throws -> WasmClient.MusicTrackDetail
 
     /// List tracks (e.g. playlist, album).
-    public var musicTracks: @Sendable (
-        _ listID: String, _ continuation: String?
-    ) async throws -> WasmClient.MusicTrackList
+    public var musicTracks:
+        @Sendable (
+            _ listID: String, _ continuation: String?
+        ) async throws -> WasmClient.MusicTrackList
 
     /// Search music by query.
-    public var musicSearch: @Sendable (
-        _ query: String, _ continuation: String?
-    ) async throws -> WasmClient.MusicTrackList
+    public var musicSearch:
+        @Sendable (
+            _ query: String, _ continuation: String?
+        ) async throws -> WasmClient.MusicTrackList
 
     /// Get lyrics for a track.
-    public var musicLyrics: @Sendable (
-        _ trackID: String
-    ) async throws -> [WasmClient.MusicLyricSegment]
+    public var musicLyrics:
+        @Sendable (
+            _ trackID: String
+        ) async throws -> [WasmClient.MusicLyricSegment]
 
     /// Get related tracks.
-    public var musicRelated: @Sendable (
-        _ trackID: String, _ continuation: String?
-    ) async throws -> WasmClient.MusicTrackList
+    public var musicRelated:
+        @Sendable (
+            _ trackID: String, _ continuation: String?
+        ) async throws -> WasmClient.MusicTrackList
 
     /// Get music search suggestions.
-    public var musicSuggestions: @Sendable (
-        _ query: String
-    ) async throws -> [String]
+    public var musicSuggestions:
+        @Sendable (
+            _ query: String
+        ) async throws -> [String]
 
     // MARK: - Suggest
 
     /// Get AI-generated prompt suggestions.
     /// Optionally pass an image URL for context-aware suggestions.
-    public var suggest: @Sendable (
-        _ systemPrompt: String, _ imageURL: String?
-    ) async throws -> [String]
+    public var suggest:
+        @Sendable (
+            _ systemPrompt: String, _ imageURL: String?
+        ) async throws -> [String]
 
     // MARK: - Read Out Loud (TTS)
 
@@ -257,9 +275,10 @@ public struct WasmClient: Sendable {
     ///
     /// Returns either a streamable URL or raw audio bytes — the consumer
     /// handles playback.
-    public var readOutLoud: @Sendable (
-        _ text: String, _ voice: String?, _ providerId: String
-    ) async throws -> WasmClient.TTSAudio
+    public var readOutLoud:
+        @Sendable (
+            _ text: String, _ voice: String?, _ providerId: String
+        ) async throws -> WasmClient.TTSAudio
 
     /// List the voice presets exposed by a specific chat model on a specific
     /// provider. Wraps `chatModels` and returns `ChatModelInfo.voices` for
@@ -268,18 +287,23 @@ public struct WasmClient: Sendable {
     /// Pair with `readOutLoud` to build a voice picker — same data source
     /// flow-kit-example uses to drive its `confirmationDialog` (each model's
     /// `metadata.voices` from the `listModels` action).
-    public var ttsVoices: @Sendable (
-        _ providerId: String, _ modelId: String
-    ) async throws -> [String]
+    public var ttsVoices:
+        @Sendable (
+            _ providerId: String, _ modelId: String
+        ) async throws -> [String]
 
     // MARK: - AI Art
 
     /// Generate AI art using the specified action (stamp or normal).
     /// Pass the action ID (e.g. `ActionID.aiartStamp.rawValue`) and flat string args
-    /// (prompt, style, image_url, aspect_ratio, etc.).
-    public var aiartGenerate: @Sendable (
-        _ actionID: String, _ args: [String: String]
-    ) async throws -> WasmClient.AiartResult
+    /// (prompt, style, image_url, aspect_ratio, etc.). Use `AIArt.Style`'s
+    /// `rawValue` for the `style` arg. "Mod Car" is dispatched here too: use
+    /// the `aiartNormal` action with a car-specific prompt, a local
+    /// `image_path`, and `style` = `AIArt.Style.photoreal.rawValue`.
+    public var aiartGenerate:
+        @Sendable (
+            _ actionID: String, _ args: [String: String]
+        ) async throws -> WasmClient.AIArt.Result
 
     /// Available style values for an aiart action, parsed from the action
     /// schema's `style` arg regex validator (e.g. `^(ANIME|CYBERPUNK|...)$`).
@@ -287,25 +311,39 @@ public struct WasmClient: Sendable {
     /// cannot be parsed. Callers should use these values verbatim when building
     /// args for `aiartGenerate` — sending a style that isn't in this list causes
     /// the server to reject the task with `status=unspecified`.
-    public var aiartStyles: @Sendable (
-        _ actionID: String
-    ) async throws -> [String]
+    public var aiartStyles:
+        @Sendable (
+            _ actionID: String
+        ) async throws -> [WasmClient.AIArt.Style]
+
+    /// Per-mode model discovery. Dispatches the `AiartService/ListModels` rpc
+    /// by method name (`AIArt.Method.listModels`); the engine picks the
+    /// provider via the persisted `provider_strategy`. Returns the model rows
+    /// (each carrying `providerID` + `aspectRatios` read from `metadata`) plus
+    /// the suggested `defaultModelID`. Pass `AIArt.Mode.modCar` to drive a
+    /// "Mod Car" model/aspect-ratio picker.
+    public var aiartListModels:
+        @Sendable (
+            _ mode: WasmClient.AIArt.Mode
+        ) async throws -> WasmClient.AIArt.ModelList
 
     /// Submit an AI art video generation task (Character.AI Avatar FX).
     /// Returns immediately with `.processing` status and the `videoID` used
     /// for polling via `aiartVideoStatus`. Pass flat string args
     /// (`image_path`, `audio_path`, `art_style`, `cache_dir`, …).
-    public var aiartVideoCreate: @Sendable (
-        _ args: [String: String]
-    ) async throws -> WasmClient.AiartVideoResult
+    public var aiartVideoCreate:
+        @Sendable (
+            _ args: [String: String]
+        ) async throws -> WasmClient.AIArt.VideoResult
 
     /// Poll a video generation task by `videoID`. Returns the latest snapshot
     /// (`.processing` with progress, `.completed` with `videoURL`, or
     /// `.failed`). Caller drives the polling cadence — typically every 5s
     /// until terminal state.
-    public var aiartVideoStatus: @Sendable (
-        _ videoID: String
-    ) async throws -> WasmClient.AiartVideoResult
+    public var aiartVideoStatus:
+        @Sendable (
+            _ videoID: String
+        ) async throws -> WasmClient.AIArt.VideoResult
 
     /// Drive the polling loop end-to-end: calls `aiartVideoStatus` every
     /// `interval` seconds, invoking `onUpdate` with the current snapshot
@@ -314,11 +352,12 @@ public struct WasmClient: Sendable {
     /// propagates `CancellationError` so the caller's task can interrupt
     /// in-flight polls (e.g. when the user backs out of the screen).
     /// Caller is responsible for upstream `Task` lifetime / timeouts.
-    public var aiartVideoPoll: @Sendable (
-        _ videoID: String,
-        _ interval: TimeInterval,
-        _ onUpdate: (@Sendable (WasmClient.AiartVideoResult) -> Void)?
-    ) async throws -> WasmClient.AiartVideoResult
+    public var aiartVideoPoll:
+        @Sendable (
+            _ videoID: String,
+            _ interval: TimeInterval,
+            _ onUpdate: (@Sendable (WasmClient.AIArt.VideoResult) -> Void)?
+        ) async throws -> WasmClient.AIArt.VideoResult
 
     // MARK: - Pending Tasks
 
@@ -337,7 +376,9 @@ public struct WasmClient: Sendable {
     /// `pendingTasksChanged` Combine subject so SwiftUI/TCA features can
     /// observe with a single async-for loop. Cancel by terminating the
     /// stream's iterator (e.g. when the parent Effect is cancelled).
-    public var observePendingTasks: @Sendable () async -> AsyncStream<[WasmClient.PendingTask]> = { AsyncStream { _ in } }
+    public var observePendingTasks: @Sendable () async -> AsyncStream<[WasmClient.PendingTask]> = {
+        AsyncStream { _ in }
+    }
 
     /// Observe newly-created task descriptors as an async stream. Emits one
     /// `PendingTask` per task ID that appears AFTER the subscriber attaches —
@@ -348,7 +389,9 @@ public struct WasmClient: Sendable {
     /// engine's own auto-resume) are surfaced uniformly. Each subscriber
     /// gets its own seen set; multiple subscribers each see the same new
     /// task exactly once. Cancel by terminating the iterator.
-    public var observeTaskCreated: @Sendable () async -> AsyncStream<WasmClient.PendingTask> = { AsyncStream { $0.finish() } }
+    public var observeTaskCreated: @Sendable () async -> AsyncStream<WasmClient.PendingTask> = {
+        AsyncStream { $0.finish() }
+    }
 
     /// Remove a single persisted task descriptor by ID. Used for swipe-to-
     /// remove on completed/errored rows; safe to call even when the engine
@@ -357,7 +400,7 @@ public struct WasmClient: Sendable {
 
     /// Remove every persisted task descriptor in the default cache. Used by
     /// "Clear all" actions on the pending-tasks UI.
-    public var clearPendingTasks: @Sendable () async -> Void = { }
+    public var clearPendingTasks: @Sendable () async -> Void = {}
 
     // MARK: - Visual / Media
 
@@ -368,9 +411,10 @@ public struct WasmClient: Sendable {
     /// pass an `ActionInfo.provider` value (from `availableActions()` or
     /// `searchPhotoProviders()`) to pin a specific one. For an empty-query
     /// editorial feed, use `listMedia(query: "")` instead.
-    public var searchPhotos: @Sendable (
-        _ query: String, _ provider: String, _ page: Int, _ perPage: Int
-    ) async throws -> WasmClient.PhotoSearchResult
+    public var searchPhotos:
+        @Sendable (
+            _ query: String, _ provider: String, _ page: Int, _ perPage: Int
+        ) async throws -> WasmClient.PhotoSearchResult
 
     /// Visual search: find similar photos given an image URL. Positional
     /// closure surface; prefer the labelled
@@ -378,9 +422,10 @@ public struct WasmClient: Sendable {
     /// Pass empty string for `provider` to use the first available provider;
     /// pass an `ActionInfo.provider` value (from `availableActions()` or
     /// `photoVisualSearchProviders()`) to pin a specific one.
-    public var photoVisualSearch: @Sendable (
-        _ imageURL: String, _ provider: String, _ page: Int, _ perPage: Int
-    ) async throws -> WasmClient.PhotoSearchResult
+    public var photoVisualSearch:
+        @Sendable (
+            _ imageURL: String, _ provider: String, _ page: Int, _ perPage: Int
+        ) async throws -> WasmClient.PhotoSearchResult
 
     /// List media (editorial/trending). Positional closure surface; prefer
     /// the labelled `listMedia(query:provider:page:perPage:)` overload.
@@ -388,9 +433,10 @@ public struct WasmClient: Sendable {
     /// Pass empty string for `provider` to use the first available provider;
     /// pass an `ActionInfo.provider` value (from `availableActions()` or
     /// `listMediaProviders()`) to pin a specific one.
-    public var listMedia: @Sendable (
-        _ query: String, _ provider: String, _ page: Int, _ perPage: Int
-    ) async throws -> WasmClient.PhotoSearchResult
+    public var listMedia:
+        @Sendable (
+            _ query: String, _ provider: String, _ page: Int, _ perPage: Int
+        ) async throws -> WasmClient.PhotoSearchResult
 
     // MARK: - Home Decor
 
@@ -398,55 +444,63 @@ public struct WasmClient: Sendable {
     /// (e.g. `ActionID.interiorDesign.rawValue`) and flat string args
     /// (file, room_style, room_type, etc.).
     /// May return `.processing` status — poll via `homeDesignStatus`.
-    public var homeDesign: @Sendable (
-        _ actionID: String, _ args: [String: String]
-    ) async throws -> WasmClient.HomeDecor.Result
+    public var homeDesign:
+        @Sendable (
+            _ actionID: String, _ args: [String: String]
+        ) async throws -> WasmClient.HomeDecor.Result
 
     /// Poll a home decor task by ID. Pass the same actionID used for `homeDesign`.
-    public var homeDesignStatus: @Sendable (
-        _ taskID: String, _ actionID: String
-    ) async throws -> WasmClient.HomeDecor.Result
+    public var homeDesignStatus:
+        @Sendable (
+            _ taskID: String, _ actionID: String
+        ) async throws -> WasmClient.HomeDecor.Result
 
     /// Submit a typed home-decor request. Resolves the `ActionID` from
     /// `request.processType`, builds wire args via `HomeDecor.Request.toWireArgs()`,
     /// polls until terminal, and returns the enriched `HomeDecor.Result`.
     /// `onProgress` is invoked between polls when the engine reports a progress
     /// fraction in `task.metadata.fields["progress"]`.
-    public var homeDesignRequest: @Sendable (
-        _ request: WasmClient.HomeDecor.Request,
-        _ onProgress: (@Sendable (Double) async -> Void)?
-    ) async throws -> WasmClient.HomeDecor.Result
+    public var homeDesignRequest:
+        @Sendable (
+            _ request: WasmClient.HomeDecor.Request,
+            _ onProgress: (@Sendable (Double) async -> Void)?
+        ) async throws -> WasmClient.HomeDecor.Result
 
     /// Available room styles for a process type, parsed from the active
     /// provider's `action.args["room_style"].validator.regex`. Returns `[]`
     /// when the provider does not expose this arg. Mirrors `aiartStyles`.
-    public var homeDecorStyles: @Sendable (
-        _ processType: WasmClient.HomeDecor.ProcessType
-    ) async throws -> [WasmClient.HomeDecor.RoomStyle]
+    public var homeDecorStyles:
+        @Sendable (
+            _ processType: WasmClient.HomeDecor.ProcessType
+        ) async throws -> [WasmClient.HomeDecor.RoomStyle]
 
     /// Available room types for a process type, parsed from the active
     /// provider's `action.args["room_type"].validator.regex`.
-    public var homeDecorRoomTypes: @Sendable (
-        _ processType: WasmClient.HomeDecor.ProcessType
-    ) async throws -> [WasmClient.HomeDecor.RoomType]
+    public var homeDecorRoomTypes:
+        @Sendable (
+            _ processType: WasmClient.HomeDecor.ProcessType
+        ) async throws -> [WasmClient.HomeDecor.RoomType]
 
     /// Available color palettes for a process type (paint), parsed from the
     /// active provider's `action.args["color"].validator.regex`.
-    public var homeDecorColorPalettes: @Sendable (
-        _ processType: WasmClient.HomeDecor.ProcessType
-    ) async throws -> [WasmClient.HomeDecor.ColorPalette]
+    public var homeDecorColorPalettes:
+        @Sendable (
+            _ processType: WasmClient.HomeDecor.ProcessType
+        ) async throws -> [WasmClient.HomeDecor.ColorPalette]
 
     /// Available surface types for a process type (paint), parsed from the
     /// active provider's `action.args["surface_type"].validator.regex`.
-    public var homeDecorSurfaceTypes: @Sendable (
-        _ processType: WasmClient.HomeDecor.ProcessType
-    ) async throws -> [WasmClient.HomeDecor.SurfaceType]
+    public var homeDecorSurfaceTypes:
+        @Sendable (
+            _ processType: WasmClient.HomeDecor.ProcessType
+        ) async throws -> [WasmClient.HomeDecor.SurfaceType]
 
     /// Available style selections for a process type, parsed from the active
     /// provider's `action.args["style_selection"].validator.regex`.
-    public var homeDecorStyleSelections: @Sendable (
-        _ processType: WasmClient.HomeDecor.ProcessType
-    ) async throws -> [WasmClient.HomeDecor.StyleSelection]
+    public var homeDecorStyleSelections:
+        @Sendable (
+            _ processType: WasmClient.HomeDecor.ProcessType
+        ) async throws -> [WasmClient.HomeDecor.StyleSelection]
 
     // MARK: - Inpaint
     //
@@ -455,49 +509,57 @@ public struct WasmClient: Sendable {
     // `Sources/InpaintSession.swift` post-1.2.47-26.1.1-ffi shape.
 
     /// Auto-detect objects in an image for removal suggestions.
-    public var autoSuggestion: @Sendable (
-        _ image: String
-    ) async throws -> WasmClient.ObjectSegments
+    public var autoSuggestion:
+        @Sendable (
+            _ image: String
+        ) async throws -> WasmClient.ObjectSegments
 
     /// Enhance (upscale) an image.
-    public var enhance: @Sendable (
-        _ image: String, _ zoomFactor: Int
-    ) async throws -> WasmClient.ObjectSegments
+    public var enhance:
+        @Sendable (
+            _ image: String, _ zoomFactor: Int
+        ) async throws -> WasmClient.ObjectSegments
 
     /// Remove background from an image.
-    public var removeBackground: @Sendable (
-        _ image: String
-    ) async throws -> WasmClient.Segment
+    public var removeBackground:
+        @Sendable (
+            _ image: String
+        ) async throws -> WasmClient.Segment
 
     /// Erase selected objects from an image.
-    public var erase: @Sendable (
-        _ image: String?,
-        _ sessionId: String?,
-        _ maskBrush: String?,
-        _ maskObjects: String?
-    ) async throws -> WasmClient.EraseResult
+    public var erase:
+        @Sendable (
+            _ image: String?,
+            _ sessionId: String?,
+            _ maskBrush: String?,
+            _ maskObjects: String?
+        ) async throws -> WasmClient.EraseResult
 
     /// Skin beauty filter.
-    public var skinBeauty: @Sendable (
-        _ image: String
-    ) async throws -> WasmClient.ObjectSegments
+    public var skinBeauty:
+        @Sendable (
+            _ image: String
+        ) async throws -> WasmClient.ObjectSegments
 
     /// Sky segmentation.
-    public var sky: @Sendable (
-        _ image: String
-    ) async throws -> WasmClient.Segment
+    public var sky:
+        @Sendable (
+            _ image: String
+        ) async throws -> WasmClient.Segment
 
     /// Categorize clothes from an image for virtual try-on.
-    public var categorizeClothes: @Sendable (
-        _ image: String
-    ) async throws -> WasmClient.Segment
+    public var categorizeClothes:
+        @Sendable (
+            _ image: String
+        ) async throws -> WasmClient.Segment
 
     /// Virtual try-on. Runs the full flow on the engine side (model/cloth
     /// checks → create → poll-to-done) and returns the finished image URL.
-    public var tryOn: @Sendable (
-        _ modelImage: String,
-        _ clothImage: String
-    ) async throws -> String
+    public var tryOn:
+        @Sendable (
+            _ modelImage: String,
+            _ clothImage: String
+        ) async throws -> String
 
     // MARK: - Livescore Webpage
 
@@ -508,23 +570,25 @@ public struct WasmClient: Sendable {
     /// `q` runs a server-side full-text filter on name + region; `limit`/`offset`
     /// drive offset-based pagination — stop when a response returns fewer than
     /// `limit` rows. Backend clamps `limit` to `[1, 100]` (default 30 when nil).
-    public var webpageCompetitions: @Sendable (
-        _ q: String?,
-        _ limit: Int64?,
-        _ offset: Int64?
-    ) async throws -> [WasmClient.LiveScore.Entry]
+    public var webpageCompetitions:
+        @Sendable (
+            _ q: String?,
+            _ limit: Int64?,
+            _ offset: Int64?
+        ) async throws -> [WasmClient.LiveScore.Entry]
 
     /// Fetch the teams directory as web pages (lsWebpage type=3).
     /// `q` runs a server-side full-text filter; `limit`/`offset` drive
     /// offset-based pagination — stop when a response returns fewer than
     /// `limit` rows. `competitionId` narrows to teams that played in the
     /// given competition (slug-form id, e.g. "competition/england-premier-league").
-    public var webpageTeams: @Sendable (
-        _ q: String?,
-        _ limit: Int64?,
-        _ offset: Int64?,
-        _ competitionId: String?
-    ) async throws -> [WasmClient.LiveScore.Entry]
+    public var webpageTeams:
+        @Sendable (
+            _ q: String?,
+            _ limit: Int64?,
+            _ offset: Int64?,
+            _ competitionId: String?
+        ) async throws -> [WasmClient.LiveScore.Entry]
 
     /// Fetch a specific URL via lsWebpage (type=4).
     public var webpage: @Sendable (_ url: String) async throws -> [WasmClient.LiveScore.Entry]
@@ -535,16 +599,18 @@ public struct WasmClient: Sendable {
     /// Fetch one competition by numeric Scorebat id. Routes through
     /// `lsWebpage type=2` with an `id` filter and returns the single
     /// matching row (or nil when the backend doesn't know the id).
-    public var webpageCompetition: @Sendable (
-        _ id: String
-    ) async throws -> WasmClient.LiveScore.Entry?
+    public var webpageCompetition:
+        @Sendable (
+            _ id: String
+        ) async throws -> WasmClient.LiveScore.Entry?
 
     /// Fetch one team by numeric Scorebat id. Routes through
     /// `lsWebpage type=3` with an `id` filter and returns the single
     /// matching row (or nil when the backend doesn't know the id).
-    public var webpageTeam: @Sendable (
-        _ id: String
-    ) async throws -> WasmClient.LiveScore.Entry?
+    public var webpageTeam:
+        @Sendable (
+            _ id: String
+        ) async throws -> WasmClient.LiveScore.Entry?
 
     /// Fetch Scorebat highlight videos (lsWebpage type=6). All filters are
     /// optional. `videoType` is the bucket tag (`"featured"` or `"livestream"`,
@@ -556,14 +622,15 @@ public struct WasmClient: Sendable {
     /// clips in `Entry.videos` (one `Video` per clip; empty when the row has
     /// none) and its parent `Entry.competition` (use `competition.slug` to fetch
     /// related videos via `competitionID`).
-    public var webpageVideos: @Sendable (
-        _ videoType: String?,
-        _ competitionID: String?,
-        _ teamID: String?,
-        _ q: String?,
-        _ page: Int64?,
-        _ pageSize: Int64?
-    ) async throws -> [WasmClient.LiveScore.Entry]
+    public var webpageVideos:
+        @Sendable (
+            _ videoType: String?,
+            _ competitionID: String?,
+            _ teamID: String?,
+            _ q: String?,
+            _ page: Int64?,
+            _ pageSize: Int64?
+        ) async throws -> [WasmClient.LiveScore.Entry]
 
     /// Fetch soccer news articles (lsWebpage type=7). Offset-based
     /// pagination — caller computes "has more" by comparing the returned
@@ -572,10 +639,11 @@ public struct WasmClient: Sendable {
     /// (≤200 chars). `competitionID` / `teamID` scope the feed to a single
     /// entity — the backend treats them as mutually exclusive when both
     /// are passed.
-    public var webpageNews: @Sendable (
-        _ limit: Int64?, _ offset: Int64?, _ q: String?,
-        _ competitionID: String?, _ teamID: String?
-    ) async throws -> [WasmClient.LiveScore.Entry]
+    public var webpageNews:
+        @Sendable (
+            _ limit: Int64?, _ offset: Int64?, _ q: String?,
+            _ competitionID: String?, _ teamID: String?
+        ) async throws -> [WasmClient.LiveScore.Entry]
 
     /// Fetch the global upcoming-matches feed (no date arg).
     /// Backed by `lsUpcoming` action returning `LivescoreMatchSummaryList`.
@@ -585,32 +653,36 @@ public struct WasmClient: Sendable {
     /// the backend resolves it from the JWT `tz` claim (set in flowOptions
     /// from the device's current `TimeZone`). Rows are enriched with
     /// `competition{Image,Name,Region}` server-side.
-    public var scoresByDate: @Sendable (
-        _ date: String?
-    ) async throws -> [WasmClient.LiveScore.MatchSummary]
+    public var scoresByDate:
+        @Sendable (
+            _ date: String?
+        ) async throws -> [WasmClient.LiveScore.MatchSummary]
 
     /// Enriched match detail (events, lineups, statistics, predictions,
     /// referee, venue, h2h, highlight videos). Independent of the `lsWebpage`
     /// catalog flow — fetch this when opening the match detail screen for
     /// a single fixture by id.
-    public var matchDetail: @Sendable (
-        _ id: String
-    ) async throws -> WasmClient.LiveScore.Match
+    public var matchDetail:
+        @Sendable (
+            _ id: String
+        ) async throws -> WasmClient.LiveScore.Match
 
     /// Enriched competition detail (standings, stats, fixtures, top
     /// scorers/assists). `id` is the competition slug (e.g.
     /// `"competition/england-premier-league"`). Independent of the
     /// `lsWebpage` catalog flow.
-    public var competitionDetail: @Sendable (
-        _ id: String
-    ) async throws -> WasmClient.LiveScore.Competition
+    public var competitionDetail:
+        @Sendable (
+            _ id: String
+        ) async throws -> WasmClient.LiveScore.Competition
 
     /// Enriched team detail (aka, fixtures, results, tables). `id` is the
     /// team slug (e.g. `"team/real-madrid"`). Independent of the `lsWebpage`
     /// catalog flow.
-    public var teamDetail: @Sendable (
-        _ id: String
-    ) async throws -> WasmClient.LiveScore.Team
+    public var teamDetail:
+        @Sendable (
+            _ id: String
+        ) async throws -> WasmClient.LiveScore.Team
 
     /// Subscribe to the live `/soccer/events` Server-Sent Events stream. Yields
     /// `.connected` once the upstream connection is open, then `.update(_)` per
@@ -621,7 +693,9 @@ public struct WasmClient: Sendable {
     /// (or cancelling the iterating task) tears down the underlying wasm task.
     /// Open/error paths finish the stream silently rather than throw, matching
     /// the noop default.
-    public var liveMatchEvents: @Sendable () async -> AsyncStream<WasmClient.LiveScore.LiveEvent> = { AsyncStream { $0.finish() } }
+    public var liveMatchEvents: @Sendable () async -> AsyncStream<WasmClient.LiveScore.LiveEvent> = {
+        AsyncStream { $0.finish() }
+    }
 
     // MARK: - Survey
 
@@ -630,9 +704,10 @@ public struct WasmClient: Sendable {
     /// answers and stamps `completed_at` with the current ISO-8601 timestamp.
     /// Multi-select answers should be passed comma-joined in the answers map.
     /// Returns when the engine acknowledges the submission.
-    public var submitSurvey: @Sendable (
-        _ questions: [WasmClient.SurveyQuestion], _ answers: [String: String]
-    ) async throws -> Void
+    public var submitSurvey:
+        @Sendable (
+            _ questions: [WasmClient.SurveyQuestion], _ answers: [String: String]
+        ) async throws -> Void
 
     // MARK: - Notifications
 
@@ -642,9 +717,10 @@ public struct WasmClient: Sendable {
     /// backend correlate device → user across reinstalls. `liveActivityToken`
     /// is the device-wide push-to-start token (iOS 17.2+); pass `""` when not
     /// applicable.
-    public var setNotification: @Sendable (
-        _ enabled: Bool, _ firebaseToken: String, _ firebaseUID: String?, _ liveActivityToken: String
-    ) async throws -> Void
+    public var setNotification:
+        @Sendable (
+            _ enabled: Bool, _ firebaseToken: String, _ firebaseUID: String?, _ liveActivityToken: String
+        ) async throws -> Void
 
     /// Fetch current server-side notification settings (enabled + subscribed topics).
     public var getNotificationSettings: @Sendable () async throws -> WasmClient.NotificationSettings
@@ -655,15 +731,17 @@ public struct WasmClient: Sendable {
     /// entity, id) and fans out push notifications without knowing about
     /// the originating feature. Consumer code that wants a typed entity
     /// enum can wrap this with its own `RawRepresentable where RawValue == String`.
-    public var notificationSubscribe: @Sendable (
-        _ entity: String, _ id: String, _ enabled: Bool
-    ) async throws -> Void
+    public var notificationSubscribe:
+        @Sendable (
+            _ entity: String, _ id: String, _ enabled: Bool
+        ) async throws -> Void
 
     /// Forward an Apple Live Activity APNs push token to the backend.
     /// `entity` / `entityId` identify what the activity is tracking
     /// (e.g. `("match", "12345")`); `laToken` is lowercase hex, or `""`
     /// to retire the row after the activity ends or is dismissed.
-    public var reportLiveActivityToken: @Sendable (
-        _ entity: String, _ entityId: String, _ laToken: String
-    ) async throws -> Void
+    public var reportLiveActivityToken:
+        @Sendable (
+            _ entity: String, _ entityId: String, _ laToken: String
+        ) async throws -> Void
 }

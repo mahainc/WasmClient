@@ -34,17 +34,17 @@ extension WasmClient {
     /// and override only the operations exercised by the test under
     /// `withDependencies { $0.wasm = .noop; $0.wasm.scan = { ... } }`.
     public static let noop = Self(
-        start: { },
+        start: {},
         observeEngineState: { AsyncStream { $0.finish() } },
-        reset: { },
-        restart: { },
+        reset: {},
+        restart: {},
         engineVersion: { nil },
-        resetDownloads: { },
+        resetDownloads: {},
         setExpectedVersionProvider: { _ in },
         setUserName: { _ in },
-        warmUp: { },
+        warmUp: {},
         availableActions: { [] },
-        refreshActions: { },
+        refreshActions: {},
         funnelEngine: { nil },
         scan: { _, _, _ in ScanResult() },
         describe: { _, _, _, _ in ScanResult() },
@@ -69,16 +69,17 @@ extension WasmClient {
         suggest: { _, _ in [] },
         readOutLoud: { _, _, _ in .data(Data(), mime: "") },
         ttsVoices: { _, _ in [] },
-        aiartGenerate: { _, _ in AiartResult() },
+        aiartGenerate: { _, _ in AIArt.Result() },
         aiartStyles: { _ in [] },
-        aiartVideoCreate: { _ in AiartVideoResult(status: .processing) },
-        aiartVideoStatus: { _ in AiartVideoResult() },
-        aiartVideoPoll: { _, _, _ in AiartVideoResult() },
+        aiartListModels: { _ in AIArt.ModelList() },
+        aiartVideoCreate: { _ in AIArt.VideoResult(status: .processing) },
+        aiartVideoStatus: { _ in AIArt.VideoResult() },
+        aiartVideoPoll: { _, _, _ in AIArt.VideoResult() },
         listPendingTasks: { [] },
         observePendingTasks: { AsyncStream { $0.finish() } },
         observeTaskCreated: { AsyncStream { $0.finish() } },
         removePendingTask: { _ in },
-        clearPendingTasks: { },
+        clearPendingTasks: {},
         searchPhotos: { _, _, _, _ in PhotoSearchResult() },
         photoVisualSearch: { _, _, _, _ in PhotoSearchResult() },
         listMedia: { _, _, _, _ in PhotoSearchResult() },
@@ -113,11 +114,14 @@ extension WasmClient {
             WasmClient.LiveScore.Match(
                 summary: WasmClient.LiveScore.MatchSummary(
                     id: id,
-                    homeTeam: "", awayTeam: "",
-                    homeLogoURL: "", awayLogoURL: "",
+                    homeTeam: "",
+                    awayTeam: "",
+                    homeLogoURL: "",
+                    awayLogoURL: "",
                     kickoff: Date(),
                     competitionID: "",
-                    homeScore: 0, awayScore: 0,
+                    homeScore: 0,
+                    awayScore: 0,
                     embedURL: ""
                 )
             )
@@ -149,12 +153,12 @@ extension WasmClient {
                 }
             }
         },
-        reset: { },
+        reset: {},
         restart: {
             try? await Task.sleep(nanoseconds: MockConstants.warmUpDelay)
         },
         engineVersion: { "mock-1.2.3" },
-        resetDownloads: { },
+        resetDownloads: {},
         setExpectedVersionProvider: { _ in },
         setUserName: { _ in },
         warmUp: {
@@ -167,7 +171,7 @@ extension WasmClient {
                 ActionInfo(actionID: ActionID.lsWebpage.rawValue, provider: "football", name: "Livescore Webpage"),
             ]
         },
-        refreshActions: { },
+        refreshActions: {},
         funnelEngine: { nil },
         scan: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
@@ -198,13 +202,13 @@ extension WasmClient {
         visualSearch: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return [
-                ShoppingProduct(title: "Similar Item", price: "$19.99", url: "https://example.com/product"),
+                ShoppingProduct(title: "Similar Item", price: "$19.99", url: "https://example.com/product")
             ]
         },
         shopping: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return [
-                ShoppingProduct(title: "Mock Product", price: "$24.99", url: "https://example.com/shop"),
+                ShoppingProduct(title: "Mock Product", price: "$24.99", url: "https://example.com/shop")
             ]
         },
         uploadImage: { _ in
@@ -218,22 +222,33 @@ extension WasmClient {
         chatModels: { offset, limit, keyword, category in
             let all: [ChatModelInfo] = [
                 ChatModelInfo(
-                    modelId: "gpt-4o-mini", name: "GPT-4o mini",
-                    ownedBy: "openai", vision: true,
+                    modelId: "gpt-4o-mini",
+                    name: "GPT-4o mini",
+                    ownedBy: "openai",
+                    vision: true,
                     description: "Fast, affordable multimodal model.",
-                    providerId: "openai", providerName: "OpenAI"
+                    providerId: "openai",
+                    providerName: "OpenAI"
                 ),
                 ChatModelInfo(
-                    modelId: "gpt-4o", name: "GPT-4o",
-                    ownedBy: "openai", isPro: true, vision: true,
+                    modelId: "gpt-4o",
+                    name: "GPT-4o",
+                    ownedBy: "openai",
+                    isPro: true,
+                    vision: true,
                     description: "Flagship multimodal model.",
-                    providerId: "openai", providerName: "OpenAI"
+                    providerId: "openai",
+                    providerName: "OpenAI"
                 ),
                 ChatModelInfo(
-                    modelId: "claude-sonnet-4-6", name: "Claude Sonnet 4.6",
-                    ownedBy: "anthropic", isPro: true, vision: true,
+                    modelId: "claude-sonnet-4-6",
+                    name: "Claude Sonnet 4.6",
+                    ownedBy: "anthropic",
+                    isPro: true,
+                    vision: true,
                     description: "Anthropic's balanced model.",
-                    providerId: "anthropic", providerName: "Anthropic"
+                    providerId: "anthropic",
+                    providerName: "Anthropic"
                 ),
             ]
             var filtered = all
@@ -280,15 +295,21 @@ extension WasmClient {
         musicDiscover: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return MusicTrackList(items: [
-                MusicTrackItem(id: "track-1", title: "Mock Song", kind: "song", authorName: "Mock Artist"),
+                MusicTrackItem(id: "track-1", title: "Mock Song", kind: "song", authorName: "Mock Artist")
             ])
         },
         musicDetails: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return MusicTrackDetail(
-                id: "track-1", title: "Mock Song", description: "A great mock song",
-                authorName: "Mock Artist", duration: 240, views: 1_000_000,
-                formats: [MusicFormat(id: "f1", url: "https://example.com/audio.mp3", quality: "high", mimeType: "audio/mpeg")]
+                id: "track-1",
+                title: "Mock Song",
+                description: "A great mock song",
+                authorName: "Mock Artist",
+                duration: 240,
+                views: 1_000_000,
+                formats: [
+                    MusicFormat(id: "f1", url: "https://example.com/audio.mp3", quality: "high", mimeType: "audio/mpeg")
+                ]
             )
         },
         musicTracks: { _, _ in
@@ -301,7 +322,7 @@ extension WasmClient {
         musicSearch: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return MusicTrackList(items: [
-                MusicTrackItem(id: "track-1", title: "Search Result", kind: "song", authorName: "Mock Artist"),
+                MusicTrackItem(id: "track-1", title: "Search Result", kind: "song", authorName: "Mock Artist")
             ])
         },
         musicLyrics: { _ in
@@ -314,7 +335,7 @@ extension WasmClient {
         musicRelated: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return MusicTrackList(items: [
-                MusicTrackItem(id: "track-3", title: "Related Track", kind: "song", authorName: "Related Artist"),
+                MusicTrackItem(id: "track-3", title: "Related Track", kind: "song", authorName: "Related Artist")
             ])
         },
         musicSuggestions: { _ in
@@ -335,10 +356,10 @@ extension WasmClient {
         },
         aiartGenerate: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
-            return AiartResult(
-                images: [AiartImage(url: "https://example.com/aiart.png")],
+            return AIArt.Result(
+                images: [AIArt.Image(url: "https://example.com/aiart.png")],
                 prompt: "A beautiful sunset",
-                style: "watercolor",
+                style: .watercolor,
                 aspectRatio: "1:1",
                 width: 1024,
                 height: 1024
@@ -346,13 +367,33 @@ extension WasmClient {
         },
         aiartStyles: { _ in
             [
-                "ANIME", "CYBERPUNK", "WATERCOLOR", "PIXEL_ART", "THREE_D_CARTOON",
-                "FANTASY", "OIL_PAINTING", "LINE_ART", "MINIMAL", "PHOTOREAL",
+                .anime, .cyberpunk, .watercolor, .pixelArt, .threeDCartoon,
+                .fantasy, .oilPainting, .lineArt, .minimal, .photoreal,
             ]
+        },
+        aiartListModels: { _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return AIArt.ModelList(
+                models: [
+                    AIArt.Model(
+                        id: "mock-model-flux",
+                        name: "Flux (mock)",
+                        providerID: "mock-provider",
+                        aspectRatios: ["1:1", "16:9", "9:16"]
+                    ),
+                    AIArt.Model(
+                        id: "mock-model-sd",
+                        name: "Stable Diffusion (mock)",
+                        providerID: "mock-provider",
+                        aspectRatios: ["1:1", "4:3"]
+                    ),
+                ],
+                defaultModelID: "mock-model-flux"
+            )
         },
         aiartVideoCreate: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return AiartVideoResult(
+            return AIArt.VideoResult(
                 status: .processing,
                 videoID: "mock-video-\(UUID().uuidString)",
                 progress: 0.05
@@ -360,7 +401,7 @@ extension WasmClient {
         },
         aiartVideoStatus: { videoID in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
-            return AiartVideoResult(
+            return AIArt.VideoResult(
                 status: .completed,
                 videoID: videoID,
                 videoURL: "https://example.com/avatar-fx.mp4",
@@ -377,7 +418,7 @@ extension WasmClient {
             for value in [0.25, 0.55, 0.85] {
                 try await Task.sleep(nanoseconds: MockConstants.shortDelay)
                 onUpdate?(
-                    AiartVideoResult(
+                    AIArt.VideoResult(
                         status: .processing,
                         videoID: videoID,
                         progress: value
@@ -385,7 +426,7 @@ extension WasmClient {
                 )
             }
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
-            let final = AiartVideoResult(
+            let final = AIArt.VideoResult(
                 status: .completed,
                 videoID: videoID,
                 videoURL: "https://example.com/avatar-fx.mp4",
@@ -407,7 +448,7 @@ extension WasmClient {
         },
         observeTaskCreated: { AsyncStream { $0.finish() } },
         removePendingTask: { _ in },
-        clearPendingTasks: { },
+        clearPendingTasks: {},
         searchPhotos: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return PhotoSearchResult(
@@ -415,11 +456,17 @@ extension WasmClient {
                 totalPages: 5,
                 results: [
                     Photo(
-                        id: "photo-1", description: "A landscape photo",
-                        width: 1920, height: 1080,
-                        urls: PhotoUrls(small: "https://example.com/photo-sm.jpg", thumb: "https://example.com/photo-th.jpg"),
-                        userName: "John Doe", likes: 42
-                    ),
+                        id: "photo-1",
+                        description: "A landscape photo",
+                        width: 1920,
+                        height: 1080,
+                        urls: PhotoUrls(
+                            small: "https://example.com/photo-sm.jpg",
+                            thumb: "https://example.com/photo-th.jpg"
+                        ),
+                        userName: "John Doe",
+                        likes: 42
+                    )
                 ]
             )
         },
@@ -526,22 +573,27 @@ extension WasmClient {
         webpageVideos: { _, _, _, _, _, _ in
             [
                 LiveScore.Entry(
-                    id: "video/example", title: "Example Highlight",
-                    subtitle: "Premier League", datetime: 1_718_400_000,
+                    id: "video/example",
+                    title: "Example Highlight",
+                    subtitle: "Premier League",
+                    datetime: 1_718_400_000,
                     videos: [
                         LiveScore.Video(
-                            id: "clip-1", title: "Goal — 23'",
+                            id: "clip-1",
+                            title: "Goal — 23'",
                             sourceURL: "https://www.youtube.com/watch?v=clip1",
                             image: "https://example.com/clip1.jpg"
                         ),
                         LiveScore.Video(
-                            id: "clip-2", title: "Goal — 67'",
+                            id: "clip-2",
+                            title: "Goal — 67'",
                             sourceURL: "https://www.youtube.com/watch?v=clip2",
                             image: "https://example.com/clip2.jpg"
-                        )
+                        ),
                     ],
                     competition: LiveScore.Competition(
-                        id: "39", name: "Premier League",
+                        id: "39",
+                        name: "Premier League",
                         image: "https://example.com/epl.png",
                         slug: "competition/england-premier-league"
                     )
@@ -562,12 +614,16 @@ extension WasmClient {
             [
                 LiveScore.MatchSummary(
                     id: "1",
-                    homeTeam: "PSG", awayTeam: "Bayern Munich",
-                    homeLogoURL: "", awayLogoURL: "",
+                    homeTeam: "PSG",
+                    awayTeam: "Bayern Munich",
+                    homeLogoURL: "",
+                    awayLogoURL: "",
                     kickoff: Date().addingTimeInterval(3600),
                     competitionID: "0",
-                    homeScore: 0, awayScore: 0,
-                    status: .notStarted, embedURL: ""
+                    homeScore: 0,
+                    awayScore: 0,
+                    status: .notStarted,
+                    embedURL: ""
                 )
             ]
         },
@@ -575,12 +631,16 @@ extension WasmClient {
             [
                 LiveScore.MatchSummary(
                     id: "2",
-                    homeTeam: "Arsenal", awayTeam: "Chelsea",
-                    homeLogoURL: "", awayLogoURL: "",
+                    homeTeam: "Arsenal",
+                    awayTeam: "Chelsea",
+                    homeLogoURL: "",
+                    awayLogoURL: "",
                     kickoff: Date(),
                     competitionID: "1",
-                    homeScore: 1, awayScore: 1,
-                    status: .secondHalf, embedURL: "",
+                    homeScore: 1,
+                    awayScore: 1,
+                    status: .secondHalf,
+                    embedURL: "",
                     competitionImage: "",
                     competitionName: "ENGLAND: Premier League",
                     competitionRegion: "England"
@@ -592,40 +652,54 @@ extension WasmClient {
             return LiveScore.Match(
                 summary: LiveScore.MatchSummary(
                     id: id,
-                    homeTeam: "Arsenal", awayTeam: "Chelsea",
-                    homeLogoURL: "", awayLogoURL: "",
+                    homeTeam: "Arsenal",
+                    awayTeam: "Chelsea",
+                    homeLogoURL: "",
+                    awayLogoURL: "",
                     kickoff: Date(),
                     competitionID: "1",
-                    homeScore: 2, awayScore: 1,
-                    status: .secondHalf, embedURL: "",
+                    homeScore: 2,
+                    awayScore: 1,
+                    status: .secondHalf,
+                    embedURL: "",
                     competitionImage: "",
                     competitionName: "ENGLAND: Premier League",
                     competitionRegion: "England"
                 ),
                 events: [
                     LiveScore.MatchEvent(
-                        playerName: "Saka", participantID: "home",
-                        minute: 23, eventType: .goal
+                        playerName: "Saka",
+                        participantID: "home",
+                        minute: 23,
+                        eventType: .goal
                     ),
                     LiveScore.MatchEvent(
-                        playerName: "Sterling", participantID: "away",
-                        minute: 41, eventType: .yellowCard
+                        playerName: "Sterling",
+                        participantID: "away",
+                        minute: 41,
+                        eventType: .yellowCard
                     ),
                     LiveScore.MatchEvent(
-                        playerName: "Jesus", participantID: "home",
-                        minute: 67, eventType: .goal,
+                        playerName: "Jesus",
+                        participantID: "home",
+                        minute: 67,
+                        eventType: .goal,
                         relatedPlayerName: "Ødegaard"
-                    )
+                    ),
                 ],
                 statistics: [
                     LiveScore.FixtureStatistic(
-                        typeName: "Possession", location: "home",
-                        statType: .possession, valueString: "58"
+                        typeName: "Possession",
+                        location: "home",
+                        statType: .possession,
+                        valueString: "58"
                     ),
                     LiveScore.FixtureStatistic(
-                        typeName: "Possession", location: "away",
-                        statType: .possession, valueString: "42"
-                    )
+                        typeName: "Possession",
+                        location: "away",
+                        statType: .possession,
+                        valueString: "42"
+                    ),
                 ],
                 refereeName: "Michael Oliver",
                 venue: LiveScore.Venue(id: "9", name: "Emirates Stadium")
@@ -669,12 +743,16 @@ extension WasmClient {
                         LiveScore.MatchUpdate(
                             id: "1001",
                             home: LiveScore.MatchUpdateSide(
-                                teamID: "team/arsenal", teamName: "Arsenal",
-                                oldScore: 0, newScore: 1
+                                teamID: "team/arsenal",
+                                teamName: "Arsenal",
+                                oldScore: 0,
+                                newScore: 1
                             ),
                             away: LiveScore.MatchUpdateSide(
-                                teamID: "team/chelsea", teamName: "Chelsea",
-                                oldScore: 1, newScore: 1
+                                teamID: "team/chelsea",
+                                teamName: "Chelsea",
+                                oldScore: 1,
+                                newScore: 1
                             ),
                             competitionID: "competition/england-premier-league",
                             competitionName: "Premier League",

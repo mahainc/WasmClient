@@ -11,7 +11,7 @@ extension WasmActor {
     func aiartGenerate(
         actionID: String,
         args: [String: String]
-    ) async throws -> WasmClient.AiartResult {
+    ) async throws -> WasmClient.AIArt.Result {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(actionID: actionID, logger: logger)
 
@@ -24,10 +24,46 @@ extension WasmActor {
         return mapAiartResult(result)
     }
 
+    /// Per-mode model discovery for aiart. Dispatches the `ListModels` rpc by
+    /// method name (`AIArt.Method.listModels`) — the engine resolves the
+    /// provider via the persisted `provider_strategy`, mirroring
+    /// `ScanSession.visualSearch`. Each `TypesModelInfo` row is mapped to a
+    /// public `AIArt.Model`, reading `provider_id` + `aspect_ratios` from its
+    /// `metadata` (same shape as flow-kit-example's `loadModels`).
+    func aiartListModels(mode: WasmClient.AIArt.Mode) async throws -> WasmClient.AIArt.ModelList {
+        let instance = try await readyEngine()
+
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !mode.rawValue.isEmpty {
+            args["mode"] = Google_Protobuf_Value(stringValue: mode.rawValue)
+        }
+
+        logger("aiartListModels: dispatch method=\(WasmClient.AIArt.Method.listModels.rawValue) mode=\(mode.rawValue)")
+        let resp: AiartListModelsResponse = try await instance.run(
+            method: WasmClient.AIArt.Method.listModels.rawValue,
+            args: args
+        )
+
+        let models = resp.models.map { info in
+            let providerID = info.metadata.fields["provider_id"]?.stringValue ?? ""
+            let aspectRatios =
+                info.metadata.fields["aspect_ratios"]?
+                .listValue.values.map { $0.stringValue } ?? []
+            return WasmClient.AIArt.Model(
+                id: info.id,
+                name: info.name,
+                providerID: providerID,
+                aspectRatios: aspectRatios
+            )
+        }
+        logger("aiartListModels: decoded \(models.count) model(s), default=\(resp.defaultModelID)")
+        return WasmClient.AIArt.ModelList(models: models, defaultModelID: resp.defaultModelID)
+    }
+
     /// Read the valid style values from an aiart action's `style` arg
     /// regex validator. Returns an empty array if the validator is missing
     /// or the regex pattern cannot be parsed.
-    func aiartStyles(actionID: String) async throws -> [String] {
+    func aiartStyles(actionID: String) async throws -> [WasmClient.AIArt.Style] {
         _ = try await readyEngine()
         let action = try await delegate.resolveAction(actionID: actionID, logger: logger)
 
@@ -55,7 +91,7 @@ extension WasmActor {
 
         let parsed = Self.parseRegexAlternatives(rawPattern) ?? []
         logger("aiartStyles: parsed \(parsed.count) styles → \(parsed)")
-        return parsed
+        return parsed.map { WasmClient.AIArt.Style(rawValue: $0) }
     }
 
     // MARK: - Aiart Video
@@ -72,7 +108,7 @@ extension WasmActor {
     /// Without this kick the engine's auto-resume loop only sweeps tasks
     /// persisted before engine boot, so in-session creates would freeze at
     /// their initial progress.
-    func aiartVideoCreate(args: [String: String]) async throws -> WasmClient.AiartVideoResult {
+    func aiartVideoCreate(args: [String: String]) async throws -> WasmClient.AIArt.VideoResult {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.aiartVideo.rawValue,
@@ -94,7 +130,7 @@ extension WasmActor {
     /// Poll a video generation task by `videoID`. Reconstructs the WaTTask
     /// routing fields from the resolved `aiartVideo` action, calls
     /// `engine.status(task:)`, and maps the response.
-    func aiartVideoStatus(videoID: String) async throws -> WasmClient.AiartVideoResult {
+    func aiartVideoStatus(videoID: String) async throws -> WasmClient.AIArt.VideoResult {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.aiartVideo.rawValue,
@@ -120,27 +156,27 @@ extension WasmActor {
     func aiartVideoPoll(
         videoID: String,
         interval: TimeInterval,
-        onUpdate: (@Sendable (WasmClient.AiartVideoResult) -> Void)?
-    ) async throws -> WasmClient.AiartVideoResult {
+        onUpdate: (@Sendable (WasmClient.AIArt.VideoResult) -> Void)?
+    ) async throws -> WasmClient.AIArt.VideoResult {
         let nanos = UInt64(max(interval, 0.1) * 1_000_000_000)
         while true {
             try Task.checkCancellation()
             let snapshot = try await aiartVideoStatus(videoID: videoID)
             onUpdate?(snapshot)
             switch snapshot.status {
-            case .completed:
-                return snapshot
-            case .failed(let message):
-                throw WasmClient.Error.taskFailed(status: message)
-            case .processing:
-                try await Task.sleep(nanoseconds: nanos)
+                case .completed:
+                    return snapshot
+                case .failed(let message):
+                    throw WasmClient.Error.taskFailed(status: message)
+                case .processing:
+                    try await Task.sleep(nanoseconds: nanos)
             }
         }
     }
 
     // MARK: - Aiart Mapping
 
-    private static func mapAiartVideoTask(_ task: WaTTask) -> WasmClient.AiartVideoResult {
+    private static func mapAiartVideoTask(_ task: WaTTask) -> WasmClient.AIArt.VideoResult {
         var videoID = task.id
         var videoURL = ""
         var styledImageURL = ""
@@ -177,18 +213,19 @@ extension WasmActor {
 
         let status: WasmClient.TaskStatus
         switch task.status {
-        case .completed:
-            status = .completed
-        case .processing:
-            status = .processing
-        default:
-            let errorMsg = metadata["error"]
-                ?? task.metadata.fields["error"]?.stringValue
-                ?? (statusString.isEmpty ? "\(task.status)" : statusString)
-            status = .failed(errorMsg)
+            case .completed:
+                status = .completed
+            case .processing:
+                status = .processing
+            default:
+                let errorMsg =
+                    metadata["error"]
+                    ?? task.metadata.fields["error"]?.stringValue
+                    ?? (statusString.isEmpty ? "\(task.status)" : statusString)
+                status = .failed(errorMsg)
         }
 
-        return WasmClient.AiartVideoResult(
+        return WasmClient.AIArt.VideoResult(
             status: status,
             videoID: videoID,
             videoURL: videoURL,
@@ -201,19 +238,45 @@ extension WasmActor {
         )
     }
 
-    private func mapAiartResult(_ proto: AiartGenerateResult) -> WasmClient.AiartResult {
-        WasmClient.AiartResult(
+    private func mapAiartResult(_ proto: AiartGenerateResult) -> WasmClient.AIArt.Result {
+        WasmClient.AIArt.Result(
             images: proto.images.compactMap { image in
                 guard image.hasURL, !image.url.isEmpty else { return nil }
-                return WasmClient.AiartImage(url: image.url)
+                return WasmClient.AIArt.Image(url: image.url)
             },
             prompt: proto.prompt,
-            style: proto.hasStyle ? "\(proto.style)" : "",
+            style: proto.hasStyle ? Self.mapAiartStyle(proto.style) : WasmClient.AIArt.Style(rawValue: ""),
             aspectRatio: proto.aspectRatio,
             width: Int(proto.width),
             height: Int(proto.height),
             providerTaskID: proto.providerTaskID
         )
+    }
+
+    /// Map the `AiartStyle` proto enum to the public `AIArt.Style` whose
+    /// `rawValue` is the wire name — keeping `Result.style` consistent with
+    /// the wire-name values returned by `aiartStyles`. Unknown/unspecified
+    /// values decay to an empty-rawValue `Style`.
+    private static func mapAiartStyle(_ proto: AiartStyle) -> WasmClient.AIArt.Style {
+        switch proto {
+            case .anime: return .anime
+            case .cyberpunk: return .cyberpunk
+            case .watercolor: return .watercolor
+            case .pixelArt: return .pixelArt
+            case .threeDCartoon: return .threeDCartoon
+            case .fantasy: return .fantasy
+            case .oilPainting: return .oilPainting
+            case .lineArt: return .lineArt
+            case .minimal: return .minimal
+            case .photoreal: return .photoreal
+            case .postage: return .postage
+            case .vintagePostage: return .vintagePostage
+            case .waxSeal: return .waxSeal
+            case .rubberStamp: return .rubberStamp
+            case .engraved: return .engraved
+            case .botanicalPostage: return .botanicalPostage
+            case .unspecified, .UNRECOGNIZED: return WasmClient.AIArt.Style(rawValue: "")
+        }
     }
 
     /// Parse a regex alternation pattern of the form `^(A|B|C)$` into its
