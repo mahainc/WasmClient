@@ -1,6 +1,15 @@
 import Foundation
 
+// MARK: - Vision Namespace
+
 extension WasmClient {
+    /// Namespace for all vision/scan types: scan results and their nested
+    /// detail structs (nutrition, physical, price, AI commentary), shopping
+    /// products, and links. Access via `WasmClient.Vision.ScanResult`, etc.
+    public enum Vision {}
+}
+
+extension WasmClient.Vision {
     /// Result of scanning a photo.
     public struct ScanResult: Sendable, Equatable {
         public var title: String
@@ -64,11 +73,21 @@ extension WasmClient {
         public var shelfLife: String?
         public var freshness: String?
 
-        public init(kcal: String? = nil, calories: String? = nil, protein: String? = nil,
-                    carbs: String? = nil, fat: String? = nil, shelfLife: String? = nil,
-                    freshness: String? = nil) {
-            self.kcal = kcal; self.calories = calories; self.protein = protein
-            self.carbs = carbs; self.fat = fat; self.shelfLife = shelfLife
+        public init(
+            kcal: String? = nil,
+            calories: String? = nil,
+            protein: String? = nil,
+            carbs: String? = nil,
+            fat: String? = nil,
+            shelfLife: String? = nil,
+            freshness: String? = nil
+        ) {
+            self.kcal = kcal
+            self.calories = calories
+            self.protein = protein
+            self.carbs = carbs
+            self.fat = fat
+            self.shelfLife = shelfLife
             self.freshness = freshness
         }
     }
@@ -81,7 +100,10 @@ extension WasmClient {
     public struct PriceInfo: Sendable, Equatable {
         public var averageFairMarketPrice: String?
         public var webPurchaseURL: String?
-        public init(averageFairMarketPrice: String? = nil, webPurchaseURL: String? = nil) {
+        public init(
+            averageFairMarketPrice: String? = nil,
+            webPurchaseURL: String? = nil
+        ) {
             self.averageFairMarketPrice = averageFairMarketPrice
             self.webPurchaseURL = webPurchaseURL
         }
@@ -96,13 +118,21 @@ extension WasmClient {
         public var realOrFake: String?
         public var marketDemand: String?
 
-        public init(aiAssistantSays: String? = nil, aiSuggests: String? = nil,
-                    expertInsights: String? = nil, recommendation: String? = nil,
-                    interestingFacts: String? = nil, realOrFake: String? = nil,
-                    marketDemand: String? = nil) {
-            self.aiAssistantSays = aiAssistantSays; self.aiSuggests = aiSuggests
-            self.expertInsights = expertInsights; self.recommendation = recommendation
-            self.interestingFacts = interestingFacts; self.realOrFake = realOrFake
+        public init(
+            aiAssistantSays: String? = nil,
+            aiSuggests: String? = nil,
+            expertInsights: String? = nil,
+            recommendation: String? = nil,
+            interestingFacts: String? = nil,
+            realOrFake: String? = nil,
+            marketDemand: String? = nil
+        ) {
+            self.aiAssistantSays = aiAssistantSays
+            self.aiSuggests = aiSuggests
+            self.expertInsights = expertInsights
+            self.recommendation = recommendation
+            self.interestingFacts = interestingFacts
+            self.realOrFake = realOrFake
             self.marketDemand = marketDemand
         }
     }
@@ -112,8 +142,16 @@ extension WasmClient {
         public var url: String
         public var description: String?
         public var image: String?
-        public init(title: String = "", url: String = "", description: String? = nil, image: String? = nil) {
-            self.title = title; self.url = url; self.description = description; self.image = image
+        public init(
+            title: String = "",
+            url: String = "",
+            description: String? = nil,
+            image: String? = nil
+        ) {
+            self.title = title
+            self.url = url
+            self.description = description
+            self.image = image
         }
     }
 
@@ -127,12 +165,24 @@ extension WasmClient {
         public var rating: Double?
         public var reviewsCount: Int?
 
-        public init(title: String = "", price: String? = nil, currency: String? = nil,
-                    url: String = "", image: String? = nil, source: String? = nil,
-                    rating: Double? = nil, reviewsCount: Int? = nil) {
-            self.title = title; self.price = price; self.currency = currency
-            self.url = url; self.image = image; self.source = source
-            self.rating = rating; self.reviewsCount = reviewsCount
+        public init(
+            title: String = "",
+            price: String? = nil,
+            currency: String? = nil,
+            url: String = "",
+            image: String? = nil,
+            source: String? = nil,
+            rating: Double? = nil,
+            reviewsCount: Int? = nil
+        ) {
+            self.title = title
+            self.price = price
+            self.currency = currency
+            self.url = url
+            self.image = image
+            self.source = source
+            self.rating = rating
+            self.reviewsCount = reviewsCount
         }
     }
 }

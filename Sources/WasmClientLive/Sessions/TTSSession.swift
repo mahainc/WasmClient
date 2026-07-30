@@ -31,7 +31,7 @@ extension WasmActor {
         text: String,
         voice: String?,
         providerId: String
-    ) async throws -> WasmClient.TTSAudio {
+    ) async throws -> WasmClient.Chat.TTSAudio {
         let instance = try await readyEngine()
 
         // Auto-init the pinned provider once per session. CAI's `tts`
@@ -47,8 +47,8 @@ extension WasmActor {
         // `setUserName` and retry.
         let userName = delegate.userName()
         if !providerId.isEmpty,
-           !userName.isEmpty,
-           !delegate.isProviderInitialized(providerId)
+            !userName.isEmpty,
+            !delegate.isProviderInitialized(providerId)
         {
             try? await initializeChatProvider(
                 providerId: providerId,
@@ -63,7 +63,7 @@ extension WasmActor {
         )
 
         var args: [String: Google_Protobuf_Value] = [
-            "input": .init(stringValue: text),
+            "input": .init(stringValue: text)
         ]
         if let voice, !voice.isEmpty {
             args["voice"] = .init(stringValue: voice)
@@ -91,19 +91,22 @@ extension WasmActor {
 
         // Prefer audio_url — streamable, no decode cost.
         if case .stringValue(let urlString)? = payload.fields["audio_url"]?.kind,
-           !urlString.isEmpty,
-           let url = URL(string: urlString) {
+            !urlString.isEmpty,
+            let url = URL(string: urlString)
+        {
             return .url(url)
         }
 
         // Fallback: base64 bytes + optional MIME hint. Default to "mp3"
         // when audio_mime is absent, matching flow-kit-example's extension logic.
         if case .stringValue(let b64)? = payload.fields["audio_b64"]?.kind,
-           !b64.isEmpty,
-           let data = Data(base64Encoded: b64) {
+            !b64.isEmpty,
+            let data = Data(base64Encoded: b64)
+        {
             let mime: String = {
                 if case .stringValue(let m)? = payload.fields["audio_mime"]?.kind,
-                   !m.isEmpty {
+                    !m.isEmpty
+                {
                     return m
                 }
                 return "mp3"
@@ -119,13 +122,21 @@ extension WasmActor {
     /// provider doesn't surface `metadata.voices` (e.g. OpenAI's stock
     /// `tts` voices live elsewhere). The decode is the same one
     /// flow-kit-example performs against `ChatModelOption.voices`.
-    func ttsVoices(providerId: String, modelId: String) async throws -> [String] {
+    func ttsVoices(
+        providerId: String,
+        modelId: String
+    ) async throws -> [String] {
         let (models, _) = try await chatModels(
-            offset: 0, limit: 200, keyword: nil, category: nil
+            offset: 0,
+            limit: 200,
+            keyword: nil,
+            category: nil
         )
-        guard let model = models.first(where: {
-            $0.providerId == providerId && $0.modelId == modelId
-        }) else { return [] }
+        guard
+            let model = models.first(where: {
+                $0.providerId == providerId && $0.modelId == modelId
+            })
+        else { return [] }
         return model.voices
     }
 }

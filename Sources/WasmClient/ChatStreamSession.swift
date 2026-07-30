@@ -93,8 +93,8 @@ public actor ChatStreamSession {
     public func start(
         conversationID: UUID,
         assistantMessageID: UUID,
-        config: WasmClient.ChatConfig,
-        history: [WasmClient.ChatMessage]
+        config: WasmClient.Chat.Config,
+        history: [WasmClient.Chat.Message]
     ) {
         // Finalize every OTHER conversation that's still streaming, so its UI and
         // persistence settle on the partial it has so far and the consumer routes

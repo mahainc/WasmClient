@@ -13,7 +13,7 @@ extension WasmActor {
         imageData: Data,
         category: String,
         language: String
-    ) async throws -> WasmClient.ScanResult {
+    ) async throws -> WasmClient.Vision.ScanResult {
         let instance = try await readyEngine()
 
         // Step 1: upload to blobstore
@@ -47,7 +47,7 @@ extension WasmActor {
         category: String,
         language: String,
         provider: String
-    ) async throws -> WasmClient.ScanResult {
+    ) async throws -> WasmClient.Vision.ScanResult {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.describe.rawValue,
@@ -85,7 +85,7 @@ extension WasmActor {
     func visualSearch(
         imageURL: String,
         provider: String
-    ) async throws -> [WasmClient.ShoppingProduct] {
+    ) async throws -> [WasmClient.Vision.ShoppingProduct] {
         _ = provider
         let instance = try await readyEngine()
         let args: [String: Google_Protobuf_Value] = [
@@ -113,7 +113,7 @@ extension WasmActor {
     func shopping(
         query: String,
         provider: String
-    ) async throws -> [WasmClient.ShoppingProduct] {
+    ) async throws -> [WasmClient.Vision.ShoppingProduct] {
         _ = provider
         let instance = try await readyEngine()
         let args: [String: Google_Protobuf_Value] = [
@@ -150,8 +150,8 @@ extension WasmActor {
         return try VisionScanResult(jsonUTF8Data: data, options: opts)
     }
 
-    private static func mapScanResult(_ v: VisionScanResult) -> WasmClient.ScanResult {
-        WasmClient.ScanResult(
+    private static func mapScanResult(_ v: VisionScanResult) -> WasmClient.Vision.ScanResult {
+        WasmClient.Vision.ScanResult(
             title: v.hasTitle ? v.title : "",
             description: v.description_p,
             categoryType: v.hasCategoryType ? v.categoryType : "",
@@ -169,8 +169,8 @@ extension WasmActor {
         )
     }
 
-    private static func mapNutrition(_ n: VisionNutritionInfo) -> WasmClient.NutritionInfo {
-        WasmClient.NutritionInfo(
+    private static func mapNutrition(_ n: VisionNutritionInfo) -> WasmClient.Vision.NutritionInfo {
+        WasmClient.Vision.NutritionInfo(
             kcal: n.hasKcal ? n.kcal : nil,
             calories: n.hasCalories ? n.calories : nil,
             protein: n.hasProtein ? n.protein : nil,
@@ -181,7 +181,7 @@ extension WasmActor {
         )
     }
 
-    private static func mapPhysical(_ p: VisionPhysicalFeatures) -> WasmClient.PhysicalFeatures {
+    private static func mapPhysical(_ p: VisionPhysicalFeatures) -> WasmClient.Vision.PhysicalFeatures {
         var fields: [String: String] = [:]
         if p.hasWeight { fields["weight"] = p.weight }
         if p.hasDiameter { fields["diameter"] = p.diameter }
@@ -194,18 +194,18 @@ extension WasmActor {
         if p.hasColor { fields["color"] = p.color }
         if p.hasFormula { fields["formula"] = p.formula }
         if p.hasLuster { fields["luster"] = p.luster }
-        return WasmClient.PhysicalFeatures(fields: fields)
+        return WasmClient.Vision.PhysicalFeatures(fields: fields)
     }
 
-    private static func mapPrice(_ p: VisionPriceInfo) -> WasmClient.PriceInfo {
-        WasmClient.PriceInfo(
+    private static func mapPrice(_ p: VisionPriceInfo) -> WasmClient.Vision.PriceInfo {
+        WasmClient.Vision.PriceInfo(
             averageFairMarketPrice: p.hasAverageFairMarketPrice ? p.averageFairMarketPrice : nil,
             webPurchaseURL: p.hasWebPurchaseURL ? p.webPurchaseURL : nil
         )
     }
 
-    private static func mapAICommentary(_ a: VisionAICommentary) -> WasmClient.AICommentary {
-        WasmClient.AICommentary(
+    private static func mapAICommentary(_ a: VisionAICommentary) -> WasmClient.Vision.AICommentary {
+        WasmClient.Vision.AICommentary(
             aiAssistantSays: a.hasAiAssistantSays ? a.aiAssistantSays : nil,
             aiSuggests: a.hasAiSuggests ? a.aiSuggests : nil,
             expertInsights: a.hasExpertInsights ? a.expertInsights : nil,
@@ -216,8 +216,8 @@ extension WasmActor {
         )
     }
 
-    private static func mapShoppingProduct(_ p: VisionShoppingProduct) -> WasmClient.ShoppingProduct {
-        WasmClient.ShoppingProduct(
+    private static func mapShoppingProduct(_ p: VisionShoppingProduct) -> WasmClient.Vision.ShoppingProduct {
+        WasmClient.Vision.ShoppingProduct(
             title: p.hasTitle ? p.title : "",
             price: p.hasPrice ? p.price : nil,
             currency: p.hasCurrency ? p.currency : nil,
@@ -229,8 +229,8 @@ extension WasmActor {
         )
     }
 
-    private static func mapLink(_ l: VisionLink) -> WasmClient.Link {
-        WasmClient.Link(
+    private static func mapLink(_ l: VisionLink) -> WasmClient.Vision.Link {
+        WasmClient.Vision.Link(
             title: l.hasTitle ? l.title : "",
             url: l.hasURL ? l.url : "",
             description: l.hasDescription_p ? l.description_p : nil,

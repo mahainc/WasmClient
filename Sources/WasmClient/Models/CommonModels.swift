@@ -110,8 +110,23 @@ extension WasmClient {
     /// the persisted provider_strategy — no per-action UUID discovery needed.
     /// Mirrors flow-kit-example's `VisionMethod` (vision.fk.pb.swift).
     public enum VisionMethod: String, CaseIterable, Sendable {
+        case scan = "asyncify.vision.VisionService/Scan"
         case visualSearch = "asyncify.vision.VisionService/VisualSearch"
         case shopping = "asyncify.vision.VisionService/Shopping"
+        case describe = "asyncify.vision.VisionService/Describe"
+    }
+}
+
+// MARK: - Task Status
+
+extension WasmClient {
+    /// Task processing status. Cross-domain shared type: used by inpaint,
+    /// AI art (`AIArt.VideoResult`), home decor, and pending tasks — it is
+    /// NOT scoped to a single domain namespace.
+    public enum TaskStatus: Sendable, Equatable, Hashable {
+        case processing
+        case completed
+        case failed(String)
     }
 }
 

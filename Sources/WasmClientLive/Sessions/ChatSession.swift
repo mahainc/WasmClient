@@ -9,9 +9,9 @@ extension WasmActor {
 
     /// Send a chat message and return the full response.
     func chatSend(
-        config: WasmClient.ChatConfig,
-        messages: [WasmClient.ChatMessage]
-    ) async throws -> WasmClient.ChatMessage {
+        config: WasmClient.Chat.Config,
+        messages: [WasmClient.Chat.Message]
+    ) async throws -> WasmClient.Chat.Message {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.chat.rawValue,
@@ -56,7 +56,7 @@ extension WasmActor {
         }
 
         let text = String(data: data, encoding: .utf8) ?? ""
-        return WasmClient.ChatMessage(role: .assistant, content: text)
+        return WasmClient.Chat.Message(role: .assistant, content: text)
     }
 
     /// Stream a chat response, yielding content deltas as they arrive via SSE.
@@ -69,8 +69,8 @@ extension WasmActor {
     /// fully drained. The handler is removed in a `defer` tied to this task, so
     /// the next stream's gate-wait only returns once this handler is gone.
     func chatStream(
-        config: WasmClient.ChatConfig,
-        messages: [WasmClient.ChatMessage]
+        config: WasmClient.Chat.Config,
+        messages: [WasmClient.Chat.Message]
     ) async throws -> AsyncThrowingStream<String, Swift.Error> {
         logger("chatStream: acquiring engine...")
         let instance = try await readyEngine()
@@ -256,7 +256,7 @@ extension WasmActor {
         limit: Int,
         keyword: String?,
         category: String?
-    ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int) {
+    ) async throws -> (models: [WasmClient.Chat.ModelInfo], total: Int) {
         let instance = try await readyEngine()
 
         // Resolve listModels action — standalone, not tied to a chat provider.
@@ -309,7 +309,7 @@ extension WasmActor {
             throw WasmClient.Error.unexpectedResponseFormat
         }
 
-        var models: [WasmClient.ChatModelInfo] = []
+        var models: [WasmClient.Chat.ModelInfo] = []
         if case .listValue(let list)? = payload.fields["data"]?.kind {
             for value in list.values {
                 guard case .structValue(let row)? = value.kind else { continue }
@@ -335,7 +335,7 @@ extension WasmActor {
     /// for subsequent `chatSend`/`chatStream` calls.
     func createChatModel(
         providerId: String,
-        input: WasmClient.CreateChatModelInput
+        input: WasmClient.Chat.CreateModelInput
     ) async throws -> String {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
@@ -465,10 +465,175 @@ extension WasmActor {
         }
     }
 
+    // MARK: - Chat Parity (method-name dispatch)
+
+    /// Non-chat text completion. Same body shape as `chatSend`, routed via
+    /// the `completion` method (`asyncify.openai.OpenAIService/Completion`).
+    func completion(
+        config: WasmClient.Chat.Config,
+        messages: [WasmClient.Chat.Message]
+    ) async throws -> WasmClient.Chat.Message {
+        let instance = try await readyEngine()
+
+        let bodyData = try Self.buildChatBody(config: config, messages: messages, stream: false)
+        let bodyString = String(data: bodyData, encoding: .utf8) ?? "{}"
+
+        var args: [String: Google_Protobuf_Value] = [
+            "body": Google_Protobuf_Value(stringValue: bodyString)
+        ]
+        if !config.endpoint.isEmpty {
+            args["url"] = Google_Protobuf_Value(stringValue: config.endpoint)
+        }
+        if !config.apiKey.isEmpty {
+            args["api_key"] = Google_Protobuf_Value(stringValue: config.apiKey)
+        }
+        if !config.providerId.isEmpty {
+            args["provider_id"] = Google_Protobuf_Value(stringValue: config.providerId)
+        }
+
+        let result: TypesBytes = try await instance.run(
+            method: WasmClient.Chat.Method.completion.rawValue,
+            args: args
+        )
+        guard case .raw(let data) = result.data else {
+            throw WasmClient.Error.unexpectedResponseFormat
+        }
+
+        var opts = JSONDecodingOptions()
+        opts.ignoreUnknownFields = true
+        if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
+            let choice = completion.choices.first
+        {
+            return Self.mapMessage(choice.message)
+        }
+        let text = String(data: data, encoding: .utf8) ?? ""
+        return WasmClient.Chat.Message(role: .assistant, content: text)
+    }
+
+    /// List the chat providers the engine exposes
+    /// (`asyncify.openai.OpenAIService/ListProviders`).
+    func listProviders() async throws -> [WasmClient.Chat.ProviderInfo] {
+        let instance = try await readyEngine()
+        let resp: OpenAIListProvidersResponse = try await instance.run(
+            method: WasmClient.Chat.Method.listProviders.rawValue,
+            args: [:]
+        )
+        return resp.providers.map { p in
+            WasmClient.Chat.ProviderInfo(
+                id: p.id,
+                name: p.name,
+                creatable: p.creatable,
+                // WasmClient's OpenAIProviderInfo proto does not carry a
+                // `voiceCreatable` flag; default false until the mirror gains it.
+                voiceCreatable: false
+            )
+        }
+    }
+
+    /// Run a provider's `Auth` rpc. WasmClient's `OpenAIAuthResponse` carries
+    /// only a `credentials` struct; surface `provider_id` / `cache_dir` from
+    /// that struct when present.
+    func authProvider(providerId: String) async throws -> (providerID: String, cacheDir: String) {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !providerId.isEmpty {
+            args["provider_id"] = Google_Protobuf_Value(stringValue: providerId)
+        }
+        let resp: OpenAIAuthResponse = try await instance.run(
+            method: WasmClient.Chat.Method.auth.rawValue,
+            args: args
+        )
+        let fields = resp.hasCredentials ? resp.credentials.fields : [:]
+        let resolvedProvider = fields["provider_id"]?.stringValue ?? providerId
+        let cacheDir = fields["cache_dir"]?.stringValue ?? ""
+        return (resolvedProvider, cacheDir)
+    }
+
+    /// List a provider's voice catalogue, paginated
+    /// (`asyncify.openai.OpenAIService/ListVoices`).
+    func listVoices(
+        providerId: String,
+        keyword: String,
+        offset: Int,
+        limit: Int
+    ) async throws -> WasmClient.Chat.VoiceList {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [
+            "offset": Google_Protobuf_Value(numberValue: Double(offset)),
+            "limit": Google_Protobuf_Value(numberValue: Double(limit)),
+        ]
+        if !providerId.isEmpty {
+            args["provider_id"] = Google_Protobuf_Value(stringValue: providerId)
+        }
+        if !keyword.isEmpty {
+            args["keyword"] = Google_Protobuf_Value(stringValue: keyword)
+        }
+        let resp: OpenAIListVoicesResponse = try await instance.run(
+            method: WasmClient.Chat.Method.listVoices.rawValue,
+            args: args
+        )
+        return WasmClient.Chat.VoiceList(
+            voices: resp.voices.map(Self.mapVoice),
+            total: Int(resp.total)
+        )
+    }
+
+    /// Create a custom voice clone
+    /// (`asyncify.openai.OpenAIService/CreateVoice`).
+    func createVoice(
+        providerId: String,
+        name: String,
+        audio: String,
+        gender: WasmClient.Chat.VoiceGender,
+        visibility: WasmClient.Chat.VoiceVisibility
+    ) async throws -> WasmClient.Chat.VoiceInfo {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !providerId.isEmpty {
+            args["provider_id"] = Google_Protobuf_Value(stringValue: providerId)
+        }
+        if !name.isEmpty {
+            args["name"] = Google_Protobuf_Value(stringValue: name)
+        }
+        if !audio.isEmpty {
+            args["audio"] = Google_Protobuf_Value(stringValue: audio)
+        }
+        if !gender.rawValue.isEmpty {
+            args["gender"] = Google_Protobuf_Value(stringValue: gender.rawValue)
+        }
+        if !visibility.rawValue.isEmpty {
+            args["visibility"] = Google_Protobuf_Value(stringValue: visibility.rawValue)
+        }
+        let resp: OpenAICreateVoiceResponse = try await instance.run(
+            method: WasmClient.Chat.Method.createVoice.rawValue,
+            args: args
+        )
+        return Self.mapVoice(resp.voice)
+    }
+
+    /// Delete a custom voice by id
+    /// (`asyncify.openai.OpenAIService/DeleteVoice`).
+    func deleteVoice(
+        providerId: String,
+        voiceId: String
+    ) async throws {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [
+            "id": Google_Protobuf_Value(stringValue: voiceId)
+        ]
+        if !providerId.isEmpty {
+            args["provider_id"] = Google_Protobuf_Value(stringValue: providerId)
+        }
+        let _: OpenAIDeleteVoiceResponse = try await instance.run(
+            method: WasmClient.Chat.Method.deleteVoice.rawValue,
+            args: args
+        )
+    }
+
     private static func mapModelRow(
         _ fields: [String: Google_Protobuf_Value],
         providerNames: [String: String]
-    ) -> WasmClient.ChatModelInfo? {
+    ) -> WasmClient.Chat.ModelInfo? {
         guard case .stringValue(let modelId)? = fields["id"]?.kind, !modelId.isEmpty else {
             return nil
         }
@@ -531,7 +696,7 @@ extension WasmActor {
         }()
         let providerName = providerNames[providerId] ?? ""
 
-        return WasmClient.ChatModelInfo(
+        return WasmClient.Chat.ModelInfo(
             modelId: modelId,
             name: name,
             ownedBy: ownedBy,
@@ -551,8 +716,8 @@ extension WasmActor {
     // MARK: - Private Chat Helpers
 
     private static func buildChatBody(
-        config: WasmClient.ChatConfig,
-        messages: [WasmClient.ChatMessage],
+        config: WasmClient.Chat.Config,
+        messages: [WasmClient.Chat.Message],
         stream: Bool
     ) throws -> Data {
         var body: [String: Any] = [
@@ -618,12 +783,41 @@ extension WasmActor {
         return try JSONSerialization.data(withJSONObject: body)
     }
 
-    private static func mapMessage(_ proto: OpenAIChatMessage) -> WasmClient.ChatMessage {
-        WasmClient.ChatMessage(
-            role: WasmClient.ChatRole(rawValue: proto.role) ?? .assistant,
+    /// Map an `OpenAIVoiceInfo` proto to the public `Chat.VoiceInfo`,
+    /// translating the proto gender/visibility enums to their wire-string
+    /// `VoiceGender` / `VoiceVisibility` struct values.
+    private static func mapVoice(_ proto: OpenAIVoiceInfo) -> WasmClient.Chat.VoiceInfo {
+        let gender: WasmClient.Chat.VoiceGender
+        switch proto.gender {
+            case .male: gender = .male
+            case .female: gender = .female
+            case .neutral: gender = .neutral
+            case .unspecified, .UNRECOGNIZED: gender = .unspecified
+        }
+        let visibility: WasmClient.Chat.VoiceVisibility
+        switch proto.visibility {
+            case .public: visibility = .publicVisibility
+            case .private: visibility = .privateVisibility
+            case .unspecified, .UNRECOGNIZED: visibility = .unspecified
+        }
+        return WasmClient.Chat.VoiceInfo(
+            id: proto.id,
+            name: proto.name,
+            gender: gender,
+            visibility: visibility,
+            previewAudioURL: proto.hasPreviewAudioURL ? proto.previewAudioURL : "",
+            previewText: proto.previewText,
+            providerID: proto.providerID,
+            creatorID: proto.creatorID
+        )
+    }
+
+    private static func mapMessage(_ proto: OpenAIChatMessage) -> WasmClient.Chat.Message {
+        WasmClient.Chat.Message(
+            role: WasmClient.Chat.Role(rawValue: proto.role) ?? .assistant,
             content: proto.content.stringValue,
             toolCalls: proto.toolCalls.map { tc in
-                WasmClient.ToolCall(
+                WasmClient.Chat.ToolCall(
                     id: tc.id,
                     type: tc.type,
                     functionName: tc.function.name,
@@ -632,14 +826,15 @@ extension WasmActor {
             },
             toolCallID: proto.toolCallID,
             annotations: proto.annotations.map { ann in
-                WasmClient.Annotation(
+                WasmClient.Chat.Annotation(
                     type: ann.type,
                     url: ann.hasURLCitation ? ann.urlCitation.url : "",
                     title: ann.hasURLCitation ? ann.urlCitation.title : "",
                     startIndex: ann.hasURLCitation ? Int(ann.urlCitation.startIndex) : 0,
                     endIndex: ann.hasURLCitation ? Int(ann.urlCitation.endIndex) : 0
                 )
-            }
+            },
+            refusal: proto.hasRefusal ? proto.refusal : ""
         )
     }
 }

@@ -46,19 +46,25 @@ extension WasmClient {
         availableActions: { [] },
         refreshActions: {},
         funnelEngine: { nil },
-        scan: { _, _, _ in ScanResult() },
-        describe: { _, _, _, _ in ScanResult() },
+        scan: { _, _, _ in Vision.ScanResult() },
+        describe: { _, _, _, _ in Vision.ScanResult() },
         visualSearch: { _, _ in [] },
         shopping: { _, _ in [] },
         uploadImage: { _ in "" },
         uploadFile: { _, _ in "" },
         chatModels: { _, _, _, _ in ([], 0) },
-        chatSend: { _, _ in ChatMessage(role: .assistant, content: "") },
+        chatSend: { _, _ in Chat.Message(role: .assistant, content: "") },
         chatStream: { _, _ in
             AsyncThrowingStream { $0.finish() }
         },
         createChatModel: { _, _ in "" },
         initializeChatProvider: { _, _ in },
+        completion: { _, _ in Chat.Message(role: .assistant, content: "") },
+        listProviders: { [] },
+        authProvider: { _ in (providerID: "", cacheDir: "") },
+        listVoices: { _, _, _, _ in Chat.VoiceList() },
+        createVoice: { _, _, _, _, _ in Chat.VoiceInfo(id: "") },
+        deleteVoice: { _, _ in },
         musicDiscover: { _, _ in MusicTrackList() },
         musicDetails: { _ in MusicTrackDetail() },
         musicTracks: { _, _ in MusicTrackList() },
@@ -91,13 +97,13 @@ extension WasmClient {
         homeDecorColorPalettes: { _ in [] },
         homeDecorSurfaceTypes: { _ in [] },
         homeDecorStyleSelections: { _ in [] },
-        autoSuggestion: { _ in ObjectSegments() },
-        enhance: { _, _ in ObjectSegments() },
-        removeBackground: { _ in Segment() },
-        erase: { _, _, _, _ in EraseResult() },
-        skinBeauty: { _ in ObjectSegments() },
-        sky: { _ in Segment() },
-        categorizeClothes: { _ in Segment() },
+        autoSuggestion: { _ in Inpaint.ObjectSegments() },
+        enhance: { _, _ in Inpaint.ObjectSegments() },
+        removeBackground: { _ in Inpaint.Segment() },
+        erase: { _, _, _, _ in Inpaint.EraseResult() },
+        skinBeauty: { _ in Inpaint.ObjectSegments() },
+        sky: { _ in Inpaint.Segment() },
+        categorizeClothes: { _ in Inpaint.Segment() },
         tryOn: { _, _ in "" },
         webpageLeagues: { [] },
         webpageCompetitions: { _, _, _ in [] },
@@ -175,25 +181,25 @@ extension WasmClient {
         funnelEngine: { nil },
         scan: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
-            return ScanResult(
+            return Vision.ScanResult(
                 title: "Mock Object",
                 description: "A mock scan result for preview purposes.",
                 categoryType: "object",
                 characteristics: ["Color": "Blue", "Material": "Metal"],
                 suggestedQuestions: ["What is this?", "Where can I buy it?"],
-                price: PriceInfo(averageFairMarketPrice: "$29.99")
+                price: Vision.PriceInfo(averageFairMarketPrice: "$29.99")
             )
         },
         describe: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
-            return ScanResult(
+            return Vision.ScanResult(
                 title: "Mock Object",
                 description: "An enriched description with full details.",
                 categoryType: "electronics",
                 characteristics: ["Color": "Blue", "Material": "Metal", "Weight": "150g"],
                 suggestedQuestions: ["What is this?", "Where can I buy it?"],
-                price: PriceInfo(averageFairMarketPrice: "$29.99"),
-                aiCommentary: AICommentary(
+                price: Vision.PriceInfo(averageFairMarketPrice: "$29.99"),
+                aiCommentary: Vision.AICommentary(
                     aiAssistantSays: "This appears to be a high-quality item.",
                     interestingFacts: "This type of product has been popular since 2020."
                 )
@@ -202,13 +208,13 @@ extension WasmClient {
         visualSearch: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return [
-                ShoppingProduct(title: "Similar Item", price: "$19.99", url: "https://example.com/product")
+                Vision.ShoppingProduct(title: "Similar Item", price: "$19.99", url: "https://example.com/product")
             ]
         },
         shopping: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return [
-                ShoppingProduct(title: "Mock Product", price: "$24.99", url: "https://example.com/shop")
+                Vision.ShoppingProduct(title: "Mock Product", price: "$24.99", url: "https://example.com/shop")
             ]
         },
         uploadImage: { _ in
@@ -220,8 +226,8 @@ extension WasmClient {
             return "https://example.com/mock-file.jpg"
         },
         chatModels: { offset, limit, keyword, category in
-            let all: [ChatModelInfo] = [
-                ChatModelInfo(
+            let all: [Chat.ModelInfo] = [
+                Chat.ModelInfo(
                     modelId: "gpt-4o-mini",
                     name: "GPT-4o mini",
                     ownedBy: "openai",
@@ -230,7 +236,7 @@ extension WasmClient {
                     providerId: "openai",
                     providerName: "OpenAI"
                 ),
-                ChatModelInfo(
+                Chat.ModelInfo(
                     modelId: "gpt-4o",
                     name: "GPT-4o",
                     ownedBy: "openai",
@@ -240,7 +246,7 @@ extension WasmClient {
                     providerId: "openai",
                     providerName: "OpenAI"
                 ),
-                ChatModelInfo(
+                Chat.ModelInfo(
                     modelId: "claude-sonnet-4-6",
                     name: "Claude Sonnet 4.6",
                     ownedBy: "anthropic",
@@ -269,7 +275,7 @@ extension WasmClient {
         },
         chatSend: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
-            return ChatMessage(role: .assistant, content: "Hello! How can I help you today?")
+            return Chat.Message(role: .assistant, content: "Hello! How can I help you today?")
         },
         chatStream: { _, _ in
             AsyncThrowingStream { continuation in
@@ -290,6 +296,37 @@ extension WasmClient {
             return "mock-model-\(slug)"
         },
         initializeChatProvider: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+        },
+        completion: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return Chat.Message(role: .assistant, content: "A mock completion.")
+        },
+        listProviders: {
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return [
+                Chat.ProviderInfo(id: "p1", name: "Mock Provider", creatable: true, voiceCreatable: true),
+                Chat.ProviderInfo(id: "p2", name: "Second Provider"),
+            ]
+        },
+        authProvider: { providerId in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return (providerID: providerId.isEmpty ? "p1" : providerId, cacheDir: "/mock/cache")
+        },
+        listVoices: { _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return Chat.VoiceList(
+                voices: [
+                    Chat.VoiceInfo(id: "v1", name: "Mock Voice", gender: .female, visibility: .publicVisibility)
+                ],
+                total: 1
+            )
+        },
+        createVoice: { _, name, _, gender, visibility in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return Chat.VoiceInfo(id: "v-new", name: name, gender: gender, visibility: visibility)
+        },
+        deleteVoice: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
         },
         musicDiscover: { _, _ in
@@ -519,31 +556,31 @@ extension WasmClient {
         homeDecorStyleSelections: { _ in [.structuralPreservation, .renovationDesign] },
         autoSuggestion: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return ObjectSegments(sessionID: "mock-session")
+            return Inpaint.ObjectSegments(sessionID: "mock-session")
         },
         enhance: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
-            return ObjectSegments(sessionID: "mock-session")
+            return Inpaint.ObjectSegments(sessionID: "mock-session")
         },
         removeBackground: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return Segment(maskURL: "https://example.com/mask.png")
+            return Inpaint.Segment(maskURL: "https://example.com/mask.png")
         },
         erase: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
-            return EraseResult(sessionID: "mock-session", imageURL: "https://example.com/erased.jpg")
+            return Inpaint.EraseResult(sessionID: "mock-session", imageURL: "https://example.com/erased.jpg")
         },
         skinBeauty: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return ObjectSegments(sessionID: "mock-session")
+            return Inpaint.ObjectSegments(sessionID: "mock-session")
         },
         sky: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return Segment(maskURL: "https://example.com/sky-mask.png")
+            return Inpaint.Segment(maskURL: "https://example.com/sky-mask.png")
         },
         categorizeClothes: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return Segment(maskURL: "https://example.com/clothes-mask.png")
+            return Inpaint.Segment(maskURL: "https://example.com/clothes-mask.png")
         },
         tryOn: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)

@@ -91,6 +91,35 @@ extension WasmClient: DependencyKey {
             initializeChatProvider: { providerId, userName in
                 try await actor.initializeChatProvider(providerId: providerId, userName: userName)
             },
+            completion: { config, messages in
+                try await actor.completion(config: config, messages: messages)
+            },
+            listProviders: {
+                try await actor.listProviders()
+            },
+            authProvider: { providerId in
+                try await actor.authProvider(providerId: providerId)
+            },
+            listVoices: { providerId, keyword, offset, limit in
+                try await actor.listVoices(
+                    providerId: providerId,
+                    keyword: keyword,
+                    offset: offset,
+                    limit: limit
+                )
+            },
+            createVoice: { providerId, name, audio, gender, visibility in
+                try await actor.createVoice(
+                    providerId: providerId,
+                    name: name,
+                    audio: audio,
+                    gender: gender,
+                    visibility: visibility
+                )
+            },
+            deleteVoice: { providerId, voiceId in
+                try await actor.deleteVoice(providerId: providerId, voiceId: voiceId)
+            },
             musicDiscover: { category, continuation in
                 try await actor.musicDiscover(category: category, continuation: continuation)
             },

@@ -1,5 +1,5 @@
-@preconcurrency import FlowKit
 import CoreGraphics
+@preconcurrency import FlowKit
 import Foundation
 import SwiftProtobuf
 import WasmClient
@@ -14,37 +14,43 @@ import WasmClient
 extension WasmActor {
 
     /// Auto-detect objects in an image for removal suggestions.
-    func autoSuggestion(image: String) async throws -> WasmClient.ObjectSegments {
+    func autoSuggestion(image: String) async throws -> WasmClient.Inpaint.ObjectSegments {
         let args: [String: Google_Protobuf_Value] = [
-            "image": Google_Protobuf_Value(stringValue: image),
+            "image": Google_Protobuf_Value(stringValue: image)
         ]
         let result: InpaintObjectSegments = try await runInpaint(
-            actionID: WasmClient.ActionID.autoSuggestion, args: args
+            actionID: WasmClient.ActionID.autoSuggestion,
+            args: args
         )
         return mapObjectSegments(result)
     }
 
     /// Enhance (upscale) an image.
-    func enhance(image: String, zoomFactor: Int) async throws -> WasmClient.ObjectSegments {
+    func enhance(
+        image: String,
+        zoomFactor: Int
+    ) async throws -> WasmClient.Inpaint.ObjectSegments {
         var args: [String: Google_Protobuf_Value] = [
-            "image": Google_Protobuf_Value(stringValue: image),
+            "image": Google_Protobuf_Value(stringValue: image)
         ]
         if zoomFactor != 2 {
             args["zoom_factor"] = Google_Protobuf_Value(stringValue: "\(zoomFactor)")
         }
         let result: InpaintObjectSegments = try await runInpaint(
-            actionID: WasmClient.ActionID.enhance, args: args
+            actionID: WasmClient.ActionID.enhance,
+            args: args
         )
         return mapObjectSegments(result)
     }
 
     /// Remove background from an image.
-    func removeBackground(image: String) async throws -> WasmClient.Segment {
+    func removeBackground(image: String) async throws -> WasmClient.Inpaint.Segment {
         let args: [String: Google_Protobuf_Value] = [
-            "image": Google_Protobuf_Value(stringValue: image),
+            "image": Google_Protobuf_Value(stringValue: image)
         ]
         let result: InpaintSegment = try await runInpaint(
-            actionID: WasmClient.ActionID.removeBg, args: args
+            actionID: WasmClient.ActionID.removeBg,
+            args: args
         )
         return mapSegment(result)
     }
@@ -55,7 +61,7 @@ extension WasmActor {
         sessionId: String?,
         maskBrush: String?,
         maskObjects: String?
-    ) async throws -> WasmClient.EraseResult {
+    ) async throws -> WasmClient.Inpaint.EraseResult {
         var args: [String: Google_Protobuf_Value] = [:]
         if let image {
             args["image"] = Google_Protobuf_Value(stringValue: image)
@@ -70,9 +76,10 @@ extension WasmActor {
             args["mask_objects"] = Google_Protobuf_Value(stringValue: maskObjects)
         }
         let result: InpaintErase = try await runInpaint(
-            actionID: WasmClient.ActionID.erase, args: args
+            actionID: WasmClient.ActionID.erase,
+            args: args
         )
-        return WasmClient.EraseResult(
+        return WasmClient.Inpaint.EraseResult(
             sessionID: result.sessionID,
             imageURL: result.hasImage ? result.image.url : "",
             maskURL: result.hasMask ? result.mask.url : "",
@@ -81,47 +88,54 @@ extension WasmActor {
     }
 
     /// Skin beauty filter.
-    func skinBeauty(image: String) async throws -> WasmClient.ObjectSegments {
+    func skinBeauty(image: String) async throws -> WasmClient.Inpaint.ObjectSegments {
         let args: [String: Google_Protobuf_Value] = [
-            "image": Google_Protobuf_Value(stringValue: image),
+            "image": Google_Protobuf_Value(stringValue: image)
         ]
         let result: InpaintObjectSegments = try await runInpaint(
-            actionID: WasmClient.ActionID.skinBeauty, args: args
+            actionID: WasmClient.ActionID.skinBeauty,
+            args: args
         )
         return mapObjectSegments(result)
     }
 
     /// Sky segmentation.
-    func sky(image: String) async throws -> WasmClient.Segment {
+    func sky(image: String) async throws -> WasmClient.Inpaint.Segment {
         let args: [String: Google_Protobuf_Value] = [
-            "image": Google_Protobuf_Value(stringValue: image),
+            "image": Google_Protobuf_Value(stringValue: image)
         ]
         let result: InpaintSegment = try await runInpaint(
-            actionID: WasmClient.ActionID.sky, args: args
+            actionID: WasmClient.ActionID.sky,
+            args: args
         )
         return mapSegment(result)
     }
 
     /// Categorize clothes — detects clothing type from an image.
-    func categorizeClothes(image: String) async throws -> WasmClient.Segment {
+    func categorizeClothes(image: String) async throws -> WasmClient.Inpaint.Segment {
         let args: [String: Google_Protobuf_Value] = [
-            "image": Google_Protobuf_Value(stringValue: image),
+            "image": Google_Protobuf_Value(stringValue: image)
         ]
         let result: InpaintSegment = try await runInpaint(
-            actionID: WasmClient.ActionID.clothes, args: args
+            actionID: WasmClient.ActionID.clothes,
+            args: args
         )
         return mapSegment(result)
     }
 
     /// Virtual try-on. The engine runs the full flow (model/cloth checks →
     /// create → poll-to-done) and returns the finished image URL.
-    func tryOn(modelImage: String, clothImage: String) async throws -> String {
+    func tryOn(
+        modelImage: String,
+        clothImage: String
+    ) async throws -> String {
         let args: [String: Google_Protobuf_Value] = [
             "image": Google_Protobuf_Value(stringValue: modelImage),
             "cloth_image": Google_Protobuf_Value(stringValue: clothImage),
         ]
         let result: TypesImage = try await runInpaint(
-            actionID: WasmClient.ActionID.tryOn, args: args
+            actionID: WasmClient.ActionID.tryOn,
+            args: args
         )
         return result.url
     }
@@ -140,8 +154,8 @@ extension WasmActor {
 
     // MARK: - Inpaint Mapping
 
-    private func mapObjectSegments(_ proto: InpaintObjectSegments) -> WasmClient.ObjectSegments {
-        WasmClient.ObjectSegments(
+    private func mapObjectSegments(_ proto: InpaintObjectSegments) -> WasmClient.Inpaint.ObjectSegments {
+        WasmClient.Inpaint.ObjectSegments(
             sessionID: proto.sessionID,
             segments: proto.segments.map(mapSegment),
             suggestMask: proto.suggestMask,
@@ -150,7 +164,7 @@ extension WasmActor {
         )
     }
 
-    private func mapSegment(_ proto: InpaintSegment) -> WasmClient.Segment {
+    private func mapSegment(_ proto: InpaintSegment) -> WasmClient.Inpaint.Segment {
         let bbox: CGRect
         if proto.hasBbox {
             let r = proto.bbox
@@ -158,7 +172,7 @@ extension WasmActor {
         } else {
             bbox = .zero
         }
-        return WasmClient.Segment(
+        return WasmClient.Inpaint.Segment(
             bbox: bbox,
             maskURL: proto.hasMask ? proto.mask.url : "",
             metadata: mapMetadata(proto.metadata)
@@ -169,14 +183,14 @@ extension WasmActor {
         var result: [String: String] = [:]
         for (key, value) in proto.fields {
             switch value.kind {
-            case .stringValue(let s):
-                result[key] = s
-            case .numberValue(let n):
-                result[key] = "\(n)"
-            case .boolValue(let b):
-                result[key] = "\(b)"
-            default:
-                break
+                case .stringValue(let s):
+                    result[key] = s
+                case .numberValue(let n):
+                    result[key] = "\(n)"
+                case .boolValue(let b):
+                    result[key] = "\(b)"
+                default:
+                    break
             }
         }
         return result

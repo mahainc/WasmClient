@@ -4699,3 +4699,693 @@ rhs: OpenAIAuthResponse
     return true
   }
 }
+
+// MARK: - Voice types (ported from flow-kit-example openai.pb.swift for parity:
+//         createVoice / deleteVoice / listVoices). Hand-mirrored — do not format.
+
+public enum OpenAIVoiceGender: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case neutral // = 1
+  case male // = 2
+  case female // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .neutral
+    case 2: self = .male
+    case 3: self = .female
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .neutral: return 1
+    case .male: return 2
+    case .female: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [OpenAIVoiceGender] = [
+    .unspecified,
+    .neutral,
+    .male,
+    .female,
+  ]
+
+}
+
+public enum OpenAIVoiceVisibility: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case `public` // = 1
+  case `private` // = 2
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .public
+    case 2: self = .private
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .public: return 1
+    case .private: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [OpenAIVoiceVisibility] = [
+    .unspecified,
+    .public,
+    .private,
+  ]
+
+}
+
+public enum OpenAIVoiceSourceType: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case voiceSourceUnspecified // = 0
+
+  /// user-uploaded audio sample
+  case voiceSourceFile // = 1
+
+  /// provider-generated / cloned
+  case voiceSourceGenerated // = 2
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .voiceSourceUnspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .voiceSourceUnspecified
+    case 1: self = .voiceSourceFile
+    case 2: self = .voiceSourceGenerated
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .voiceSourceUnspecified: return 0
+    case .voiceSourceFile: return 1
+    case .voiceSourceGenerated: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [OpenAIVoiceSourceType] = [
+    .voiceSourceUnspecified,
+    .voiceSourceFile,
+    .voiceSourceGenerated,
+  ]
+
+}
+
+public struct OpenAIVoiceInfo: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// provider-assigned voice id
+  public var id: String = String()
+
+  /// user-facing display name
+  public var name: String = String()
+
+  /// short text the provider uses for previewing the voice
+  public var previewText: String = String()
+
+  /// signed URL to the preview audio clip (mp3); may expire
+  public var previewAudioURL: String {
+    get {_previewAudioURL ?? String()}
+    set {_previewAudioURL = newValue}
+  }
+  /// Returns true if `previewAudioURL` has been explicitly set.
+  public var hasPreviewAudioURL: Bool {self._previewAudioURL != nil}
+  /// Clears the value of `previewAudioURL`. Subsequent reads from it will return its default value.
+  public mutating func clearPreviewAudioURL() {self._previewAudioURL = nil}
+
+  public var gender: OpenAIVoiceGender = .unspecified
+
+  public var visibility: OpenAIVoiceVisibility = .unspecified
+
+  public var sourceType: OpenAIVoiceSourceType = .voiceSourceUnspecified
+
+  /// provider-side creator user id
+  public var creatorID: String = String()
+
+  /// unix epoch seconds
+  public var createdAt: Int64 = 0
+
+  /// unix epoch seconds
+  public var updatedAt: Int64 = 0
+
+  /// ciphered plugin app_id that created this voice
+  public var providerID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _previewAudioURL: String? = nil
+}
+
+public struct OpenAICreateVoiceRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// user-facing display name (3–20 chars)
+  public var name: String = String()
+
+  /// audio file URI (file:// or data:) for voice cloning
+  public var audio: String = String()
+
+  /// "neutral", "male", "female"
+  public var gender: String {
+    get {_gender ?? String()}
+    set {_gender = newValue}
+  }
+  /// Returns true if `gender` has been explicitly set.
+  public var hasGender: Bool {self._gender != nil}
+  /// Clears the value of `gender`. Subsequent reads from it will return its default value.
+  public mutating func clearGender() {self._gender = nil}
+
+  /// "public", "private"
+  public var visibility: String {
+    get {_visibility ?? String()}
+    set {_visibility = newValue}
+  }
+  /// Returns true if `visibility` has been explicitly set.
+  public var hasVisibility: Bool {self._visibility != nil}
+  /// Clears the value of `visibility`. Subsequent reads from it will return its default value.
+  public mutating func clearVisibility() {self._visibility = nil}
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _gender: String? = nil
+  fileprivate var _visibility: String? = nil
+  fileprivate var _base: TypesBaseRequest? = nil
+}
+
+public struct OpenAICreateVoiceResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var voice: OpenAIVoiceInfo {
+    get {_voice ?? OpenAIVoiceInfo()}
+    set {_voice = newValue}
+  }
+  /// Returns true if `voice` has been explicitly set.
+  public var hasVoice: Bool {self._voice != nil}
+  /// Clears the value of `voice`. Subsequent reads from it will return its default value.
+  public mutating func clearVoice() {self._voice = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _voice: OpenAIVoiceInfo? = nil
+}
+
+public struct OpenAIListVoicesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// keyword substring filter
+  public var keyword: String {
+    get {_keyword ?? String()}
+    set {_keyword = newValue}
+  }
+  /// Returns true if `keyword` has been explicitly set.
+  public var hasKeyword: Bool {self._keyword != nil}
+  /// Clears the value of `keyword`. Subsequent reads from it will return its default value.
+  public mutating func clearKeyword() {self._keyword = nil}
+
+  /// pagination — 0-based offset
+  public var offset: Int32 {
+    get {_offset ?? 0}
+    set {_offset = newValue}
+  }
+  /// Returns true if `offset` has been explicitly set.
+  public var hasOffset: Bool {self._offset != nil}
+  /// Clears the value of `offset`. Subsequent reads from it will return its default value.
+  public mutating func clearOffset() {self._offset = nil}
+
+  /// pagination — page size
+  public var limit: Int32 {
+    get {_limit ?? 0}
+    set {_limit = newValue}
+  }
+  /// Returns true if `limit` has been explicitly set.
+  public var hasLimit: Bool {self._limit != nil}
+  /// Clears the value of `limit`. Subsequent reads from it will return its default value.
+  public mutating func clearLimit() {self._limit = nil}
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _keyword: String? = nil
+  fileprivate var _offset: Int32? = nil
+  fileprivate var _limit: Int32? = nil
+  fileprivate var _base: TypesBaseRequest? = nil
+}
+
+public struct OpenAIListVoicesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var voices: [OpenAIVoiceInfo] = []
+
+  /// total matching rows before pagination
+  public var total: Int32 = 0
+
+  /// 0-based offset used for this page
+  public var offset: Int32 = 0
+
+  /// page size used for this page
+  public var limit: Int32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct OpenAIDeleteVoiceRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// provider-assigned voice id
+  public var id: String = String()
+
+  public var base: TypesBaseRequest {
+    get {_base ?? TypesBaseRequest()}
+    set {_base = newValue}
+  }
+  /// Returns true if `base` has been explicitly set.
+  public var hasBase: Bool {self._base != nil}
+  /// Clears the value of `base`. Subsequent reads from it will return its default value.
+  public mutating func clearBase() {self._base = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _base: TypesBaseRequest? = nil
+}
+
+public struct OpenAIDeleteVoiceResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+extension OpenAIVoiceGender: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0VOICE_GENDER_UNSPECIFIED\0\u{1}VOICE_GENDER_NEUTRAL\0\u{1}VOICE_GENDER_MALE\0\u{1}VOICE_GENDER_FEMALE\0")
+}
+
+extension OpenAIVoiceVisibility: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0VOICE_VISIBILITY_UNSPECIFIED\0\u{1}VOICE_VISIBILITY_PUBLIC\0\u{1}VOICE_VISIBILITY_PRIVATE\0")
+}
+
+extension OpenAIVoiceSourceType: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0VOICE_SOURCE_UNSPECIFIED\0\u{1}VOICE_SOURCE_FILE\0\u{1}VOICE_SOURCE_GENERATED\0")
+}
+
+extension OpenAIVoiceInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".VoiceInfo"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}preview_text\0\u{1}preview_audio_url\0\u{1}gender\0\u{1}visibility\0\u{1}source_type\0\u{1}creator_id\0\u{1}created_at\0\u{1}updated_at\0\u{1}provider_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.previewText) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._previewAudioURL) }()
+      case 5: try { try decoder.decodeSingularEnumField(value: &self.gender) }()
+      case 6: try { try decoder.decodeSingularEnumField(value: &self.visibility) }()
+      case 7: try { try decoder.decodeSingularEnumField(value: &self.sourceType) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.creatorID) }()
+      case 9: try { try decoder.decodeSingularInt64Field(value: &self.createdAt) }()
+      case 10: try { try decoder.decodeSingularInt64Field(value: &self.updatedAt) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.providerID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if !self.previewText.isEmpty {
+      try visitor.visitSingularStringField(value: self.previewText, fieldNumber: 3)
+    }
+    try { if let v = self._previewAudioURL {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    if self.gender != .unspecified {
+      try visitor.visitSingularEnumField(value: self.gender, fieldNumber: 5)
+    }
+    if self.visibility != .unspecified {
+      try visitor.visitSingularEnumField(value: self.visibility, fieldNumber: 6)
+    }
+    if self.sourceType != .voiceSourceUnspecified {
+      try visitor.visitSingularEnumField(value: self.sourceType, fieldNumber: 7)
+    }
+    if !self.creatorID.isEmpty {
+      try visitor.visitSingularStringField(value: self.creatorID, fieldNumber: 8)
+    }
+    if self.createdAt != 0 {
+      try visitor.visitSingularInt64Field(value: self.createdAt, fieldNumber: 9)
+    }
+    if self.updatedAt != 0 {
+      try visitor.visitSingularInt64Field(value: self.updatedAt, fieldNumber: 10)
+    }
+    if !self.providerID.isEmpty {
+      try visitor.visitSingularStringField(value: self.providerID, fieldNumber: 11)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: OpenAIVoiceInfo, rhs: OpenAIVoiceInfo) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.previewText != rhs.previewText {return false}
+    if lhs._previewAudioURL != rhs._previewAudioURL {return false}
+    if lhs.gender != rhs.gender {return false}
+    if lhs.visibility != rhs.visibility {return false}
+    if lhs.sourceType != rhs.sourceType {return false}
+    if lhs.creatorID != rhs.creatorID {return false}
+    if lhs.createdAt != rhs.createdAt {return false}
+    if lhs.updatedAt != rhs.updatedAt {return false}
+    if lhs.providerID != rhs.providerID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension OpenAICreateVoiceRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CreateVoiceRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}audio\0\u{1}gender\0\u{1}visibility\0\u{1}base\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.audio) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._gender) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._visibility) }()
+      case 5: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
+    }
+    if !self.audio.isEmpty {
+      try visitor.visitSingularStringField(value: self.audio, fieldNumber: 2)
+    }
+    try { if let v = self._gender {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._visibility {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: OpenAICreateVoiceRequest, rhs: OpenAICreateVoiceRequest) -> Bool {
+    if lhs.name != rhs.name {return false}
+    if lhs.audio != rhs.audio {return false}
+    if lhs._gender != rhs._gender {return false}
+    if lhs._visibility != rhs._visibility {return false}
+    if lhs._base != rhs._base {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension OpenAICreateVoiceResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CreateVoiceResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}voice\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._voice) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._voice {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: OpenAICreateVoiceResponse, rhs: OpenAICreateVoiceResponse) -> Bool {
+    if lhs._voice != rhs._voice {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension OpenAIListVoicesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListVoicesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}keyword\0\u{1}offset\0\u{1}limit\0\u{1}base\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._keyword) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self._offset) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self._limit) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._keyword {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._offset {
+      try visitor.visitSingularInt32Field(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._limit {
+      try visitor.visitSingularInt32Field(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: OpenAIListVoicesRequest, rhs: OpenAIListVoicesRequest) -> Bool {
+    if lhs._keyword != rhs._keyword {return false}
+    if lhs._offset != rhs._offset {return false}
+    if lhs._limit != rhs._limit {return false}
+    if lhs._base != rhs._base {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension OpenAIListVoicesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListVoicesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}voices\0\u{1}total\0\u{1}offset\0\u{1}limit\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.voices) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.total) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.offset) }()
+      case 4: try { try decoder.decodeSingularInt32Field(value: &self.limit) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.voices.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.voices, fieldNumber: 1)
+    }
+    if self.total != 0 {
+      try visitor.visitSingularInt32Field(value: self.total, fieldNumber: 2)
+    }
+    if self.offset != 0 {
+      try visitor.visitSingularInt32Field(value: self.offset, fieldNumber: 3)
+    }
+    if self.limit != 0 {
+      try visitor.visitSingularInt32Field(value: self.limit, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: OpenAIListVoicesResponse, rhs: OpenAIListVoicesResponse) -> Bool {
+    if lhs.voices != rhs.voices {return false}
+    if lhs.total != rhs.total {return false}
+    if lhs.offset != rhs.offset {return false}
+    if lhs.limit != rhs.limit {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension OpenAIDeleteVoiceRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteVoiceRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}base\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._base) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    try { if let v = self._base {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: OpenAIDeleteVoiceRequest, rhs: OpenAIDeleteVoiceRequest) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs._base != rhs._base {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension OpenAIDeleteVoiceResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteVoiceResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: OpenAIDeleteVoiceResponse, rhs: OpenAIDeleteVoiceResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+

@@ -94,7 +94,7 @@ public struct WasmClient: Sendable {
     public var scan:
         @Sendable (
             _ imageData: Data, _ category: String, _ language: String
-        ) async throws -> WasmClient.ScanResult
+        ) async throws -> WasmClient.Vision.ScanResult
 
     /// Describe/enrich a previously scanned image with full details.
     /// Uses the image URL returned by a prior `scan` call and the detected category
@@ -103,21 +103,21 @@ public struct WasmClient: Sendable {
     public var describe:
         @Sendable (
             _ imageURL: String, _ category: String, _ language: String, _ provider: String
-        ) async throws -> WasmClient.ScanResult
+        ) async throws -> WasmClient.Vision.ScanResult
 
     /// Visual search on an already-uploaded image URL. Returns matching products.
     /// Pass the scan result's `provider` for provider-consistent results.
     public var visualSearch:
         @Sendable (
             _ imageURL: String, _ provider: String
-        ) async throws -> [WasmClient.ShoppingProduct]
+        ) async throws -> [WasmClient.Vision.ShoppingProduct]
 
     /// Search for shopping products by text query.
     /// Pass the scan result's `provider` for provider-consistent results.
     public var shopping:
         @Sendable (
             _ query: String, _ provider: String
-        ) async throws -> [WasmClient.ShoppingProduct]
+        ) async throws -> [WasmClient.Vision.ShoppingProduct]
 
     // MARK: - Blobstore
 
@@ -139,22 +139,22 @@ public struct WasmClient: Sendable {
     public var chatModels:
         @Sendable (
             _ offset: Int, _ limit: Int, _ keyword: String?, _ category: String?
-        ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int)
+        ) async throws -> (models: [WasmClient.Chat.ModelInfo], total: Int)
 
     /// Send a single chat message and get the full response.
     /// Stateless — does not maintain conversation history.
     public var chatSend:
         @Sendable (
-            _ config: WasmClient.ChatConfig,
-            _ messages: [WasmClient.ChatMessage]
-        ) async throws -> WasmClient.ChatMessage
+            _ config: WasmClient.Chat.Config,
+            _ messages: [WasmClient.Chat.Message]
+        ) async throws -> WasmClient.Chat.Message
 
     /// Stream a chat response, yielding content deltas as they arrive via SSE.
     /// Stateless — caller manages conversation history.
     public var chatStream:
         @Sendable (
-            _ config: WasmClient.ChatConfig,
-            _ messages: [WasmClient.ChatMessage]
+            _ config: WasmClient.Chat.Config,
+            _ messages: [WasmClient.Chat.Message]
         ) async throws -> AsyncThrowingStream<String, Swift.Error>
 
     /// Create a custom chat model on a specific provider. Returns the
@@ -167,7 +167,7 @@ public struct WasmClient: Sendable {
     public var createChatModel:
         @Sendable (
             _ providerId: String,
-            _ input: WasmClient.CreateChatModelInput
+            _ input: WasmClient.Chat.CreateModelInput
         ) async throws -> String
 
     /// Run a chat provider's pre-flight init action. CAI registers the
@@ -188,6 +188,62 @@ public struct WasmClient: Sendable {
         @Sendable (
             _ providerId: String,
             _ userName: String
+        ) async throws -> Void
+
+    /// Non-chat text completion (OpenAI `Completion` rpc). Same request/
+    /// response shape as `chatSend` but routed through the `completion`
+    /// method — used by callers that want a single-turn completion without
+    /// the chat-history semantics. Pass an empty `providerId` to let the
+    /// engine pick via `provider_strategy`.
+    public var completion:
+        @Sendable (
+            _ config: WasmClient.Chat.Config,
+            _ messages: [WasmClient.Chat.Message]
+        ) async throws -> WasmClient.Chat.Message
+
+    /// List the chat providers the engine exposes (OpenAI `ListProviders`
+    /// rpc). Use `ProviderInfo.creatable` / `.voiceCreatable` to gate
+    /// custom-model and voice-creation UI.
+    public var listProviders: @Sendable () async throws -> [WasmClient.Chat.ProviderInfo]
+
+    /// Run a provider's `Auth` rpc, returning the provider-assigned id and
+    /// cache dir. Lower-level than `initializeChatProvider` (which wraps
+    /// `providerInit`); use when a provider requires an explicit auth
+    /// handshake. Pass an empty `providerId` to fan out to the first
+    /// auth-capable provider.
+    public var authProvider:
+        @Sendable (
+            _ providerId: String
+        ) async throws -> (providerID: String, cacheDir: String)
+
+    /// List a provider's voice catalogue (OpenAI `ListVoices` rpc),
+    /// paginated. Returns the page of voices plus the backend-reported
+    /// `total` (drives "load more"). Pass an empty `providerId` to use the
+    /// first voice-capable provider.
+    public var listVoices:
+        @Sendable (
+            _ providerId: String, _ keyword: String, _ offset: Int, _ limit: Int
+        ) async throws -> WasmClient.Chat.VoiceList
+
+    /// Create a custom voice clone from an audio sample (OpenAI
+    /// `CreateVoice` rpc). Returns the created voice. `audio` is a
+    /// `file://` or `data:` URI; `gender` / `visibility` accept the
+    /// `VoiceGender` / `VoiceVisibility` wire values.
+    public var createVoice:
+        @Sendable (
+            _ providerId: String,
+            _ name: String,
+            _ audio: String,
+            _ gender: WasmClient.Chat.VoiceGender,
+            _ visibility: WasmClient.Chat.VoiceVisibility
+        ) async throws -> WasmClient.Chat.VoiceInfo
+
+    /// Delete a custom voice by id (OpenAI `DeleteVoice` rpc). Pass the
+    /// owning `providerId` so the engine routes to the right provider.
+    public var deleteVoice:
+        @Sendable (
+            _ providerId: String,
+            _ voiceId: String
         ) async throws -> Void
 
     // MARK: - Music
@@ -278,7 +334,7 @@ public struct WasmClient: Sendable {
     public var readOutLoud:
         @Sendable (
             _ text: String, _ voice: String?, _ providerId: String
-        ) async throws -> WasmClient.TTSAudio
+        ) async throws -> WasmClient.Chat.TTSAudio
 
     /// List the voice presets exposed by a specific chat model on a specific
     /// provider. Wraps `chatModels` and returns `ChatModelInfo.voices` for
@@ -512,19 +568,19 @@ public struct WasmClient: Sendable {
     public var autoSuggestion:
         @Sendable (
             _ image: String
-        ) async throws -> WasmClient.ObjectSegments
+        ) async throws -> WasmClient.Inpaint.ObjectSegments
 
     /// Enhance (upscale) an image.
     public var enhance:
         @Sendable (
             _ image: String, _ zoomFactor: Int
-        ) async throws -> WasmClient.ObjectSegments
+        ) async throws -> WasmClient.Inpaint.ObjectSegments
 
     /// Remove background from an image.
     public var removeBackground:
         @Sendable (
             _ image: String
-        ) async throws -> WasmClient.Segment
+        ) async throws -> WasmClient.Inpaint.Segment
 
     /// Erase selected objects from an image.
     public var erase:
@@ -533,25 +589,25 @@ public struct WasmClient: Sendable {
             _ sessionId: String?,
             _ maskBrush: String?,
             _ maskObjects: String?
-        ) async throws -> WasmClient.EraseResult
+        ) async throws -> WasmClient.Inpaint.EraseResult
 
     /// Skin beauty filter.
     public var skinBeauty:
         @Sendable (
             _ image: String
-        ) async throws -> WasmClient.ObjectSegments
+        ) async throws -> WasmClient.Inpaint.ObjectSegments
 
     /// Sky segmentation.
     public var sky:
         @Sendable (
             _ image: String
-        ) async throws -> WasmClient.Segment
+        ) async throws -> WasmClient.Inpaint.Segment
 
     /// Categorize clothes from an image for virtual try-on.
     public var categorizeClothes:
         @Sendable (
             _ image: String
-        ) async throws -> WasmClient.Segment
+        ) async throws -> WasmClient.Inpaint.Segment
 
     /// Virtual try-on. Runs the full flow on the engine side (model/cloth
     /// checks → create → poll-to-done) and returns the finished image URL.
