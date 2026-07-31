@@ -45,7 +45,7 @@ public struct WasmClient: Sendable {
     public var resetDownloads: @Sendable () async -> Void = { }
 
     /// Register a callback that returns the wasm version the app expects to run.
-    /// Invoked inside `start()` before `TaskWasm.default()`. If the returned ID
+    /// Invoked inside `start()` before `FlowKit.default()`. If the returned ID
     /// differs from the currently cached version, the download cache is cleared
     /// so the engine fetches the new bundle on start. Returning `nil` or throwing
     /// is treated as "no expectation" and preserves the default behavior.
@@ -64,6 +64,11 @@ public struct WasmClient: Sendable {
     /// `setExpectedVersionProvider`.
     public var setUserName: @Sendable (_ name: String) -> Void = { _ in }
 
+    /// Mirror `@Shared(.isPremium)` into the FlowKit engine so FunnelWasm
+    /// premium-guards (`user_is_premium`) stay aligned with ads + IAP UI.
+    /// Call whenever the entitlement flag changes (see `PremiumSyncer`).
+    public var setPremium: @Sendable (_ isPremium: Bool) -> Void = { _ in }
+
     /// Pre-warm the WASM engine. Convenience wrapper around `start` that
     /// ignores errors. Call early (e.g. on home screen appear) to avoid cold-start delay.
     public var warmUp: @Sendable () async -> Void = { }
@@ -74,6 +79,10 @@ public struct WasmClient: Sendable {
     /// Re-poll the engine for action providers. Use after a network-related
     /// failure during initial startup to retry provider discovery.
     public var refreshActions: @Sendable () async throws -> Void
+
+    /// The started FlowKit engine as an opaque handle for sibling packages
+    /// that wrap a different RPC domain on the same engine.
+    public var funnelEngine: @Sendable () async throws -> (any Sendable)? = { nil }
 
     // MARK: - Vision / Scan
 
@@ -116,13 +125,11 @@ public struct WasmClient: Sendable {
 
     // MARK: - Chat (OpenAI-compatible)
 
-    /// Fetch chat models via the standalone `listModels` action.
-    /// Supports pagination (`offset` / `limit`), free-text `keyword`
-    /// filtering, and a backend `category` filter (e.g. `"anime"`,
-    /// `"assistant"`). Each row is stamped with its source provider so
-    /// callers can route subsequent chat requests correctly. Returns the
-    /// page of rows plus the backend-reported `total` (drives "load more"
-    /// logic).
+    /// Fetch chat models via the provider-agnostic
+    /// `OpenAIService/ListModels` rpc. Supports pagination (`offset` /
+    /// `limit`), free-text `keyword` filtering, and a backend `category`
+    /// filter (e.g. `"anime"`, `"assistant"`). Callers may pass a large
+    /// `limit` (e.g. 1000) to fetch the full catalog in one round-trip.
     public var chatModels: @Sendable (
         _ offset: Int, _ limit: Int, _ keyword: String?, _ category: String?
     ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int)
@@ -291,6 +298,14 @@ public struct WasmClient: Sendable {
     /// flow-kit-example reads `AiArtPlugin::models()` from action metadata.
     public var aiartModels: @Sendable (
         _ actionID: String
+    ) async throws -> WasmClient.AiartModelCatalog = { _ in .init() }
+
+    /// Full per-mode model catalog via `AiartService/ListModels` rpc. Returns
+    /// every model for the mode plus a default — used by the Studio model picker
+    /// instead of the single-action `aiartModels` metadata path. `mode` is the
+    /// wire enum name (`"NORMAL"`, `"STAMPS"`, …); empty lets the plugin pick.
+    public var aiartModelList: @Sendable (
+        _ mode: String
     ) async throws -> WasmClient.AiartModelCatalog = { _ in .init() }
 
     /// Available `aspect_ratio` values for an aiart action, parsed from the

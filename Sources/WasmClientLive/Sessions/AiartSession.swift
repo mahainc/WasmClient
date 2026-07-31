@@ -136,6 +136,64 @@ extension WasmActor {
         return WasmClient.AiartModelCatalog(models: models, defaultModelID: defaultModelID)
     }
 
+    /// Fetch the per-mode aiart model catalog via the `AiartService/ListModels`
+    /// rpc. Replaces the metadata-driven `aiartModels(actionID:)` lookup — the
+    /// plugin no longer nests the full list under a single action's
+    /// `metadata.model_infos` (that path now surfaces only one fixed model), so
+    /// discovery must go through this rpc which returns every model for the
+    /// mode plus a `default_model_id`. Mirrors flow-kit-example's
+    /// `engine.instance.aiart.listModels(mode:)`.
+    ///
+    /// `mode` is the wire enum name (`"NORMAL"`, `"STAMPS"`, …); an empty string
+    /// lets the plugin pick its default mode.
+    func aiartModelList(mode: String) async throws -> WasmClient.AiartModelCatalog {
+        let instance = try await readyEngine()
+
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !mode.isEmpty {
+            args["mode"] = Google_Protobuf_Value(stringValue: mode)
+        }
+
+        let resp: AiartListModelsResponse = try await instance.run(
+            method: "asyncify.aiart.AiartService/ListModels",
+            providerId: "",
+            args: args
+        )
+
+        logger("aiartModelList: mode=\(mode) parsed \(resp.models.count) models default=\(resp.defaultModelID)")
+
+        let models = resp.models.compactMap { info -> WasmClient.AiartModelInfo? in
+            guard !info.id.isEmpty else { return nil }
+            let meta = info.hasMetadata ? info.metadata.fields : [:]
+            let vision: Bool = {
+                if case .boolValue(let b)? = meta["vision"]?.kind { return b }
+                return false
+            }()
+            let isPro: Bool = {
+                if case .boolValue(let b)? = meta["is_pro"]?.kind { return b }
+                return false
+            }()
+            let aspectRatios: [String] = {
+                guard case .listValue(let list)? = meta["aspect_ratios"]?.kind else { return [] }
+                return list.values.compactMap {
+                    if case .stringValue(let r) = $0.kind, !r.isEmpty { return r }
+                    return nil
+                }
+            }()
+            return WasmClient.AiartModelInfo(
+                modelID: info.id,
+                name: info.name,
+                ownedBy: info.ownedBy,
+                vision: vision,
+                isPro: isPro,
+                aspectRatios: aspectRatios
+            )
+        }
+
+        let defaultModelID = resp.defaultModelID.isEmpty ? nil : resp.defaultModelID
+        return WasmClient.AiartModelCatalog(models: models, defaultModelID: defaultModelID)
+    }
+
     /// Map one `model_infos` entry (a protobuf struct) into `AiartModelInfo`.
     /// Returns nil when the entry has no usable `id`. Mirrors
     /// flow-kit-example's `AiartModelOption.init(value:)`.

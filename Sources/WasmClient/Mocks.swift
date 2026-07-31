@@ -42,9 +42,11 @@ extension WasmClient {
         resetDownloads: { },
         setExpectedVersionProvider: { _ in },
         setUserName: { _ in },
+        setPremium: { _ in },
         warmUp: { },
         availableActions: { [] },
         refreshActions: { },
+        funnelEngine: { nil },
         scan: { _, _, _ in ScanResult() },
         describe: { _, _, _, _ in ScanResult() },
         visualSearch: { _, _ in [] },
@@ -71,6 +73,7 @@ extension WasmClient {
         aiartGenerate: { _, _ in AiartResult() },
         aiartStyles: { _ in [] },
         aiartModels: { _ in AiartModelCatalog() },
+        aiartModelList: { _ in AiartModelCatalog() },
         aiartAspectRatios: { _ in [] },
         aiartVideoCreate: { _ in AiartVideoResult(status: .processing) },
         aiartVideoStatus: { _ in AiartVideoResult() },
@@ -158,6 +161,7 @@ extension WasmClient {
         resetDownloads: { },
         setExpectedVersionProvider: { _ in },
         setUserName: { _ in },
+        setPremium: { _ in },
         warmUp: {
             try? await Task.sleep(nanoseconds: MockConstants.warmUpDelay)
         },
@@ -169,6 +173,7 @@ extension WasmClient {
             ]
         },
         refreshActions: { },
+        funnelEngine: { nil },
         scan: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
             return ScanResult(
@@ -351,6 +356,22 @@ extension WasmClient {
             ]
         },
         aiartModels: { _ in
+            AiartModelCatalog(
+                models: [
+                    AiartModelInfo(
+                        modelID: "flux-schnell", name: "Flux Schnell", ownedBy: "black-forest-labs",
+                        aspectRatios: ["1:1", "16:9", "9:16"]),
+                    AiartModelInfo(
+                        modelID: "flux-dev", name: "Flux Dev", ownedBy: "black-forest-labs",
+                        aspectRatios: ["1:1", "3:4", "4:3"]),
+                    AiartModelInfo(
+                        modelID: "sdxl", name: "Stable Diffusion XL", ownedBy: "stability-ai", vision: true,
+                        aspectRatios: ["1:1"]),
+                ],
+                defaultModelID: "flux-schnell"
+            )
+        },
+        aiartModelList: { _ in
             AiartModelCatalog(
                 models: [
                     AiartModelInfo(

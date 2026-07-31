@@ -324,11 +324,14 @@ extension WasmActor {
         func markFinished() { lock.withLock { _finished = true } }
     }
 
-    /// Fetch chat models via the standalone `listModels` action with
-    /// `offset` / `limit` / optional `keyword` / optional `category`.
-    /// Each model row is stamped with its source provider (resolved from
-    /// the row's `metadata.provider_id` against the registered chat
-    /// providers).
+    private static let listModelsMethod = "asyncify.openai.OpenAIService/ListModels"
+
+    /// Fetch chat models via the provider-agnostic
+    /// `asyncify.openai.OpenAIService/ListModels` rpc (same path as
+    /// flow-kit-example's `openAI.listModels`). Supports `offset` /
+    /// `limit` / optional `keyword` / optional `category`. Each row is
+    /// stamped with its source provider (resolved from the row's
+    /// `metadata.provider_id` against the registered chat providers).
     func chatModels(
         offset: Int,
         limit: Int,
@@ -336,16 +339,8 @@ extension WasmActor {
         category: String?
     ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int) {
         let instance = try await readyEngine()
-
-        // Resolve listModels action — standalone, not tied to a chat provider.
-        let listAction: WaTAction
-        do {
-            listAction = try await delegate.resolveAction(
-                actionID: WasmClient.ActionID.listModels.rawValue,
-                logger: logger
-            )
-        } catch {
-            return ([], 0)
+        guard let engine = instance as? TaskWasmEngine else {
+            throw WasmClient.Error.engineNotReady
         }
 
         // Build a map from ciphered chat-provider id → display name so each
@@ -374,36 +369,119 @@ extension WasmActor {
             args["category"] = Google_Protobuf_Value(stringValue: trimmedCategory)
         }
 
-        let task = try await instance.create(action: listAction, args: args)
-        guard task.status == .completed else {
-            throw WasmClient.Error.taskFailed(status: "\(task.status)")
-        }
-        guard task.hasValue else {
-            throw WasmClient.Error.missingValue
-        }
-        // FlowKit returns a typed `TypesListModels` message (data: [TypesModelInfo]),
-        // not a generic Struct. Each row's scalar fields are typed; the `metadata`
-        // field is a Struct carrying is_pro / vision / voices / etc.
-        let list = try TypesListModels(unpackingAny: task.value)
-
-        var models: [WasmClient.ChatModelInfo] = []
-        for row in list.data {
-            var rowFields: [String: Google_Protobuf_Value] = [
-                "id": .init(stringValue: row.id),
-                "name": .init(stringValue: row.name),
-                "owned_by": .init(stringValue: row.ownedBy),
-            ]
-            if row.hasMetadata {
-                rowFields["metadata"] = .init(structValue: row.metadata)
+        // Method-name dispatch — federated catalog across all chat providers.
+        // Do NOT use `resolveAction(listModels UUID)` here: that pins to the
+        // first registered provider (often Character AI) and drops LLM rows.
+        let list: TypesListModels
+        do {
+            list = try await engine.run(
+                method: Self.listModelsMethod,
+                providerId: "",
+                args: args
+            )
+        } catch {
+            logger("chatModels run(\(Self.listModelsMethod)) failed: \(error) — trying create(actionId:)")
+            let task = try await engine.create(
+                providerId: "",
+                actionId: Self.listModelsMethod,
+                args: args
+            )
+            guard task.status == .completed else {
+                throw WasmClient.Error.taskFailed(status: "\(task.status)")
             }
-            guard let model = Self.mapModelRow(rowFields, providerNames: providerNames) else {
-                continue
+            guard task.hasValue else {
+                throw WasmClient.Error.missingValue
             }
-            models.append(model)
+            list = try TypesListModels(unpackingAny: task.value)
         }
 
-        let total = list.total > 0 ? Int(list.total) : models.count
-        return (models, total)
+        return try await Self.collectChatModelPages(
+            initialList: list,
+            initialArgs: args,
+            engine: engine,
+            providerNames: providerNames,
+            offset: offset,
+            limit: limit,
+            logger: logger
+        )
+    }
+
+    /// Backend caps each `ListModels` page (commonly 200) while `total` can be
+    /// higher. Pull subsequent pages until `total` is covered or `limit` is
+    /// reached — callers still invoke `chatModels` once with a large limit.
+    private static func collectChatModelPages(
+        initialList: TypesListModels,
+        initialArgs: [String: Google_Protobuf_Value],
+        engine: TaskWasmEngine,
+        providerNames: [String: String],
+        offset: Int,
+        limit: Int,
+        logger: @escaping @Sendable (String) -> Void
+    ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int) {
+        let backendTotal = initialList.total > 0 ? Int(initialList.total) : initialList.data.count
+        let targetCount = min(limit, backendTotal > 0 ? backendTotal : limit)
+
+        var merged: [WasmClient.ChatModelInfo] = []
+        var seen = Set<String>()
+
+        func appendPage(_ list: TypesListModels) {
+            for row in list.data {
+                var rowFields: [String: Google_Protobuf_Value] = [
+                    "id": .init(stringValue: row.id),
+                    "name": .init(stringValue: row.name),
+                    "owned_by": .init(stringValue: row.ownedBy),
+                ]
+                if row.hasMetadata {
+                    rowFields["metadata"] = .init(structValue: row.metadata)
+                }
+                guard let model = mapModelRow(rowFields, providerNames: providerNames) else {
+                    continue
+                }
+                if seen.insert(model.id).inserted {
+                    merged.append(model)
+                }
+            }
+        }
+
+        appendPage(initialList)
+
+        var pageOffset = offset + initialList.data.count
+        while merged.count < targetCount,
+              backendTotal > 0,
+              pageOffset < backendTotal
+        {
+            let remaining = targetCount - merged.count
+            let pageLimit = min(remaining, 200)
+            var pageArgs = initialArgs
+            pageArgs["offset"] = .init(numberValue: Double(pageOffset))
+            pageArgs["limit"] = .init(numberValue: Double(pageLimit))
+
+            let next: TypesListModels
+            do {
+                next = try await engine.run(
+                    method: Self.listModelsMethod,
+                    providerId: "",
+                    args: pageArgs
+                )
+            } catch {
+                logger("chatModels page offset=\(pageOffset) failed: \(error)")
+                break
+            }
+            if next.data.isEmpty { break }
+            appendPage(next)
+            pageOffset += next.data.count
+        }
+
+        let llmLike = merged.filter {
+            let owned = $0.ownedBy.lowercased()
+            return ["openai", "anthropic", "google", "google-deepmind", "meta", "mistral", "xai", "deepseek"]
+                .contains(owned)
+        }.count
+        logger(
+            "chatModels \(Self.listModelsMethod): merged=\(merged.count) total=\(backendTotal) llmLike=\(llmLike)"
+        )
+
+        return (merged, backendTotal)
     }
 
     /// Create a custom chat model (persona) on a specific provider.
@@ -679,6 +757,7 @@ extension WasmActor {
                 if tool.strict { fn["strict"] = true }
                 return ["type": tool.type, "function": fn]
             }
+            body["tool_choice"] = "auto"
         }
 
         return try JSONSerialization.data(withJSONObject: body)

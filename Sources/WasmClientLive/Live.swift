@@ -33,6 +33,9 @@ extension WasmClient: DependencyKey {
             setUserName: { name in
                 actor.setUserName(name)
             },
+            setPremium: { isPremium in
+                actor.setPremium(isPremium)
+            },
             warmUp: {
                 await actor.warmUp()
             },
@@ -41,6 +44,10 @@ extension WasmClient: DependencyKey {
             },
             refreshActions: {
                 try await actor.refreshActions()
+            },
+            funnelEngine: {
+                let engine = try await actor.readyEngine()
+                return unsafeBitCast(engine as Any, to: (any Sendable).self)
             },
             scan: { imageData, category, language in
                 try await actor.scan(imageData: imageData, category: category, language: language)
@@ -115,6 +122,9 @@ extension WasmClient: DependencyKey {
             },
             aiartModels: { actionID in
                 try await actor.aiartModels(actionID: actionID)
+            },
+            aiartModelList: { mode in
+                try await actor.aiartModelList(mode: mode)
             },
             aiartAspectRatios: { actionID in
                 try await actor.aiartAspectRatios(actionID: actionID)
