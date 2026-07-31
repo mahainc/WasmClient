@@ -75,6 +75,14 @@ public struct WasmClient: Sendable {
     /// failure during initial startup to retry provider discovery.
     public var refreshActions: @Sendable () async throws -> Void
 
+    /// The started FlowKit engine as an opaque handle, for sibling packages
+    /// (e.g. FunnelWasm) that wrap a DIFFERENT RPC domain on the SAME engine.
+    /// Boots the engine if needed, then returns it — cast to `TaskWasmProtocol`
+    /// in a target that imports FlowKit. Returns nil only from the mock/test
+    /// clients. Sharing one engine avoids double-loading the WASM runtime and
+    /// racing the on-disk state both domains write.
+    public var funnelEngine: @Sendable () async throws -> (any Sendable)? = { nil }
+
     // MARK: - Vision / Scan
 
     /// Scan a photo: uploads to blobstore, runs vision scan, returns structured result.

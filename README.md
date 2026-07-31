@@ -18,19 +18,18 @@ A TCA-style dependency client wrapping [FlowKit](https://github.com/mahainc/flow
 - `WasmClientLive` on the app target
 - `WasmClientWebKit` on any target that hosts a `WKWebView` alongside the Wasm engine
 
-## ⚠ Build setup — explicit modules off
+## Build setup
 
-WasmClient depends on a `FlowKit.xcframework` whose sub-modules (`AsyncWasmCore`, `MobileFFI`, etc.) are exposed via `-I` include paths rather than declared SPM products. Xcode 26's explicit-modules dependency scanner can't see them.
+WasmClient links FlowKit directly. As of FlowKit `1.2.62-26.1.1-ffi` the
+`FlowKit.xcframework` ships a single `FlowKit.swiftmodule` (all sub-modules
+folded in), so `import FlowKit` is all that's required — no module-merge build
+plugin, no `-I` include paths, and no `SWIFT_ENABLE_EXPLICIT_MODULES = NO`
+workaround.
 
-**Consumer apps must disable explicit modules** at the app target level:
-
-```
-SWIFT_ENABLE_EXPLICIT_MODULES = NO
-```
-
-There is no per-target swiftc flag that disables this — the setting has to live on the app target. Without it you'll see build errors like `cannot find module 'AsyncWasmCore' in scope`.
-
-The `MergeFlowKitModules` build plugin in this package merges the xcframework's sub-module `.swiftmodule`s into a single directory that the include paths point at; the plugin runs automatically as part of the build graph.
+The one dependency FlowKit still needs in the package graph is
+`apple/swift-protobuf`: FlowKit's compiled module declares SwiftProtobuf as a
+dependency but does not bundle it, so this package (and any app that links
+FlowKit) must include swift-protobuf. It's already declared here.
 
 ## Usage
 

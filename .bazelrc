@@ -1,0 +1,37 @@
+# Side-by-side Bazel build for the WasmClient SPM package. Does NOT affect Xcode/SPM.
+build --enable_platform_specific_config
+build --incompatible_strict_action_env=true
+build --macos_minimum_os=13.0
+build --host_macos_minimum_os=13.0
+
+# Apple C/C++ toolchain (from apple_support apple_cc_configure extension)
+build:macos --apple_crosstool_top=@local_config_apple_cc//:toolchain
+build:macos --crosstool_top=@local_config_apple_cc//:toolchain
+build:macos --host_crosstool_top=@local_config_apple_cc//:toolchain
+
+# iOS Simulator (Apple Silicon) — build via explicit platform (//:ios_sim_arm64)
+build --ios_minimum_os=17.0
+build:ios_sim --platforms=//:ios_sim_arm64
+build:ios_sim --apple_platform_type=ios
+
+# Cache lives under ~/.cache (user data, NOT ~/Library/Developer "System Data").
+# Shared across every Bazelified repo on this machine: the disk cache is
+# content-addressed, so repos that pin the same toolchain (Bazel 8.7.0 /
+# rules_swift 3.6.1) dedupe their common deps (swift-syntax, TCA, protobuf, …)
+# into one store instead of N copies. GC via `clean-dev-cache --bazel-cache`.
+build --disk_cache=~/.cache/bazel/disk
+
+# ── Remote cache (shared across machines / CI) — opt in: bazel build --config=remote ──
+# The disk_cache above already survives `bazel clean`; the remote cache extends
+# sharing across machines + CI. Server = bazel-remote (native binary, NO Docker)
+# running under launchd on mac-mini-haikt-ios, bound to its Tailscale IP, size-
+# capped at 30 GiB — managed via nix-config (hosts/darwin/mac-mini/default.nix).
+# It is bound to the tailnet address and reachable by tailnet peers (no auth).
+# The address is a MagicDNS name so clients on every Mac resolve it. Opt-in via
+# --config=remote, so an offline/unreachable cache never breaks a build.
+build:remote --remote_cache=grpc://thanhhaikhongs-mac-mini-1:9092
+build:remote --remote_download_minimal
+# An unreachable cache is treated as a cache-miss with a warning and the build
+# continues — this is the default for --remote_cache, no extra flag required.
+
+build --verbose_failures

@@ -45,6 +45,7 @@ extension WasmClient {
         warmUp: { },
         availableActions: { [] },
         refreshActions: { },
+        funnelEngine: { nil },
         scan: { _, _, _ in ScanResult() },
         describe: { _, _, _, _ in ScanResult() },
         visualSearch: { _, _ in [] },
@@ -193,6 +194,7 @@ extension WasmClient {
             ]
         },
         refreshActions: { },
+        funnelEngine: { nil },
         scan: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
             return ScanResult(

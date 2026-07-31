@@ -1,0 +1,10 @@
+--- a/Sources/asyncify_wasmFFI/module.modulemap
++++ b/Sources/asyncify_wasmFFI/module.modulemap
+@@ -1,7 +1,4 @@
+ module asyncify_wasmFFI {
+     header "asyncify_wasmFFI.h"
+     export *
+-    use "Darwin"
+-    use "_Builtin_stdbool"
+-    use "_Builtin_stdint"
+ }

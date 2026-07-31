@@ -1,0 +1,16 @@
+load("@build_bazel_rules_swift//swift:swift_library.bzl", "swift_library")
+
+swift_library(
+    name = "WasmClientWebKit",
+    srcs = ["WebKit+NoProxy.swift"],
+    module_name = "WasmClientWebKit",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@swiftpkg_flow_kit//:FlowKit",
+        # keep: FlowKit's binary swiftmodule requires SwiftProtobuf present, but
+        # this target's source imports only FlowKit + WebKit, so gazelle drops
+        # the manifest-declared SwiftProtobuf dep. Keep it or `import FlowKit`
+        # fails with "missing required module 'SwiftProtobuf'".
+        "@swiftpkg_swift_protobuf//:SwiftProtobuf",  # keep
+    ],
+)

@@ -2,3 +2,8 @@
 .swiftpm/
 .DS_Store
 .claude/
+
+# Bazel side-by-side build artifacts (do not commit)
+/bazel-*
+/.bazel/
+MODULE.bazel.lock

@@ -9,7 +9,11 @@ extension WasmActor {
 
     /// Upload image data, then scan it via the vision engine.
     /// Returns a mapped ScanResult with all fields including the imageURL and provider used.
-    func scan(imageData: Data, category: String, language: String) async throws -> WasmClient.ScanResult {
+    func scan(
+        imageData: Data,
+        category: String,
+        language: String
+    ) async throws -> WasmClient.ScanResult {
         let instance = try await readyEngine()
 
         // Step 1: upload to blobstore
@@ -19,7 +23,7 @@ extension WasmActor {
         // Step 2: run scan action
         let scanAction = try await delegate.resolveAction(actionID: WasmClient.ActionID.scan.rawValue, logger: logger)
         var args: [String: Google_Protobuf_Value] = [
-            "file": Google_Protobuf_Value(stringValue: imageURL),
+            "file": Google_Protobuf_Value(stringValue: imageURL)
         ]
         if category != "object" {
             args["category"] = Google_Protobuf_Value(stringValue: category)
@@ -38,7 +42,12 @@ extension WasmActor {
 
     /// Describe/enrich an image with full details using the describe action.
     /// Uses the same provider as the initial scan when possible.
-    func describe(imageURL: String, category: String, language: String, provider: String) async throws -> WasmClient.ScanResult {
+    func describe(
+        imageURL: String,
+        category: String,
+        language: String,
+        provider: String
+    ) async throws -> WasmClient.ScanResult {
         let instance = try await readyEngine()
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.describe.rawValue,
@@ -46,7 +55,7 @@ extension WasmActor {
             logger: logger
         )
         var args: [String: Google_Protobuf_Value] = [
-            "file": Google_Protobuf_Value(stringValue: imageURL),
+            "file": Google_Protobuf_Value(stringValue: imageURL)
         ]
         if category != "object" {
             args["category"] = Google_Protobuf_Value(stringValue: category)
@@ -60,40 +69,62 @@ extension WasmActor {
     }
 
     /// Run visual search on an already-uploaded image URL.
-    func visualSearch(imageURL: String, provider: String) async throws -> [WasmClient.ShoppingProduct] {
+    ///
+    /// Dispatches via the method-name `run` route (`asyncify.vision.VisionService/VisualSearch`),
+    /// which resolves the provider by the persisted `provider_strategy` and awaits the completed,
+    /// unpacked result. This mirrors flow-kit-example's `vision.visualSearch(file:)` (which calls
+    /// `_wasm.run(method:args:)`) and the package's own AiArt/Music sessions (`instance.run(action:)`).
+    ///
+    /// Do NOT use `instance.create(providerId:"", actionId:)` here: that is the `*Task` variant —
+    /// it returns a raw `WaTTask` that comes back non-`.completed`, so the old `.completed` guard
+    /// threw `taskFailed` and the caller saw empty results.
+    ///
+    /// `provider` is intentionally NOT forwarded: VisualSearch is served by different providers
+    /// than Scan, so pinning the caller's scan provider makes the engine answer 502 "unsupported".
+    /// Kept for source compatibility.
+    func visualSearch(
+        imageURL: String,
+        provider: String
+    ) async throws -> [WasmClient.ShoppingProduct] {
+        _ = provider
         let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(
-            actionID: WasmClient.ActionID.visualSearch.rawValue,
-            preferredProvider: provider.isEmpty ? nil : provider,
-            logger: logger
-        )
         let args: [String: Google_Protobuf_Value] = [
-            "file": Google_Protobuf_Value(stringValue: imageURL),
+            "file": Google_Protobuf_Value(stringValue: imageURL)
         ]
-        let task = try await instance.create(action: action, args: args)
-        guard task.status == .completed, task.hasValue else {
-            throw WasmClient.Error.taskFailed(status: "\(task.status)")
-        }
-        let result = try VisionDiscoverResult(unpackingAny: task.value)
+        logger("visualSearch: dispatch method=\(WasmClient.VisionMethod.visualSearch.rawValue) file=\(imageURL)")
+        let result: VisionDiscoverResult = try await instance.run(
+            method: WasmClient.VisionMethod.visualSearch.rawValue,
+            args: args
+        )
+        logger("visualSearch: decoded \(result.products.count) product(s)")
         return result.products.map(Self.mapShoppingProduct)
     }
 
     /// Search for shopping products by text query.
-    func shopping(query: String, provider: String) async throws -> [WasmClient.ShoppingProduct] {
+    ///
+    /// Dispatches via the method-name `run` route (`asyncify.vision.VisionService/Shopping`) —
+    /// same rationale as `visualSearch` above: `run` resolves the provider via the persisted
+    /// `provider_strategy` and returns the completed, unpacked result, mirroring
+    /// flow-kit-example's `vision.shopping(query:)`. The `create(providerId:"", actionId:)`
+    /// `*Task` variant returns a non-`.completed` task and must not be used here.
+    ///
+    /// `provider` is intentionally NOT forwarded (Shopping is served by different providers
+    /// than Scan; pinning the scan provider yields a 502). Kept for source compatibility.
+    func shopping(
+        query: String,
+        provider: String
+    ) async throws -> [WasmClient.ShoppingProduct] {
+        _ = provider
         let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(
-            actionID: WasmClient.ActionID.shopping.rawValue,
-            preferredProvider: provider.isEmpty ? nil : provider,
-            logger: logger
-        )
         let args: [String: Google_Protobuf_Value] = [
-            "query": Google_Protobuf_Value(stringValue: query),
+            "query": Google_Protobuf_Value(stringValue: query)
         ]
-        let task = try await instance.create(action: action, args: args)
-        guard task.status == .completed, task.hasValue else {
-            throw WasmClient.Error.taskFailed(status: "\(task.status)")
-        }
-        let result = try VisionShoppingResult(unpackingAny: task.value)
+        logger("shopping: dispatch method=\(WasmClient.VisionMethod.shopping.rawValue) query=\(query)")
+        let result: VisionShoppingResult = try await instance.run(
+            method: WasmClient.VisionMethod.shopping.rawValue,
+            args: args
+        )
+        logger("shopping: decoded \(result.products.count) product(s)")
         return result.products.map(Self.mapShoppingProduct)
     }
 }
