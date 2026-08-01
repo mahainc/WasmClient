@@ -75,12 +75,12 @@ extension WasmClient {
         suggest: { _, _ in [] },
         readOutLoud: { _, _, _ in .data(Data(), mime: "") },
         ttsVoices: { _, _ in [] },
-        aiartGenerate: { _, _ in AIArt.Result() },
-        aiartStyles: { _ in [] },
-        aiartListModels: { _ in AIArt.ModelList() },
-        aiartVideoCreate: { _ in AIArt.VideoResult(status: .processing) },
-        aiartVideoStatus: { _ in AIArt.VideoResult() },
-        aiartVideoPoll: { _, _, _ in AIArt.VideoResult() },
+        generateAIArt: { _ in AIArt.ImageResult() },
+        listAIArtStyles: { _ in [] },
+        loadAIArtModelCatalog: { _ in AIArt.ModelCatalog() },
+        submitAIArtVideo: { _ in AIArt.VideoTaskSnapshot(status: .processing) },
+        getAIArtVideoStatus: { _ in AIArt.VideoTaskSnapshot() },
+        pollAIArtVideo: { _, _, _ in AIArt.VideoTaskSnapshot() },
         listPendingTasks: { [] },
         observePendingTasks: { AsyncStream { $0.finish() } },
         observeTaskCreated: { AsyncStream { $0.finish() } },
@@ -391,26 +391,26 @@ extension WasmClient {
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
             return ["alloy", "echo", "shimmer"]
         },
-        aiartGenerate: { _, _ in
+        generateAIArt: { request in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
-            return AIArt.Result(
+            return AIArt.ImageResult(
                 images: [AIArt.Image(url: "https://example.com/aiart.png")],
-                prompt: "A beautiful sunset",
-                style: .watercolor,
-                aspectRatio: "1:1",
+                prompt: request.prompt.isEmpty ? "A beautiful sunset" : request.prompt,
+                style: request.style == .unspecified ? .watercolor : request.style,
+                aspectRatio: request.aspectRatio ?? "1:1",
                 width: 1024,
                 height: 1024
             )
         },
-        aiartStyles: { _ in
+        listAIArtStyles: { _ in
             [
                 .anime, .cyberpunk, .watercolor, .pixelArt, .threeDCartoon,
                 .fantasy, .oilPainting, .lineArt, .minimal, .photoreal,
             ]
         },
-        aiartListModels: { _ in
+        loadAIArtModelCatalog: { _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
-            return AIArt.ModelList(
+            return AIArt.ModelCatalog(
                 models: [
                     AIArt.Model(
                         id: "mock-model-flux",
@@ -428,17 +428,17 @@ extension WasmClient {
                 defaultModelID: "mock-model-flux"
             )
         },
-        aiartVideoCreate: { _ in
+        submitAIArtVideo: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return AIArt.VideoResult(
+            return AIArt.VideoTaskSnapshot(
                 status: .processing,
                 videoID: "mock-video-\(UUID().uuidString)",
                 progress: 0.05
             )
         },
-        aiartVideoStatus: { videoID in
+        getAIArtVideoStatus: { videoID in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
-            return AIArt.VideoResult(
+            return AIArt.VideoTaskSnapshot(
                 status: .completed,
                 videoID: videoID,
                 videoURL: "https://example.com/avatar-fx.mp4",
@@ -449,13 +449,13 @@ extension WasmClient {
                 progress: 1.0
             )
         },
-        aiartVideoPoll: { videoID, _, onUpdate in
+        pollAIArtVideo: { videoID, _, onUpdate in
             // Stream three progress ticks then resolve, so previews and
             // tests see the same shape as a real generation.
             for value in [0.25, 0.55, 0.85] {
                 try await Task.sleep(nanoseconds: MockConstants.shortDelay)
                 onUpdate?(
-                    AIArt.VideoResult(
+                    AIArt.VideoTaskSnapshot(
                         status: .processing,
                         videoID: videoID,
                         progress: value
@@ -463,7 +463,7 @@ extension WasmClient {
                 )
             }
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
-            let final = AIArt.VideoResult(
+            let final = AIArt.VideoTaskSnapshot(
                 status: .completed,
                 videoID: videoID,
                 videoURL: "https://example.com/avatar-fx.mp4",

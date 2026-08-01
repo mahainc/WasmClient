@@ -2,7 +2,10 @@ load("@build_bazel_rules_swift//swift:swift_test.bzl", "swift_test")
 
 swift_test(
     name = "WasmClientTests",
-    srcs = ["ChatStreamSessionTests.swift"],
+    srcs = [
+        "AIArtRequestTests.swift",
+        "ChatStreamSessionTests.swift",
+    ],
     module_name = "WasmClientTests",
     deps = [
         "//Sources/WasmClient",

@@ -13,12 +13,14 @@ final class SeenIDsBox: @unchecked Sendable {
     init(initial: [String]) { self.ids = Set(initial) }
 
     var count: Int {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         return ids.count
     }
 
     func insert(_ id: String) -> Bool {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         return ids.insert(id).inserted
     }
 }
@@ -73,7 +75,7 @@ extension WasmActor {
     /// The periodic poll (every 2s) is the reliable backstop: even if the
     /// Combine subject misses an emission or the engine doesn't fire it for
     /// in-session creates, the next tick re-reads the descriptor JSON from
-    /// disk and yields. Each `aiartVideoStatus` / `resumePendingTasks` round
+    /// disk and yields. Each `getAIArtVideoStatus` / `resumePendingTasks` round
     /// trip rewrites the descriptor with fresh progress, so the polled
     /// snapshot picks up live progress.
     func observePendingTasks() async -> AsyncStream<[WasmClient.PendingTask]> {
@@ -92,11 +94,13 @@ extension WasmActor {
                 for (idx, task) in initial.enumerated() {
                     let statusLabel: String
                     switch task.status {
-                    case .processing: statusLabel = "processing"
-                    case .completed: statusLabel = "completed"
-                    case .failed(let m): statusLabel = "failed(\(m))"
+                        case .processing: statusLabel = "processing"
+                        case .completed: statusLabel = "completed"
+                        case .failed(let message): statusLabel = "failed(\(message))"
                     }
-                    logger("  [\(idx)] id=\(task.id.prefix(8))… actionID=\(task.actionID ?? "nil") status=\(statusLabel) progress=\(task.progress) hasURL=\(task.resultURL != nil)")
+                    logger(
+                        "  [\(idx)] id=\(task.id.prefix(8))… actionID=\(task.actionID ?? "nil") status=\(statusLabel) progress=\(task.progress) hasURL=\(task.resultURL != nil)"
+                    )
                 }
                 continuation.yield(initial)
 
@@ -143,7 +147,7 @@ extension WasmActor {
                     }
                     for videoID in videoIDs {
                         Task { [weak self] in
-                            _ = try? await self?.aiartVideoStatus(videoID: videoID)
+                            _ = try? await self?.getAIArtVideoStatus(videoID: videoID)
                         }
                     }
                 }
@@ -230,14 +234,14 @@ extension WasmActor {
     static func mapPendingTask(_ summary: PendingTaskSummary) -> WasmClient.PendingTask {
         let status: WasmClient.TaskStatus
         switch summary.statusString?.uppercased() {
-        case "COMPLETED":
-            status = .completed
-        case "ERRORED", "ERROR", "FAILED":
-            let message = summary.metadata["error"] ?? summary.statusString ?? ""
-            status = .failed(message)
-        default:
-            // QUEUED / PROCESSING / nil all surface as in-flight to the UI.
-            status = .processing
+            case "COMPLETED":
+                status = .completed
+            case "ERRORED", "ERROR", "FAILED":
+                let message = summary.metadata["error"] ?? summary.statusString ?? ""
+                status = .failed(message)
+            default:
+                // QUEUED / PROCESSING / nil all surface as in-flight to the UI.
+                status = .processing
         }
         return WasmClient.PendingTask(
             id: summary.id,

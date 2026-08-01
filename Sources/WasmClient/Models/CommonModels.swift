@@ -121,7 +121,7 @@ extension WasmClient {
 
 extension WasmClient {
     /// Task processing status. Cross-domain shared type: used by inpaint,
-    /// AI art (`AIArt.VideoResult`), home decor, and pending tasks — it is
+    /// AI art (`AIArt.VideoTaskSnapshot`), home decor, and pending tasks — it is
     /// NOT scoped to a single domain namespace.
     public enum TaskStatus: Sendable, Equatable, Hashable {
         case processing

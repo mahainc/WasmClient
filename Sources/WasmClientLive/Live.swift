@@ -150,23 +150,23 @@ extension WasmClient: DependencyKey {
             ttsVoices: { providerId, modelId in
                 try await actor.ttsVoices(providerId: providerId, modelId: modelId)
             },
-            aiartGenerate: { actionID, args in
-                try await actor.aiartGenerate(actionID: actionID, args: args)
+            generateAIArt: { request in
+                try await actor.generateAIArt(request)
             },
-            aiartStyles: { actionID in
-                try await actor.aiartStyles(actionID: actionID)
+            listAIArtStyles: { kind in
+                try await actor.listAIArtStyles(kind: kind)
             },
-            aiartListModels: { mode in
-                try await actor.aiartListModels(mode: mode)
+            loadAIArtModelCatalog: { mode in
+                try await actor.loadAIArtModelCatalog(mode: mode)
             },
-            aiartVideoCreate: { args in
-                try await actor.aiartVideoCreate(args: args)
+            submitAIArtVideo: { request in
+                try await actor.submitAIArtVideo(request)
             },
-            aiartVideoStatus: { videoID in
-                try await actor.aiartVideoStatus(videoID: videoID)
+            getAIArtVideoStatus: { videoID in
+                try await actor.getAIArtVideoStatus(videoID: videoID)
             },
-            aiartVideoPoll: { videoID, interval, onUpdate in
-                try await actor.aiartVideoPoll(
+            pollAIArtVideo: { videoID, interval, onUpdate in
+                try await actor.pollAIArtVideo(
                     videoID: videoID,
                     interval: interval,
                     onUpdate: onUpdate
@@ -252,12 +252,12 @@ extension WasmClient: DependencyKey {
             webpageLeagues: {
                 try await actor.webpageLeagues()
             },
-            webpageCompetitions: { q, limit, offset in
-                try await actor.webpageCompetitions(q: q, limit: limit, offset: offset)
+            webpageCompetitions: { query, limit, offset in
+                try await actor.webpageCompetitions(q: query, limit: limit, offset: offset)
             },
-            webpageTeams: { q, limit, offset, competitionId in
+            webpageTeams: { query, limit, offset, competitionId in
                 try await actor.webpageTeams(
-                    q: q,
+                    q: query,
                     limit: limit,
                     offset: offset,
                     competitionId: competitionId
@@ -275,21 +275,21 @@ extension WasmClient: DependencyKey {
             webpageTeam: { id in
                 try await actor.webpageTeam(id: id)
             },
-            webpageVideos: { videoType, competitionID, teamID, q, page, pageSize in
+            webpageVideos: { videoType, competitionID, teamID, query, page, pageSize in
                 try await actor.webpageVideos(
                     videoType: videoType,
                     competitionID: competitionID,
                     teamID: teamID,
-                    q: q,
+                    q: query,
                     page: page,
                     pageSize: pageSize
                 )
             },
-            webpageNews: { limit, offset, q, competitionID, teamID in
+            webpageNews: { limit, offset, query, competitionID, teamID in
                 try await actor.webpageNews(
                     limit: limit,
                     offset: offset,
-                    q: q,
+                    q: query,
                     competitionID: competitionID,
                     teamID: teamID
                 )

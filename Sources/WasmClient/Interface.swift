@@ -350,70 +350,57 @@ public struct WasmClient: Sendable {
 
     // MARK: - AI Art
 
-    /// Generate AI art using the specified action (stamp or normal).
-    /// Pass the action ID (e.g. `ActionID.aiartStamp.rawValue`) and flat string args
-    /// (prompt, style, image_url, aspect_ratio, etc.). Use `AIArt.Style`'s
-    /// `rawValue` for the `style` arg. "Mod Car" is dispatched here too: use
-    /// the `aiartNormal` action with a car-specific prompt, a local
-    /// `image_path`, and `style` = `AIArt.Style.photoreal.rawValue`.
-    public var aiartGenerate:
+    /// Generate AI-art image output from a typed request. `ImageRequest.kind`
+    /// selects the underlying FlowKit image action (normal, stamp, or mod-car)
+    /// while `ImageRequest.toWireArgs()` handles the backend arg keys.
+    public var generateAIArt:
         @Sendable (
-            _ actionID: String, _ args: [String: String]
-        ) async throws -> WasmClient.AIArt.Result
+            _ request: WasmClient.AIArt.ImageRequest
+        ) async throws -> WasmClient.AIArt.ImageResult
 
-    /// Available style values for an aiart action, parsed from the action
-    /// schema's `style` arg regex validator (e.g. `^(ANIME|CYBERPUNK|...)$`).
-    /// Returns an empty array if the action has no style validator or the regex
-    /// cannot be parsed. Callers should use these values verbatim when building
-    /// args for `aiartGenerate` — sending a style that isn't in this list causes
-    /// the server to reject the task with `status=unspecified`.
-    public var aiartStyles:
+    /// Available style values for an AI-art image kind, parsed from that
+    /// action schema's `style` arg regex validator (e.g.
+    /// `^(ANIME|CYBERPUNK|...)$`). Returns an empty array if the action has no
+    /// style validator or the regex cannot be parsed.
+    public var listAIArtStyles:
         @Sendable (
-            _ actionID: String
+            _ kind: WasmClient.AIArt.ImageRequest.Kind
         ) async throws -> [WasmClient.AIArt.Style]
 
-    /// Per-mode model discovery. Dispatches the `AiartService/ListModels` rpc
-    /// by method name (`AIArt.Method.listModels`); the engine picks the
-    /// provider via the persisted `provider_strategy`. Returns the model rows
-    /// (each carrying `providerID` + `aspectRatios` read from `metadata`) plus
-    /// the suggested `defaultModelID`. Pass `AIArt.Mode.modCar` to drive a
-    /// "Mod Car" model/aspect-ratio picker.
-    public var aiartListModels:
+    /// Per-mode model catalog discovery. Dispatches `AiartService/ListModels`
+    /// by method name (`AIArt.ServiceMethod.listModels`); the engine picks the
+    /// provider via the persisted `provider_strategy`. Each returned model
+    /// carries `providerID` and per-model `aspectRatios` for picker UIs.
+    public var loadAIArtModelCatalog:
         @Sendable (
             _ mode: WasmClient.AIArt.Mode
-        ) async throws -> WasmClient.AIArt.ModelList
+        ) async throws -> WasmClient.AIArt.ModelCatalog
 
-    /// Submit an AI art video generation task (Character.AI Avatar FX).
-    /// Returns immediately with `.processing` status and the `videoID` used
-    /// for polling via `aiartVideoStatus`. Pass flat string args
-    /// (`image_path`, `audio_path`, `art_style`, `cache_dir`, …).
-    public var aiartVideoCreate:
+    /// Submit an AI-art video generation task (Character.AI Avatar FX) from a
+    /// typed video request. Returns immediately with `.processing` status and
+    /// the `videoID` used for follow-up status calls.
+    public var submitAIArtVideo:
         @Sendable (
-            _ args: [String: String]
-        ) async throws -> WasmClient.AIArt.VideoResult
+            _ request: WasmClient.AIArt.VideoRequest
+        ) async throws -> WasmClient.AIArt.VideoTaskSnapshot
 
-    /// Poll a video generation task by `videoID`. Returns the latest snapshot
-    /// (`.processing` with progress, `.completed` with `videoURL`, or
-    /// `.failed`). Caller drives the polling cadence — typically every 5s
-    /// until terminal state.
-    public var aiartVideoStatus:
+    /// Read the latest snapshot for a video generation task by `videoID`:
+    /// `.processing` with progress, `.completed` with `videoURL`, or `.failed`.
+    public var getAIArtVideoStatus:
         @Sendable (
             _ videoID: String
-        ) async throws -> WasmClient.AIArt.VideoResult
+        ) async throws -> WasmClient.AIArt.VideoTaskSnapshot
 
-    /// Drive the polling loop end-to-end: calls `aiartVideoStatus` every
-    /// `interval` seconds, invoking `onUpdate` with the current snapshot
-    /// (so callers can surface progress to the UI), and returns the final
-    /// `.completed` result. Throws `Error.taskFailed` on `.failed`, and
-    /// propagates `CancellationError` so the caller's task can interrupt
-    /// in-flight polls (e.g. when the user backs out of the screen).
-    /// Caller is responsible for upstream `Task` lifetime / timeouts.
-    public var aiartVideoPoll:
+    /// Drive the video polling loop end-to-end: calls `getAIArtVideoStatus`
+    /// every `interval` seconds, invokes `onUpdate` with each snapshot, and
+    /// returns the final `.completed` result. Throws `Error.taskFailed` on
+    /// `.failed` and propagates cancellation.
+    public var pollAIArtVideo:
         @Sendable (
             _ videoID: String,
             _ interval: TimeInterval,
-            _ onUpdate: (@Sendable (WasmClient.AIArt.VideoResult) -> Void)?
-        ) async throws -> WasmClient.AIArt.VideoResult
+            _ onUpdate: (@Sendable (WasmClient.AIArt.VideoTaskSnapshot) -> Void)?
+        ) async throws -> WasmClient.AIArt.VideoTaskSnapshot
 
     // MARK: - Pending Tasks
 
@@ -524,7 +511,7 @@ public struct WasmClient: Sendable {
 
     /// Available room styles for a process type, parsed from the active
     /// provider's `action.args["room_style"].validator.regex`. Returns `[]`
-    /// when the provider does not expose this arg. Mirrors `aiartStyles`.
+    /// when the provider does not expose this arg. Mirrors `listAIArtStyles`.
     public var homeDecorStyles:
         @Sendable (
             _ processType: WasmClient.HomeDecor.ProcessType

@@ -11,7 +11,7 @@ final class ChatStreamSessionTests: XCTestCase {
     /// A stub `chatStream` that yields the given chunks then finishes.
     private func stubStream(_ chunks: [String])
         -> @Sendable (
-            WasmClient.ChatConfig, [WasmClient.ChatMessage]
+            WasmClient.Chat.Config, [WasmClient.Chat.Message]
         ) async throws -> AsyncThrowingStream<String, Error>
     {
         { _, _ in
