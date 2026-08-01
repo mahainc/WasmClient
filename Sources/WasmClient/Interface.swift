@@ -1,5 +1,4 @@
 import Dependencies
-import DependenciesMacros
 import Foundation
 
 /// General-purpose TCA dependency client wrapping FlowKit's WASM engine.
@@ -15,8 +14,343 @@ import Foundation
 /// try await wasm.start()
 /// let pages = try await wasm.webpageLeagues()
 /// ```
-@DependencyClient
 public struct WasmClient: Sendable {
+    public init(
+        start: @escaping @Sendable () async throws -> Void,
+        observeEngineState: @escaping @Sendable () async -> AsyncStream<WasmClient.EngineState>,
+        reset: @escaping @Sendable () async throws -> Void,
+        restart: @escaping @Sendable () async throws -> Void,
+        engineVersion: @escaping @Sendable () async -> String?,
+        resetDownloads: @escaping @Sendable () async -> Void,
+        setExpectedVersionProvider: @escaping @Sendable (
+        _ provider: @escaping @Sendable () async throws -> String?
+        ) -> Void,
+        setUserName: @escaping @Sendable (_ name: String) -> Void,
+        warmUp: @escaping @Sendable () async -> Void,
+        availableActions: @escaping @Sendable () async throws -> [WasmClient.ActionInfo],
+        refreshActions: @escaping @Sendable () async throws -> Void,
+        funnelEngine: @escaping @Sendable () async throws -> (any Sendable)?,
+        scan: @escaping @Sendable (
+        _ imageData: Data, _ category: String, _ language: String
+        ) async throws -> WasmClient.ScanResult,
+        describe: @escaping @Sendable (
+        _ imageURL: String, _ category: String, _ language: String, _ provider: String
+        ) async throws -> WasmClient.ScanResult,
+        visualSearch: @escaping @Sendable (
+        _ imageURL: String, _ provider: String
+        ) async throws -> [WasmClient.ShoppingProduct],
+        shopping: @escaping @Sendable (
+        _ query: String, _ provider: String
+        ) async throws -> [WasmClient.ShoppingProduct],
+        uploadImage: @escaping @Sendable (_ imageData: Data) async throws -> String,
+        uploadFile: @escaping @Sendable (_ filePath: String, _ filename: String) async throws -> String,
+        chatModels: @escaping @Sendable (
+        _ offset: Int, _ limit: Int, _ keyword: String?, _ category: String?
+        ) async throws -> (models: [WasmClient.ChatModelInfo], total: Int),
+        chatSend: @escaping @Sendable (
+        _ config: WasmClient.ChatConfig,
+        _ messages: [WasmClient.ChatMessage]
+        ) async throws -> WasmClient.ChatMessage,
+        chatStream: @escaping @Sendable (
+        _ config: WasmClient.ChatConfig,
+        _ messages: [WasmClient.ChatMessage]
+        ) async throws -> AsyncThrowingStream<String, Swift.Error>,
+        createChatModel: @escaping @Sendable (
+        _ providerId: String,
+        _ input: WasmClient.CreateChatModelInput
+        ) async throws -> String,
+        initializeChatProvider: @escaping @Sendable (
+        _ providerId: String,
+        _ userName: String
+        ) async throws -> Void,
+        musicDiscover: @escaping @Sendable (
+        _ category: String, _ continuation: String?
+        ) async throws -> WasmClient.MusicTrackList,
+        musicDetails: @escaping @Sendable (
+        _ trackID: String
+        ) async throws -> WasmClient.MusicTrackDetail,
+        musicTracks: @escaping @Sendable (
+        _ listID: String, _ continuation: String?
+        ) async throws -> WasmClient.MusicTrackList,
+        musicSearch: @escaping @Sendable (
+        _ query: String, _ continuation: String?
+        ) async throws -> WasmClient.MusicTrackList,
+        musicLyrics: @escaping @Sendable (
+        _ trackID: String
+        ) async throws -> [WasmClient.MusicLyricSegment],
+        musicRelated: @escaping @Sendable (
+        _ trackID: String, _ continuation: String?
+        ) async throws -> WasmClient.MusicTrackList,
+        musicSuggestions: @escaping @Sendable (
+        _ query: String
+        ) async throws -> [String],
+        suggest: @escaping @Sendable (
+        _ systemPrompt: String, _ imageURL: String?
+        ) async throws -> [String],
+        readOutLoud: @escaping @Sendable (
+        _ text: String, _ voice: String?, _ providerId: String
+        ) async throws -> WasmClient.TTSAudio,
+        ttsVoices: @escaping @Sendable (
+        _ providerId: String, _ modelId: String
+        ) async throws -> [String],
+        listVoices: @escaping @Sendable (
+        _ keyword: String?, _ offset: Int, _ limit: Int
+        ) async throws -> [WasmClient.VoiceInfo],
+        voiceTTS: @escaping @Sendable (
+        _ providerId: String, _ input: String, _ voiceID: String, _ format: String
+        ) async throws -> WasmClient.TTSAudio,
+        listVoiceProviders: @escaping @Sendable () async throws -> [WasmClient.VoiceProviderInfo],
+        createVoice: @escaping @Sendable (
+        _ providerId: String,
+        _ name: String,
+        _ audio: String,
+        _ gender: String?,
+        _ visibility: String?
+        ) async throws -> WasmClient.VoiceInfo,
+        deleteVoice: @escaping @Sendable (
+        _ providerId: String, _ id: String
+        ) async throws -> Void,
+        updateVoice: @escaping @Sendable (
+        _ providerId: String, _ id: String, _ name: String
+        ) async throws -> WasmClient.VoiceInfo,
+        aiartGenerate: @escaping @Sendable (
+        _ actionID: String, _ providerID: String, _ args: [String: String]
+        ) async throws -> WasmClient.AiartResult,
+        aiartStyles: @escaping @Sendable (
+        _ actionID: String
+        ) async throws -> [String],
+        aiartModelList: @escaping @Sendable (
+        _ mode: String
+        ) async throws -> WasmClient.AiartModelCatalog,
+        aiartVideoCreate: @escaping @Sendable (
+        _ args: [String: String]
+        ) async throws -> WasmClient.AiartVideoResult,
+        aiartVideoStatus: @escaping @Sendable (
+        _ videoID: String
+        ) async throws -> WasmClient.AiartVideoResult,
+        aiartVideoPoll: @escaping @Sendable (
+        _ videoID: String,
+        _ interval: TimeInterval,
+        _ onUpdate: (@Sendable (WasmClient.AiartVideoResult) -> Void)?
+        ) async throws -> WasmClient.AiartVideoResult,
+        listPendingTasks: @escaping @Sendable () async -> [WasmClient.PendingTask],
+        observePendingTasks: @escaping @Sendable () async -> AsyncStream<[WasmClient.PendingTask]>,
+        observeTaskCreated: @escaping @Sendable () async -> AsyncStream<WasmClient.PendingTask>,
+        removePendingTask: @escaping @Sendable (_ taskID: String) async -> Void,
+        clearPendingTasks: @escaping @Sendable () async -> Void,
+        searchPhotos: @escaping @Sendable (
+        _ query: String, _ provider: String, _ page: Int, _ perPage: Int
+        ) async throws -> WasmClient.PhotoSearchResult,
+        photoVisualSearch: @escaping @Sendable (
+        _ imageURL: String, _ provider: String, _ page: Int, _ perPage: Int
+        ) async throws -> WasmClient.PhotoSearchResult,
+        listMedia: @escaping @Sendable (
+        _ query: String, _ provider: String, _ page: Int, _ perPage: Int
+        ) async throws -> WasmClient.PhotoSearchResult,
+        homeDesign: @escaping @Sendable (
+        _ actionID: String, _ args: [String: String]
+        ) async throws -> WasmClient.HomeDecor.Result,
+        homeDesignStatus: @escaping @Sendable (
+        _ taskID: String, _ actionID: String
+        ) async throws -> WasmClient.HomeDecor.Result,
+        homeDesignRequest: @escaping @Sendable (
+        _ request: WasmClient.HomeDecor.Request,
+        _ onProgress: (@Sendable (Double) async -> Void)?
+        ) async throws -> WasmClient.HomeDecor.Result,
+        homeDecorStyles: @escaping @Sendable (
+        _ processType: WasmClient.HomeDecor.ProcessType
+        ) async throws -> [WasmClient.HomeDecor.RoomStyle],
+        homeDecorRoomTypes: @escaping @Sendable (
+        _ processType: WasmClient.HomeDecor.ProcessType
+        ) async throws -> [WasmClient.HomeDecor.RoomType],
+        homeDecorColorPalettes: @escaping @Sendable (
+        _ processType: WasmClient.HomeDecor.ProcessType
+        ) async throws -> [WasmClient.HomeDecor.ColorPalette],
+        homeDecorSurfaceTypes: @escaping @Sendable (
+        _ processType: WasmClient.HomeDecor.ProcessType
+        ) async throws -> [WasmClient.HomeDecor.SurfaceType],
+        homeDecorStyleSelections: @escaping @Sendable (
+        _ processType: WasmClient.HomeDecor.ProcessType
+        ) async throws -> [WasmClient.HomeDecor.StyleSelection],
+        autoSuggestion: @escaping @Sendable (
+        _ image: String
+        ) async throws -> WasmClient.ObjectSegments,
+        enhance: @escaping @Sendable (
+        _ image: String, _ zoomFactor: Int
+        ) async throws -> WasmClient.ObjectSegments,
+        removeBackground: @escaping @Sendable (
+        _ image: String
+        ) async throws -> WasmClient.Segment,
+        erase: @escaping @Sendable (
+        _ image: String?,
+        _ sessionId: String?,
+        _ maskBrush: String?,
+        _ maskObjects: String?
+        ) async throws -> WasmClient.EraseResult,
+        skinBeauty: @escaping @Sendable (
+        _ image: String
+        ) async throws -> WasmClient.ObjectSegments,
+        sky: @escaping @Sendable (
+        _ image: String
+        ) async throws -> WasmClient.Segment,
+        categorizeClothes: @escaping @Sendable (
+        _ image: String
+        ) async throws -> WasmClient.Segment,
+        tryOn: @escaping @Sendable (
+        _ modelImage: String,
+        _ clothImage: String
+        ) async throws -> String,
+        webpageLeagues: @escaping @Sendable () async throws -> [WasmClient.LiveScore.Entry],
+        webpageCompetitions: @escaping @Sendable (
+        _ q: String?,
+        _ limit: Int64?,
+        _ offset: Int64?
+        ) async throws -> [WasmClient.LiveScore.Entry],
+        webpageTeams: @escaping @Sendable (
+        _ q: String?,
+        _ limit: Int64?,
+        _ offset: Int64?,
+        _ competitionId: String?
+        ) async throws -> [WasmClient.LiveScore.Entry],
+        webpage: @escaping @Sendable (_ url: String) async throws -> [WasmClient.LiveScore.Entry],
+        webpageDiscovers: @escaping @Sendable () async throws -> [WasmClient.LiveScore.Entry],
+        webpageCompetition: @escaping @Sendable (
+        _ id: String
+        ) async throws -> WasmClient.LiveScore.Entry?,
+        webpageTeam: @escaping @Sendable (
+        _ id: String
+        ) async throws -> WasmClient.LiveScore.Entry?,
+        webpageVideos: @escaping @Sendable (
+        _ videoType: String?,
+        _ competitionID: String?,
+        _ teamID: String?,
+        _ q: String?,
+        _ page: Int64?,
+        _ pageSize: Int64?
+        ) async throws -> [WasmClient.LiveScore.Entry],
+        webpageNews: @escaping @Sendable (
+        _ limit: Int64?, _ offset: Int64?, _ q: String?,
+        _ competitionID: String?, _ teamID: String?
+        ) async throws -> [WasmClient.LiveScore.Entry],
+        upcoming: @escaping @Sendable () async throws -> [WasmClient.LiveScore.MatchSummary],
+        scoresByDate: @escaping @Sendable (
+        _ date: String?
+        ) async throws -> [WasmClient.LiveScore.MatchSummary],
+        matchDetail: @escaping @Sendable (
+        _ id: String
+        ) async throws -> WasmClient.LiveScore.Match,
+        competitionDetail: @escaping @Sendable (
+        _ id: String
+        ) async throws -> WasmClient.LiveScore.Competition,
+        teamDetail: @escaping @Sendable (
+        _ id: String
+        ) async throws -> WasmClient.LiveScore.Team,
+        liveMatchEvents: @escaping @Sendable () async -> AsyncStream<WasmClient.LiveScore.LiveEvent>,
+        submitSurvey: @escaping @Sendable (
+        _ questions: [WasmClient.SurveyQuestion], _ answers: [String: String]
+        ) async throws -> Void,
+        setNotification: @escaping @Sendable (
+        _ enabled: Bool, _ firebaseToken: String, _ firebaseUID: String?, _ liveActivityToken: String
+        ) async throws -> Void,
+        getNotificationSettings: @escaping @Sendable () async throws -> WasmClient.NotificationSettings,
+        notificationSubscribe: @escaping @Sendable (
+        _ entity: String, _ id: String, _ enabled: Bool
+        ) async throws -> Void,
+        reportLiveActivityToken: @escaping @Sendable (
+        _ entity: String, _ entityId: String, _ laToken: String
+        ) async throws -> Void
+    ) {
+        self.start = start
+        self.observeEngineState = observeEngineState
+        self.reset = reset
+        self.restart = restart
+        self.engineVersion = engineVersion
+        self.resetDownloads = resetDownloads
+        self.setExpectedVersionProvider = setExpectedVersionProvider
+        self.setUserName = setUserName
+        self.warmUp = warmUp
+        self.availableActions = availableActions
+        self.refreshActions = refreshActions
+        self.funnelEngine = funnelEngine
+        self.scan = scan
+        self.describe = describe
+        self.visualSearch = visualSearch
+        self.shopping = shopping
+        self.uploadImage = uploadImage
+        self.uploadFile = uploadFile
+        self.chatModels = chatModels
+        self.chatSend = chatSend
+        self.chatStream = chatStream
+        self.createChatModel = createChatModel
+        self.initializeChatProvider = initializeChatProvider
+        self.musicDiscover = musicDiscover
+        self.musicDetails = musicDetails
+        self.musicTracks = musicTracks
+        self.musicSearch = musicSearch
+        self.musicLyrics = musicLyrics
+        self.musicRelated = musicRelated
+        self.musicSuggestions = musicSuggestions
+        self.suggest = suggest
+        self.readOutLoud = readOutLoud
+        self.ttsVoices = ttsVoices
+        self.listVoices = listVoices
+        self.voiceTTS = voiceTTS
+        self.listVoiceProviders = listVoiceProviders
+        self.createVoice = createVoice
+        self.deleteVoice = deleteVoice
+        self.updateVoice = updateVoice
+        self.aiartGenerate = aiartGenerate
+        self.aiartStyles = aiartStyles
+        self.aiartModelList = aiartModelList
+        self.aiartVideoCreate = aiartVideoCreate
+        self.aiartVideoStatus = aiartVideoStatus
+        self.aiartVideoPoll = aiartVideoPoll
+        self.listPendingTasks = listPendingTasks
+        self.observePendingTasks = observePendingTasks
+        self.observeTaskCreated = observeTaskCreated
+        self.removePendingTask = removePendingTask
+        self.clearPendingTasks = clearPendingTasks
+        self.searchPhotos = searchPhotos
+        self.photoVisualSearch = photoVisualSearch
+        self.listMedia = listMedia
+        self.homeDesign = homeDesign
+        self.homeDesignStatus = homeDesignStatus
+        self.homeDesignRequest = homeDesignRequest
+        self.homeDecorStyles = homeDecorStyles
+        self.homeDecorRoomTypes = homeDecorRoomTypes
+        self.homeDecorColorPalettes = homeDecorColorPalettes
+        self.homeDecorSurfaceTypes = homeDecorSurfaceTypes
+        self.homeDecorStyleSelections = homeDecorStyleSelections
+        self.autoSuggestion = autoSuggestion
+        self.enhance = enhance
+        self.removeBackground = removeBackground
+        self.erase = erase
+        self.skinBeauty = skinBeauty
+        self.sky = sky
+        self.categorizeClothes = categorizeClothes
+        self.tryOn = tryOn
+        self.webpageLeagues = webpageLeagues
+        self.webpageCompetitions = webpageCompetitions
+        self.webpageTeams = webpageTeams
+        self.webpage = webpage
+        self.webpageDiscovers = webpageDiscovers
+        self.webpageCompetition = webpageCompetition
+        self.webpageTeam = webpageTeam
+        self.webpageVideos = webpageVideos
+        self.webpageNews = webpageNews
+        self.upcoming = upcoming
+        self.scoresByDate = scoresByDate
+        self.matchDetail = matchDetail
+        self.competitionDetail = competitionDetail
+        self.teamDetail = teamDetail
+        self.liveMatchEvents = liveMatchEvents
+        self.submitSurvey = submitSurvey
+        self.setNotification = setNotification
+        self.getNotificationSettings = getNotificationSettings
+        self.notificationSubscribe = notificationSubscribe
+        self.reportLiveActivityToken = reportLiveActivityToken
+    }
+
 
     // MARK: - Engine Lifecycle
 
@@ -370,7 +704,7 @@ public struct WasmClient: Sendable {
     /// Pass the action ID (e.g. `ActionID.aiartStamp.rawValue`) and flat string args
     /// (prompt, style, image_url, aspect_ratio, etc.).
     public var aiartGenerate: @Sendable (
-        _ actionID: String, _ args: [String: String]
+        _ actionID: String, _ providerID: String, _ args: [String: String]
     ) async throws -> WasmClient.AiartResult
 
     /// Available style values for an aiart action, parsed from the action
@@ -382,6 +716,10 @@ public struct WasmClient: Sendable {
     public var aiartStyles: @Sendable (
         _ actionID: String
     ) async throws -> [String]
+
+    public var aiartModelList: @Sendable (
+        _ mode: String
+    ) async throws -> WasmClient.AiartModelCatalog
 
     /// Submit an AI art video generation task (Character.AI Avatar FX).
     /// Returns immediately with `.processing` status and the `videoID` used

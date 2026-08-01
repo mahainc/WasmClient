@@ -14,7 +14,7 @@ extension DependencyValues {
 
 extension WasmClient: TestDependencyKey {
     public static let previewValue = Self.happy
-    public static let testValue = Self()
+    public static let testValue = Self.noop
 }
 
 // MARK: - Mock Constants
@@ -95,8 +95,9 @@ extension WasmClient {
                 providerId: ""
             )
         },
-        aiartGenerate: { _, _ in AiartResult() },
+        aiartGenerate: { _, _, _ in AiartResult() },
         aiartStyles: { _ in [] },
+        aiartModelList: { _ in AiartModelCatalog() },
         aiartVideoCreate: { _ in AiartVideoResult(status: .processing) },
         aiartVideoStatus: { _ in AiartVideoResult() },
         aiartVideoPoll: { _, _, _ in AiartVideoResult() },
@@ -412,7 +413,7 @@ extension WasmClient {
                 providerId: providerId.isEmpty ? "openai" : providerId
             )
         },
-        aiartGenerate: { _, _ in
+        aiartGenerate: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
             return AiartResult(
                 images: [AiartImage(url: "https://example.com/aiart.png")],
@@ -428,6 +429,15 @@ extension WasmClient {
                 "ANIME", "CYBERPUNK", "WATERCOLOR", "PIXEL_ART", "THREE_D_CARTOON",
                 "FANTASY", "OIL_PAINTING", "LINE_ART", "MINIMAL", "PHOTOREAL",
             ]
+        },
+        aiartModelList: { _ in
+            AiartModelCatalog(
+                models: [
+                    AiartModelInfo(id: "dall_e_3", name: "DALL·E 3", providerID: "openai", aspectRatios: ["1:1"]),
+                    AiartModelInfo(id: "flux-schnell", name: "Flux Schnell", providerID: "fal", aspectRatios: ["1:1", "3:4", "4:3"]),
+                ],
+                defaultModelID: "flux-schnell"
+            )
         },
         aiartVideoCreate: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)

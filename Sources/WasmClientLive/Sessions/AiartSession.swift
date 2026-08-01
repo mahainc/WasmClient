@@ -10,10 +10,16 @@ extension WasmActor {
     /// Generate AI art using the specified action and flat string args.
     func aiartGenerate(
         actionID: String,
+        providerID: String,
         args: [String: String]
     ) async throws -> WasmClient.AiartResult {
         let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(actionID: actionID, logger: logger)
+        let preferredProvider = providerID.isEmpty ? nil : providerID
+        let action = try await delegate.resolveAction(
+            actionID: actionID,
+            preferredProvider: preferredProvider,
+            logger: logger
+        )
 
         var protoArgs: [String: Google_Protobuf_Value] = [:]
         for (key, value) in args where !value.isEmpty {
@@ -22,6 +28,31 @@ extension WasmActor {
 
         let result: AiartGenerateResult = try await instance.run(action: action, args: protoArgs)
         return mapAiartResult(result)
+    }
+
+    func aiartModelList(mode: String) async throws -> WasmClient.AiartModelCatalog {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !mode.isEmpty {
+            args["mode"] = Google_Protobuf_Value(stringValue: mode)
+        }
+        let response: AiartListModelsResponse = try await instance.run(
+            method: "asyncify.aiart.AiartService/ListModels",
+            args: args
+        )
+        let models = response.models.map { info in
+            let aspectRatios = info.metadata.fields["aspect_ratios"]?.listValue.values.map(\.stringValue) ?? []
+            return WasmClient.AiartModelInfo(
+                id: info.id,
+                name: info.name.isEmpty ? info.id : info.name,
+                providerID: info.metadata.fields["provider_id"]?.stringValue ?? "",
+                aspectRatios: aspectRatios
+            )
+        }
+        return WasmClient.AiartModelCatalog(
+            models: models,
+            defaultModelID: response.defaultModelID.isEmpty ? nil : response.defaultModelID
+        )
     }
 
     /// Read the valid style values from an aiart action's `style` arg

@@ -1,10 +1,11 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.1
 import PackageDescription
 
 let package = Package(
     name: "WasmClient",
     platforms: [
-        .iOS(.v17)
+        .iOS(.v17),
+        .macOS(.v14),
     ],
     products: [
         .library(name: "WasmClient", targets: ["WasmClient"]),
@@ -42,7 +43,6 @@ let package = Package(
             name: "WasmClient",
             dependencies: [
                 .product(name: "Dependencies", package: "swift-dependencies"),
-                .product(name: "DependenciesMacros", package: "swift-dependencies"),
             ]
         ),
         .target(

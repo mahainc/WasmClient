@@ -1,5 +1,5 @@
 {
-  "originHash" : "59e1cf27acb42efb047d7f1deadd1fd8b8f00f30a55d2545ff0a64fe8c6f3c03",
+  "originHash" : "e9d834f1da1859da59f6d73131c92fb2ef6c0045a319afbd222eff8409679fcc",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-dependencies.git",
       "state" : {
-        "revision" : "8dc1fbf2f6255a73dec53b4648164884898db4c5",
-        "version" : "1.14.1"
+        "revision" : "4e6b6a814675daf2c1973514314283448f95f941",
+        "version" : "1.9.0"
       }
     },
     {
@@ -60,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swiftlang/swift-syntax",
       "state" : {
-        "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
-        "version" : "602.0.0"
+        "revision" : "f99ae8aa18f0cf0d53481901f88a0991dc3bd4a2",
+        "version" : "601.0.1"
       }
     },
     {

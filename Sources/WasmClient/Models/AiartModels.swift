@@ -81,4 +81,33 @@ extension WasmClient {
             self.url = url
         }
     }
+
+    public struct AiartModelInfo: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let name: String
+        public let providerID: String
+        public let aspectRatios: [String]
+
+        public init(
+            id: String = "",
+            name: String = "",
+            providerID: String = "",
+            aspectRatios: [String] = []
+        ) {
+            self.id = id
+            self.name = name
+            self.providerID = providerID
+            self.aspectRatios = aspectRatios
+        }
+    }
+
+    public struct AiartModelCatalog: Sendable, Equatable {
+        public let models: [AiartModelInfo]
+        public let defaultModelID: String?
+
+        public init(models: [AiartModelInfo] = [], defaultModelID: String? = nil) {
+            self.models = models
+            self.defaultModelID = defaultModelID
+        }
+    }
 }

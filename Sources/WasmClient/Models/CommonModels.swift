@@ -102,6 +102,15 @@ extension WasmClient {
     }
 }
 
+// MARK: - Vision Method
+
+extension WasmClient {
+    public enum VisionMethod: String, CaseIterable, Sendable {
+        case visualSearch = "asyncify.vision.VisionService/VisualSearch"
+        case shopping = "asyncify.vision.VisionService/Shopping"
+    }
+}
+
 // MARK: - Error
 
 extension WasmClient {

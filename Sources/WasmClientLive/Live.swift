@@ -142,11 +142,14 @@ extension WasmClient: DependencyKey {
             updateVoice: { providerId, id, name in
                 try await actor.updateVoice(providerId: providerId, id: id, name: name)
             },
-            aiartGenerate: { actionID, args in
-                try await actor.aiartGenerate(actionID: actionID, args: args)
+            aiartGenerate: { actionID, providerID, args in
+                try await actor.aiartGenerate(actionID: actionID, providerID: providerID, args: args)
             },
             aiartStyles: { actionID in
                 try await actor.aiartStyles(actionID: actionID)
+            },
+            aiartModelList: { mode in
+                try await actor.aiartModelList(mode: mode)
             },
             aiartVideoCreate: { args in
                 try await actor.aiartVideoCreate(args: args)
