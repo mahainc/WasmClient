@@ -21,15 +21,10 @@ extension WasmActor {
     }
 
     func musicDetails(trackID: String) async throws -> WasmClient.Music.TrackDetail {
-        let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(
-            actionID: WasmClient.ActionID.details.rawValue,
-            logger: logger
+        let result: MusicTrackDetails = try await runMusic(
+            actionID: .details,
+            args: ["id": Google_Protobuf_Value(stringValue: trackID)]
         )
-        let args: [String: Google_Protobuf_Value] = [
-            "id": Google_Protobuf_Value(stringValue: trackID)
-        ]
-        let result: MusicTrackDetails = try await instance.run(action: action, args: args)
         return mapTrackDetails(result)
     }
 
@@ -60,15 +55,10 @@ extension WasmActor {
     }
 
     func musicLyrics(trackID: String) async throws -> [WasmClient.Music.LyricSegment] {
-        let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(
-            actionID: WasmClient.ActionID.lyrics.rawValue,
-            logger: logger
+        let result: MusicTranscript = try await runMusic(
+            actionID: .lyrics,
+            args: ["id": Google_Protobuf_Value(stringValue: trackID)]
         )
-        let args: [String: Google_Protobuf_Value] = [
-            "id": Google_Protobuf_Value(stringValue: trackID)
-        ]
-        let result: MusicTranscript = try await instance.run(action: action, args: args)
         return result.segments.map { seg in
             WasmClient.Music.LyricSegment(
                 text: seg.text,
@@ -92,27 +82,31 @@ extension WasmActor {
     }
 
     func musicSuggestions(query: String) async throws -> [String] {
-        let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(
-            actionID: WasmClient.ActionID.musicSuggestion.rawValue,
-            logger: logger
+        let result: MusicListSuggestions = try await runMusic(
+            actionID: .musicSuggestion,
+            args: ["query": Google_Protobuf_Value(stringValue: query)]
         )
-        let args: [String: Google_Protobuf_Value] = [
-            "query": Google_Protobuf_Value(stringValue: query)
-        ]
-        let result: MusicListSuggestions = try await instance.run(action: action, args: args)
         return result.suggestions
     }
 
     // MARK: - Music Helpers
 
+    /// Resolves `actionID` and runs it, decoding the response into `T`. Mirrors
+    /// `runInpaint` — the shared submit path for every one-shot music action.
+    private func runMusic<T: SwiftProtobuf.Message>(
+        actionID: WasmClient.ActionID,
+        args: [String: Google_Protobuf_Value]
+    ) async throws -> T {
+        let instance = try await readyEngine()
+        let action = try await delegate.resolveAction(actionID: actionID.rawValue, logger: logger)
+        return try await instance.run(action: action, args: args)
+    }
+
     private func runMusicList(
         actionID: WasmClient.ActionID,
         args: [String: Google_Protobuf_Value]
     ) async throws -> WasmClient.Music.TrackList {
-        let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(actionID: actionID.rawValue, logger: logger)
-        let result: MusicListTracks = try await instance.run(action: action, args: args)
+        let result: MusicListTracks = try await runMusic(actionID: actionID, args: args)
         return mapTrackList(result)
     }
 

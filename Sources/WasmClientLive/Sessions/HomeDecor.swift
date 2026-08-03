@@ -17,15 +17,10 @@ extension WasmActor {
         let instance = try await readyEngine()
         let action = try await delegate.resolveNextAction(actionID: actionID.rawValue, logger: logger)
 
-        var protoArgs: [String: Google_Protobuf_Value] = [:]
-        for (key, value) in request.toWireArgs() where !value.isEmpty {
-            protoArgs[key] = Google_Protobuf_Value(stringValue: value)
-        }
-
         return try await runHomedecor(
             instance: instance,
             action: action,
-            protoArgs: protoArgs,
+            protoArgs: Self.stringArgs(request.toWireArgs()),
             onProgress: onProgress
         )
     }
@@ -37,17 +32,22 @@ extension WasmActor {
         let instance = try await readyEngine()
         let action = try await delegate.resolveNextAction(actionID: actionID, logger: logger)
 
+        return try await runHomedecor(
+            instance: instance,
+            action: action,
+            protoArgs: Self.stringArgs(args),
+            onProgress: nil
+        )
+    }
+
+    /// Wraps a `[String: String]` arg map as protobuf string values, dropping
+    /// empty entries so absent fields never reach the wire.
+    private static func stringArgs(_ args: [String: String]) -> [String: Google_Protobuf_Value] {
         var protoArgs: [String: Google_Protobuf_Value] = [:]
         for (key, value) in args where !value.isEmpty {
             protoArgs[key] = Google_Protobuf_Value(stringValue: value)
         }
-
-        return try await runHomedecor(
-            instance: instance,
-            action: action,
-            protoArgs: protoArgs,
-            onProgress: nil
-        )
+        return protoArgs
     }
 
     func homeDesignStatus(
@@ -201,6 +201,13 @@ extension WasmActor {
                         processType = Self.mapProcessType(res.processType)
                         roomStyle = Self.mapRoomStyle(res.roomStyle)
                         roomType = Self.mapRoomType(res.roomType)
+                    } else {
+                        // Completed with a payload we couldn't decode either way —
+                        // surface it so an empty result is distinguishable from a
+                        // broken response (the SDK contract stays non-throwing).
+                        logger(
+                            "homedecor(id=\(task.id)): completed but HomedecorGenerateResult decode failed; typeURL='\(task.value.typeURL)'"
+                        )
                     }
                 }
             case .processing:

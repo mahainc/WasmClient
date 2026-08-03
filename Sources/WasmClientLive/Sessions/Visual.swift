@@ -23,12 +23,7 @@ extension WasmActor {
         var args: [String: Google_Protobuf_Value] = [
             "query": Google_Protobuf_Value(stringValue: query)
         ]
-        if page > 1 {
-            args["page"] = Google_Protobuf_Value(numberValue: Double(page))
-        }
-        if perPage != 20 {
-            args["per_page"] = Google_Protobuf_Value(numberValue: Double(perPage))
-        }
+        Self.applyPagination(page: page, perPage: perPage, to: &args)
         return try await runVisualSearch(instance: instance, action: action, args: args)
     }
 
@@ -48,12 +43,7 @@ extension WasmActor {
         var args: [String: Google_Protobuf_Value] = [
             "file": Google_Protobuf_Value(stringValue: imageURL)
         ]
-        if page > 1 {
-            args["page"] = Google_Protobuf_Value(numberValue: Double(page))
-        }
-        if perPage != 20 {
-            args["per_page"] = Google_Protobuf_Value(numberValue: Double(perPage))
-        }
+        Self.applyPagination(page: page, perPage: perPage, to: &args)
         return try await runVisualSearch(instance: instance, action: action, args: args)
     }
 
@@ -73,16 +63,30 @@ extension WasmActor {
         if !query.isEmpty {
             args["query"] = Google_Protobuf_Value(stringValue: query)
         }
-        if page > 1 {
-            args["page"] = Google_Protobuf_Value(numberValue: Double(page))
-        }
-        if perPage != 20 {
-            args["per_page"] = Google_Protobuf_Value(numberValue: Double(perPage))
-        }
+        Self.applyPagination(page: page, perPage: perPage, to: &args)
         return try await runVisualSearch(instance: instance, action: action, args: args)
     }
 
     // MARK: - Visual Helpers
+
+    /// Engine-side default page size — `per_page` is omitted when it matches,
+    /// so only non-default paging is sent on the wire.
+    private static let defaultPerPage = 20
+
+    /// Adds `page`/`per_page` only when they diverge from the engine defaults
+    /// (page 1, `defaultPerPage`), keeping the payload minimal.
+    private static func applyPagination(
+        page: Int,
+        perPage: Int,
+        to args: inout [String: Google_Protobuf_Value]
+    ) {
+        if page > 1 {
+            args["page"] = Google_Protobuf_Value(numberValue: Double(page))
+        }
+        if perPage != defaultPerPage {
+            args["per_page"] = Google_Protobuf_Value(numberValue: Double(perPage))
+        }
+    }
 
     private func runVisualSearch(
         instance: TaskWasmProtocol,

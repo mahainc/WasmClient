@@ -48,20 +48,22 @@ extension WasmActor {
     }
 
     func listPendingTasks() async -> [WasmClient.PendingTask] {
-        let summaries = TaskWasmEngine.listPendingTasks(
+        Self.pendingTasksSnapshot()
+    }
+
+    /// Reads the on-disk descriptor cache and maps it to SDK tasks. This is the
+    /// single source for every pending-tasks read — the streams below wrap it
+    /// in a `@Sendable` closure they can call on each tick.
+    static func pendingTasksSnapshot() -> [WasmClient.PendingTask] {
+        TaskWasmEngine.listPendingTasks(
             cacheDir: TaskWasmEngine.defaultCacheDir
-        )
-        return summaries.map(Self.mapPendingTask)
+        ).map(mapPendingTask)
     }
 
     func observePendingTasks() async -> AsyncStream<[WasmClient.PendingTask]> {
         AsyncStream { continuation in
             let task = Task { [logger] in
-                let snapshot: @Sendable () -> [WasmClient.PendingTask] = {
-                    TaskWasmEngine.listPendingTasks(
-                        cacheDir: TaskWasmEngine.defaultCacheDir
-                    ).map(Self.mapPendingTask)
-                }
+                let snapshot: @Sendable () -> [WasmClient.PendingTask] = { Self.pendingTasksSnapshot() }
 
                 logger("observePendingTasks: defaultCacheDir=\(TaskWasmEngine.defaultCacheDir)")
 
@@ -129,11 +131,7 @@ extension WasmActor {
     func observeTaskCreated() async -> AsyncStream<WasmClient.PendingTask> {
         AsyncStream { continuation in
             let task = Task { [logger] in
-                let snapshot: @Sendable () -> [WasmClient.PendingTask] = {
-                    TaskWasmEngine.listPendingTasks(
-                        cacheDir: TaskWasmEngine.defaultCacheDir
-                    ).map(Self.mapPendingTask)
-                }
+                let snapshot: @Sendable () -> [WasmClient.PendingTask] = { Self.pendingTasksSnapshot() }
 
                 let seenBox = SeenIDsBox(initial: snapshot().map(\.id))
                 logger("observeTaskCreated: seeded with \(seenBox.count) existing IDs")
