@@ -61,6 +61,28 @@ that workaround.
 - Engine start uses `CheckedContinuation` (not polling) to wait for `.running` state
 - Action discovery happens eagerly during `start()`, not lazily on first use
 
+## Code Quality (clean-code)
+
+Route every non-trivial implementation or refactor in this package through the
+`clean-code` skill so code lands clean the first time, not after a review round:
+
+- **While writing** (`clean-code --apply`, default): apply the Chapter-17 heuristics
+  (CC1–CC10) to changed Swift, then self-review the diff. Runs AFTER the domain shape
+  is set (see below) and BEFORE compile-verify via `bazel-builder`.
+- **Before a PR** (`clean-code --review <changed files>`): read-only audit citing each
+  smell by book code (G5, F3, N1…); fix the Critical/Structural findings.
+
+Package-specific carve-outs — `clean-code` handles the function/logic layer ONLY and
+must defer to the gates that own the rest:
+
+- `Sources/WasmClientLive/Protos/*.pb.swift` are generated — **out of scope**, never scored.
+- Wire-facing values stay **struct + static let** (owned by the `wasm-domain` skill); the
+  book's "enum for closed unions" guidance defers to that (CC7 = follow the repo's convention).
+- Actor/delegate organization, the `Sessions/` layout, and the **L1–L6** concurrency rubric
+  are owned by `tca-client`; `clean-code` does not re-litigate the actor split.
+- Whitespace/layout belongs to `swift-format`/`swift-lint`. Never run `swift-lint --fix` on
+  `Live.swift` (it injects `@retroactive`, which breaks the SPM build).
+
 ## Adding New Domains
 
 1. Add models in `Sources/WasmClient/Models/`
@@ -68,3 +90,5 @@ that workaround.
 3. Add mock implementation in `Mocks.swift`
 4. Add session extension on `WasmActor` in `Sources/WasmClientLive/Sessions/`
 5. Wire in `Live.swift`
+6. Run `clean-code --apply` on the new session, then `clean-code --review` the diff,
+   before build-verifying via `bazel-builder`.
