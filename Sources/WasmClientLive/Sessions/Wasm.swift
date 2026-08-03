@@ -259,9 +259,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             do {
                 let all = try await engine.actions()
                 if !all.actions.isEmpty {
-                    for action in all.actions {
-                        cache[action.id, default: []].append(action)
-                    }
+                    cache = Dictionary(grouping: all.actions, by: \.id)
                     logger("Actions available after \(attempt) poll(s)")
                     break
                 }
@@ -286,10 +284,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         for attempt in 1...15 {  // 15 × 2s = 30s max
             let allActions = try await engine.actions()
             let currentCount = allActions.actions.count
-            var cache: [String: [WaTAction]] = [:]
-            for action in allActions.actions {
-                cache[action.id, default: []].append(action)
-            }
+            let cache = Dictionary(grouping: allActions.actions, by: \.id)
             if !cache.isEmpty {
                 actionCache = cache
             }
@@ -318,10 +313,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             guard let engine else { throw WasmClient.Error.engineNotStarted }
             let all = try await engine.actions()
             if !all.actions.isEmpty {
-                var cache: [String: [WaTAction]] = [:]
-                for action in all.actions {
-                    cache[action.id, default: []].append(action)
-                }
+                let cache = Dictionary(grouping: all.actions, by: \.id)
                 actionCache = cache
                 if cache[actionID]?.isEmpty == false {
                     logger("action '\(actionID)' available after refresh poll \(attempt)")
@@ -333,15 +325,26 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         }
     }
 
+    /// Ensures the action is discovered, then returns its non-empty provider
+    /// list — the shared prelude for every `resolve*` entry point. Throws
+    /// `noProviderFound` when nothing registered for `actionID`.
+    private func availableActions(
+        actionID: String,
+        logger: @escaping @Sendable (String) -> Void
+    ) async throws -> [WaTAction] {
+        try await ensureActionAvailable(actionID: actionID, logger: logger)
+        guard let actions = actionCache[actionID], !actions.isEmpty else {
+            throw WasmClient.Error.noProviderFound(action: actionID)
+        }
+        return actions
+    }
+
     func resolveAction(
         actionID: String,
         preferredProvider: String? = nil,
         logger: @escaping @Sendable (String) -> Void
     ) async throws -> WaTAction {
-        try await ensureActionAvailable(actionID: actionID, logger: logger)
-        guard let actions = actionCache[actionID], !actions.isEmpty else {
-            throw WasmClient.Error.noProviderFound(action: actionID)
-        }
+        let actions = try await availableActions(actionID: actionID, logger: logger)
         if let preferred = preferredProvider,
             let match = actions.first(where: { $0.provider == preferred })
         {
@@ -354,21 +357,14 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         actionID: String,
         logger: @escaping @Sendable (String) -> Void
     ) async throws -> [WaTAction] {
-        try await ensureActionAvailable(actionID: actionID, logger: logger)
-        guard let actions = actionCache[actionID], !actions.isEmpty else {
-            throw WasmClient.Error.noProviderFound(action: actionID)
-        }
-        return actions
+        try await availableActions(actionID: actionID, logger: logger)
     }
 
     func resolveNextAction(
         actionID: String,
         logger: @escaping @Sendable (String) -> Void
     ) async throws -> WaTAction {
-        try await ensureActionAvailable(actionID: actionID, logger: logger)
-        guard let actions = actionCache[actionID], !actions.isEmpty else {
-            throw WasmClient.Error.noProviderFound(action: actionID)
-        }
+        let actions = try await availableActions(actionID: actionID, logger: logger)
         let current = providerRotationIndex[actionID] ?? 0
         let index = current % actions.count
         let picked = actions[index]

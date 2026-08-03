@@ -20,15 +20,7 @@ extension WasmActor {
 
         // Step 2: run scan action
         let scanAction = try await delegate.resolveAction(actionID: WasmClient.ActionID.scan.rawValue, logger: logger)
-        var args: [String: Google_Protobuf_Value] = [
-            "file": Google_Protobuf_Value(stringValue: imageURL)
-        ]
-        if category != "object" {
-            args["category"] = Google_Protobuf_Value(stringValue: category)
-        }
-        if language != "en" {
-            args["language"] = Google_Protobuf_Value(stringValue: language)
-        }
+        let args = Self.scanArgs(fileURL: imageURL, category: category, language: language)
         let task = try await instance.create(action: scanAction, args: args)
         let visionResult = try Self.parseScanResult(task: task)
         var result = Self.mapScanResult(visionResult)
@@ -50,8 +42,22 @@ extension WasmActor {
             preferredProvider: provider.isEmpty ? nil : provider,
             logger: logger
         )
+        let args = Self.scanArgs(fileURL: imageURL, category: category, language: language)
+        let task = try await instance.create(action: action, args: args)
+        let visionResult = try Self.parseScanResult(task: task)
+        return Self.mapScanResult(visionResult)
+    }
+
+    /// Wire args shared by `scan` and `describe`. `category`/`language` are
+    /// omitted at their engine-side defaults ("object"/"en") to keep the
+    /// payload minimal.
+    private static func scanArgs(
+        fileURL: String,
+        category: String,
+        language: String
+    ) -> [String: Google_Protobuf_Value] {
         var args: [String: Google_Protobuf_Value] = [
-            "file": Google_Protobuf_Value(stringValue: imageURL)
+            "file": Google_Protobuf_Value(stringValue: fileURL)
         ]
         if category != "object" {
             args["category"] = Google_Protobuf_Value(stringValue: category)
@@ -59,9 +65,7 @@ extension WasmActor {
         if language != "en" {
             args["language"] = Google_Protobuf_Value(stringValue: language)
         }
-        let task = try await instance.create(action: action, args: args)
-        let visionResult = try Self.parseScanResult(task: task)
-        return Self.mapScanResult(visionResult)
+        return args
     }
 
     func visualSearch(

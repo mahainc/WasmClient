@@ -21,15 +21,7 @@ extension WasmActor {
         let bodyData = try Self.buildChatBody(config: config, messages: messages, stream: false)
         let bodyString = String(data: bodyData, encoding: .utf8)!
 
-        var args: [String: Google_Protobuf_Value] = [
-            "body": Google_Protobuf_Value(stringValue: bodyString)
-        ]
-        if !config.endpoint.isEmpty {
-            args["url"] = Google_Protobuf_Value(stringValue: config.endpoint)
-        }
-        if !config.apiKey.isEmpty {
-            args["api_key"] = Google_Protobuf_Value(stringValue: config.apiKey)
-        }
+        let args = Self.chatArgs(bodyString: bodyString, config: config, includeProvider: false)
 
         let task = try await instance.create(action: action, args: args)
 
@@ -45,17 +37,7 @@ extension WasmActor {
             throw WasmClient.Error.unexpectedResponseFormat
         }
 
-        // Try full ChatCompletion parse, fall back to plain text
-        var opts = JSONDecodingOptions()
-        opts.ignoreUnknownFields = true
-        if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
-            let choice = completion.choices.first
-        {
-            return Self.mapMessage(choice.message)
-        }
-
-        let text = String(data: data, encoding: .utf8) ?? ""
-        return WasmClient.Chat.Message(role: .assistant, content: text)
+        return Self.parseChatCompletion(data)
     }
 
     func chatStream(
@@ -79,16 +61,7 @@ extension WasmActor {
         let bodyString = String(data: bodyData, encoding: .utf8)!
         logger("chatStream: body built (\(bodyData.count) bytes), model: \(config.model)")
 
-        var streamArgs: [String: Google_Protobuf_Value] = [
-            "body": Google_Protobuf_Value(stringValue: bodyString)
-        ]
-        if !config.endpoint.isEmpty {
-            streamArgs["url"] = Google_Protobuf_Value(stringValue: config.endpoint)
-        }
-        if !config.apiKey.isEmpty {
-            streamArgs["api_key"] = Google_Protobuf_Value(stringValue: config.apiKey)
-        }
-        let args = streamArgs
+        let args = Self.chatArgs(bodyString: bodyString, config: config, includeProvider: false)
         let log = logger
         let requestID = UUID().uuidString
 
@@ -216,6 +189,10 @@ extension WasmActor {
         let instance = try await readyEngine()
 
         // Resolve listModels action — standalone, not tied to a chat provider.
+        // A failure here means the current engine doesn't expose listModels
+        // (provider not loaded / capability absent); that is treated as an empty
+        // catalog rather than a hard error so callers can degrade gracefully. The
+        // failure is logged so a transient/engine fault isn't silently swallowed.
         let listAction: WaTAction
         do {
             listAction = try await delegate.resolveAction(
@@ -223,6 +200,7 @@ extension WasmActor {
                 logger: logger
             )
         } catch {
+            logger("chatModels: listModels action unavailable — \(error); returning empty catalog")
             return ([], 0)
         }
 
@@ -410,18 +388,7 @@ extension WasmActor {
         let bodyData = try Self.buildChatBody(config: config, messages: messages, stream: false)
         let bodyString = String(data: bodyData, encoding: .utf8) ?? "{}"
 
-        var args: [String: Google_Protobuf_Value] = [
-            "body": Google_Protobuf_Value(stringValue: bodyString)
-        ]
-        if !config.endpoint.isEmpty {
-            args["url"] = Google_Protobuf_Value(stringValue: config.endpoint)
-        }
-        if !config.apiKey.isEmpty {
-            args["api_key"] = Google_Protobuf_Value(stringValue: config.apiKey)
-        }
-        if !config.providerID.isEmpty {
-            args["provider_id"] = Google_Protobuf_Value(stringValue: config.providerID)
-        }
+        let args = Self.chatArgs(bodyString: bodyString, config: config, includeProvider: true)
 
         let result: TypesBytes = try await instance.run(
             method: WasmClient.Chat.Method.completion.rawValue,
@@ -431,15 +398,7 @@ extension WasmActor {
             throw WasmClient.Error.unexpectedResponseFormat
         }
 
-        var opts = JSONDecodingOptions()
-        opts.ignoreUnknownFields = true
-        if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
-            let choice = completion.choices.first
-        {
-            return Self.mapMessage(choice.message)
-        }
-        let text = String(data: data, encoding: .utf8) ?? ""
-        return WasmClient.Chat.Message(role: .assistant, content: text)
+        return Self.parseChatCompletion(data)
     }
 
     func listProviders() async throws -> [WasmClient.Chat.ProviderInfo] {
@@ -558,79 +517,26 @@ extension WasmActor {
         guard case .stringValue(let modelID)? = fields["id"]?.kind, !modelID.isEmpty else {
             return nil
         }
-        let name: String = {
-            if case .stringValue(let n)? = fields["name"]?.kind, !n.isEmpty { return n }
-            return modelID
-        }()
-        let ownedBy: String = {
-            if case .stringValue(let s)? = fields["owned_by"]?.kind { return s }
-            return ""
-        }()
-        let meta: [String: Google_Protobuf_Value] = {
-            if case .structValue(let s)? = fields["metadata"]?.kind { return s.fields }
-            return [:]
-        }()
-        let isPro: Bool = {
-            if case .boolValue(let b)? = meta["is_pro"]?.kind { return b }
-            return false
-        }()
-        let vision: Bool = {
-            if case .boolValue(let b)? = meta["vision"]?.kind { return b }
-            return false
-        }()
-        let voices: [String] = {
-            guard case .listValue(let l)? = meta["voices"]?.kind else { return [] }
-            return l.values.compactMap { v in
-                if case .stringValue(let s) = v.kind { return s }
-                return nil
-            }
-        }()
-        let greetings: [String] = {
-            guard case .listValue(let l)? = meta["greetings"]?.kind else { return [] }
-            return l.values.compactMap { v in
-                if case .stringValue(let s) = v.kind { return s }
-                return nil
-            }
-        }()
-        let image: String = {
-            if case .stringValue(let s)? = meta["image"]?.kind { return s }
-            return ""
-        }()
-        let interactions: Int = {
-            if case .numberValue(let n)? = meta["interactions"]?.kind { return Int(n) }
-            return 0
-        }()
-        let description: String = {
-            if case .stringValue(let s)? = meta["description"]?.kind { return s }
-            return ""
-        }()
-        let tags: [String] = {
-            guard case .listValue(let l)? = meta["tags"]?.kind else { return [] }
-            return l.values.compactMap {
-                if case .stringValue(let s) = $0.kind { return s }
-                return nil
-            }
-        }()
-        let providerID: String = {
-            if case .stringValue(let s)? = meta["provider_id"]?.kind { return s }
-            return ""
-        }()
-        let providerName = providerNames[providerID] ?? ""
+        let rawName = fields.string("name")
+        let name = rawName.isEmpty ? modelID : rawName
+        let ownedBy = fields.string("owned_by")
+        let meta = fields.fields("metadata")
+        let providerID = meta.string("provider_id")
 
         return WasmClient.Chat.ModelInfo(
             modelID: modelID,
             name: name,
             ownedBy: ownedBy,
-            isPro: isPro,
-            vision: vision,
-            voices: voices,
-            greetings: greetings,
-            image: image,
-            interactions: interactions,
-            description: description,
-            tags: tags,
+            isPro: meta.bool("is_pro"),
+            vision: meta.bool("vision"),
+            voices: meta.stringList("voices"),
+            greetings: meta.stringList("greetings"),
+            image: meta.string("image"),
+            interactions: meta.int("interactions"),
+            description: meta.string("description"),
+            tags: meta.stringList("tags"),
             providerID: providerID,
-            providerName: providerName
+            providerName: providerNames[providerID] ?? ""
         )
     }
 
@@ -754,5 +660,88 @@ extension WasmActor {
             },
             refusal: proto.hasRefusal ? proto.refusal : ""
         )
+    }
+
+    /// Builds the shared chat request args (`body`, plus optional `url`/`api_key`
+    /// and — for method-name dispatch — `provider_id`). Single source for the three
+    /// call sites that previously repeated this shape (`chatSend`, `chatStream`,
+    /// `completion`).
+    private static func chatArgs(
+        bodyString: String,
+        config: WasmClient.Chat.Config,
+        includeProvider: Bool
+    ) -> [String: Google_Protobuf_Value] {
+        var args: [String: Google_Protobuf_Value] = [
+            "body": Google_Protobuf_Value(stringValue: bodyString)
+        ]
+        if !config.endpoint.isEmpty {
+            args["url"] = Google_Protobuf_Value(stringValue: config.endpoint)
+        }
+        if !config.apiKey.isEmpty {
+            args["api_key"] = Google_Protobuf_Value(stringValue: config.apiKey)
+        }
+        if includeProvider, !config.providerID.isEmpty {
+            args["provider_id"] = Google_Protobuf_Value(stringValue: config.providerID)
+        }
+        return args
+    }
+
+    /// Parses a chat response: a full `OpenAIChatCompletion` when decodable,
+    /// otherwise the raw payload as assistant text. Single source for the tail
+    /// shared by `chatSend` and `completion`.
+    private static func parseChatCompletion(_ data: Data) -> WasmClient.Chat.Message {
+        var opts = JSONDecodingOptions()
+        opts.ignoreUnknownFields = true
+        if let completion = try? OpenAIChatCompletion(jsonUTF8Data: data, options: opts),
+            let choice = completion.choices.first
+        {
+            return mapMessage(choice.message)
+        }
+        let text = String(data: data, encoding: .utf8) ?? ""
+        return WasmClient.Chat.Message(role: .assistant, content: text)
+    }
+}
+
+// MARK: - Protobuf field accessors
+
+/// Typed reads over a `[String: Google_Protobuf_Value]` field bag. These replace the
+/// ~13 immediately-invoked `{ if case .X(let y)? = fields[k]?.kind … }` closures that
+/// `mapModelRow` previously repeated inline (G5).
+extension [String: Google_Protobuf_Value] {
+    fileprivate func string(
+        _ key: String,
+        default fallback: String = ""
+    ) -> String {
+        if case .stringValue(let value)? = self[key]?.kind { return value }
+        return fallback
+    }
+
+    fileprivate func bool(
+        _ key: String,
+        default fallback: Bool = false
+    ) -> Bool {
+        if case .boolValue(let value)? = self[key]?.kind { return value }
+        return fallback
+    }
+
+    fileprivate func int(
+        _ key: String,
+        default fallback: Int = 0
+    ) -> Int {
+        if case .numberValue(let value)? = self[key]?.kind { return Int(value) }
+        return fallback
+    }
+
+    fileprivate func stringList(_ key: String) -> [String] {
+        guard case .listValue(let list)? = self[key]?.kind else { return [] }
+        return list.values.compactMap { element in
+            if case .stringValue(let value) = element.kind { return value }
+            return nil
+        }
+    }
+
+    fileprivate func fields(_ key: String) -> [String: Google_Protobuf_Value] {
+        if case .structValue(let structValue)? = self[key]?.kind { return structValue.fields }
+        return [:]
     }
 }
