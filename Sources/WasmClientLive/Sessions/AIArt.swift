@@ -193,19 +193,7 @@ extension WasmActor {
             }
         }
 
-        let status: WasmClient.TaskStatus
-        switch task.status {
-            case .completed:
-                status = .completed
-            case .processing:
-                status = .processing
-            default:
-                let errorMsg =
-                    metadata["error"]
-                    ?? task.metadata.fields["error"]?.stringValue
-                    ?? (statusString.isEmpty ? "\(task.status)" : statusString)
-                status = .failed(errorMsg)
-        }
+        let status = mapVideoStatus(task: task, metadata: metadata, statusString: statusString)
 
         return WasmClient.AIArt.VideoTaskSnapshot(
             status: status,
@@ -218,6 +206,29 @@ extension WasmActor {
             progress: progress,
             metadata: metadata
         )
+    }
+
+    /// Derives the domain `TaskStatus` for a video task. A non-terminal engine
+    /// status maps to `.failed` with the best available error string (task-level
+    /// metadata, then result metadata, then the raw status), keeping the failure
+    /// message resolution one level below `mapAiartVideoTask`.
+    private static func mapVideoStatus(
+        task: WaTTask,
+        metadata: [String: String],
+        statusString: String
+    ) -> WasmClient.TaskStatus {
+        switch task.status {
+            case .completed:
+                return .completed
+            case .processing:
+                return .processing
+            default:
+                let errorMsg =
+                    metadata["error"]
+                    ?? task.metadata.fields["error"]?.stringValue
+                    ?? (statusString.isEmpty ? "\(task.status)" : statusString)
+                return .failed(errorMsg)
+        }
     }
 
     private static func mapAiartResult(_ proto: AiartGenerateResult) -> WasmClient.AIArt.ImageResult {
