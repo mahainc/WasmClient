@@ -1,0 +1,183 @@
+import CoreGraphics
+@preconcurrency import FlowKit
+import Foundation
+import SwiftProtobuf
+import WasmClient
+
+// MARK: - Inpaint
+
+extension WasmActor {
+
+    func autoSuggestion(image: String) async throws -> WasmClient.Inpaint.ObjectSegments {
+        let args: [String: Google_Protobuf_Value] = [
+            "image": Google_Protobuf_Value(stringValue: image)
+        ]
+        let result: InpaintObjectSegments = try await runInpaint(
+            actionID: WasmClient.ActionID.autoSuggestion,
+            args: args
+        )
+        return mapObjectSegments(result)
+    }
+
+    func enhance(
+        image: String,
+        zoomFactor: Int
+    ) async throws -> WasmClient.Inpaint.ObjectSegments {
+        var args: [String: Google_Protobuf_Value] = [
+            "image": Google_Protobuf_Value(stringValue: image)
+        ]
+        if zoomFactor != 2 {
+            args["zoom_factor"] = Google_Protobuf_Value(stringValue: "\(zoomFactor)")
+        }
+        let result: InpaintObjectSegments = try await runInpaint(
+            actionID: WasmClient.ActionID.enhance,
+            args: args
+        )
+        return mapObjectSegments(result)
+    }
+
+    func removeBackground(image: String) async throws -> WasmClient.Inpaint.Segment {
+        let args: [String: Google_Protobuf_Value] = [
+            "image": Google_Protobuf_Value(stringValue: image)
+        ]
+        let result: InpaintSegment = try await runInpaint(
+            actionID: WasmClient.ActionID.removeBg,
+            args: args
+        )
+        return mapSegment(result)
+    }
+
+    func erase(
+        image: String?,
+        sessionID: String?,
+        maskBrush: String?,
+        maskObjects: String?
+    ) async throws -> WasmClient.Inpaint.EraseResult {
+        var args: [String: Google_Protobuf_Value] = [:]
+        if let image {
+            args["image"] = Google_Protobuf_Value(stringValue: image)
+        }
+        if let sessionID {
+            args["session_id"] = Google_Protobuf_Value(stringValue: sessionID)
+        }
+        if let maskBrush {
+            args["mask_brush"] = Google_Protobuf_Value(stringValue: maskBrush)
+        }
+        if let maskObjects {
+            args["mask_objects"] = Google_Protobuf_Value(stringValue: maskObjects)
+        }
+        let result: InpaintErase = try await runInpaint(
+            actionID: WasmClient.ActionID.erase,
+            args: args
+        )
+        return WasmClient.Inpaint.EraseResult(
+            sessionID: result.sessionID,
+            imageURL: result.hasImage ? result.image.url : "",
+            maskURL: result.hasMask ? result.mask.url : "",
+            metadata: mapMetadata(result.metadata)
+        )
+    }
+
+    func skinBeauty(image: String) async throws -> WasmClient.Inpaint.ObjectSegments {
+        let args: [String: Google_Protobuf_Value] = [
+            "image": Google_Protobuf_Value(stringValue: image)
+        ]
+        let result: InpaintObjectSegments = try await runInpaint(
+            actionID: WasmClient.ActionID.skinBeauty,
+            args: args
+        )
+        return mapObjectSegments(result)
+    }
+
+    func sky(image: String) async throws -> WasmClient.Inpaint.Segment {
+        let args: [String: Google_Protobuf_Value] = [
+            "image": Google_Protobuf_Value(stringValue: image)
+        ]
+        let result: InpaintSegment = try await runInpaint(
+            actionID: WasmClient.ActionID.sky,
+            args: args
+        )
+        return mapSegment(result)
+    }
+
+    func categorizeClothes(image: String) async throws -> WasmClient.Inpaint.Segment {
+        let args: [String: Google_Protobuf_Value] = [
+            "image": Google_Protobuf_Value(stringValue: image)
+        ]
+        let result: InpaintSegment = try await runInpaint(
+            actionID: WasmClient.ActionID.clothes,
+            args: args
+        )
+        return mapSegment(result)
+    }
+
+    func tryOn(
+        modelImage: String,
+        clothImage: String
+    ) async throws -> String {
+        let args: [String: Google_Protobuf_Value] = [
+            "image": Google_Protobuf_Value(stringValue: modelImage),
+            "cloth_image": Google_Protobuf_Value(stringValue: clothImage),
+        ]
+        let result: TypesImage = try await runInpaint(
+            actionID: WasmClient.ActionID.tryOn,
+            args: args
+        )
+        return result.url
+    }
+
+    // MARK: - Inpaint Helpers
+
+    private func runInpaint<T: SwiftProtobuf.Message>(
+        actionID: WasmClient.ActionID,
+        args: [String: Google_Protobuf_Value]
+    ) async throws -> T {
+        let instance = try await readyEngine()
+        let action = try await delegate.resolveAction(actionID: actionID.rawValue, logger: logger)
+        return try await instance.run(action: action, args: args)
+    }
+
+    // MARK: - Inpaint Mapping
+
+    private func mapObjectSegments(_ proto: InpaintObjectSegments) -> WasmClient.Inpaint.ObjectSegments {
+        WasmClient.Inpaint.ObjectSegments(
+            sessionID: proto.sessionID,
+            segments: proto.segments.map(mapSegment),
+            suggestMask: proto.suggestMask,
+            suggestObjectIds: proto.suggestObjectIds.joined(separator: ","),
+            metadata: mapMetadata(proto.metadata)
+        )
+    }
+
+    private func mapSegment(_ proto: InpaintSegment) -> WasmClient.Inpaint.Segment {
+        let bbox: CGRect
+        if proto.hasBbox {
+            let r = proto.bbox
+            bbox = CGRect(x: r.origin.x, y: r.origin.y, width: r.size.width, height: r.size.height)
+        } else {
+            bbox = .zero
+        }
+        return WasmClient.Inpaint.Segment(
+            bbox: bbox,
+            maskURL: proto.hasMask ? proto.mask.url : "",
+            metadata: mapMetadata(proto.metadata)
+        )
+    }
+
+    private func mapMetadata(_ proto: Google_Protobuf_Struct) -> [String: String] {
+        var result: [String: String] = [:]
+        for (key, value) in proto.fields {
+            switch value.kind {
+                case .stringValue(let s):
+                    result[key] = s
+                case .numberValue(let n):
+                    result[key] = "\(n)"
+                case .boolValue(let b):
+                    result[key] = "\(b)"
+                default:
+                    break
+            }
+        }
+        return result
+    }
+}

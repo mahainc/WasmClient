@@ -1,4 +1,3 @@
-@preconcurrency import FlowKit
 import Dependencies
 import Foundation
 import WasmClient
@@ -43,15 +42,7 @@ extension WasmClient: DependencyKey {
                 try await actor.refreshActions()
             },
             funnelEngine: {
-                let engine = try await actor.readyEngine()
-                // `TaskWasmProtocol` is not `Sendable`, but the interface vends
-                // the started engine as an opaque `(any Sendable)?` handle that
-                // the consumer casts back to `TaskWasmProtocol`. `any Sendable`
-                // is a marker existential with the same layout as `Any`, so
-                // bridge through `Any` (preserving the dynamic type for the
-                // consumer's `as? TaskWasmProtocol`). Sharing the one engine is
-                // safe here — the delegate that owns it is `@unchecked Sendable`.
-                return unsafeBitCast(engine as Any, to: (any Sendable).self)
+                try await actor.funnelEngine()
             },
             scan: { imageData, category, language in
                 try await actor.scan(imageData: imageData, category: category, language: language)
@@ -73,7 +64,10 @@ extension WasmClient: DependencyKey {
             },
             chatModels: { offset, limit, keyword, category in
                 try await actor.chatModels(
-                    offset: offset, limit: limit, keyword: keyword, category: category
+                    offset: offset,
+                    limit: limit,
+                    keyword: keyword,
+                    category: category
                 )
             },
             chatSend: { config, messages in
@@ -82,11 +76,40 @@ extension WasmClient: DependencyKey {
             chatStream: { config, messages in
                 try await actor.chatStream(config: config, messages: messages)
             },
-            createChatModel: { providerId, input in
-                try await actor.createChatModel(providerId: providerId, input: input)
+            createChatModel: { providerID, input in
+                try await actor.createChatModel(providerID: providerID, input: input)
             },
-            initializeChatProvider: { providerId, userName in
-                try await actor.initializeChatProvider(providerId: providerId, userName: userName)
+            initializeChatProvider: { providerID, userName in
+                try await actor.initializeChatProvider(providerID: providerID, userName: userName)
+            },
+            completion: { config, messages in
+                try await actor.completion(config: config, messages: messages)
+            },
+            listProviders: {
+                try await actor.listProviders()
+            },
+            authProvider: { providerID in
+                try await actor.authProvider(providerID: providerID)
+            },
+            listVoices: { providerID, keyword, offset, limit in
+                try await actor.listVoices(
+                    providerID: providerID,
+                    keyword: keyword,
+                    offset: offset,
+                    limit: limit
+                )
+            },
+            createVoice: { providerID, name, audio, gender, visibility in
+                try await actor.createVoice(
+                    providerID: providerID,
+                    name: name,
+                    audio: audio,
+                    gender: gender,
+                    visibility: visibility
+                )
+            },
+            deleteVoice: { providerID, voiceID in
+                try await actor.deleteVoice(providerID: providerID, voiceID: voiceID)
             },
             musicDiscover: { category, continuation in
                 try await actor.musicDiscover(category: category, continuation: continuation)
@@ -112,26 +135,29 @@ extension WasmClient: DependencyKey {
             suggest: { systemPrompt, imageURL in
                 try await actor.suggest(systemPrompt: systemPrompt, imageURL: imageURL)
             },
-            readOutLoud: { text, voice, providerId in
-                try await actor.readOutLoud(text: text, voice: voice, providerId: providerId)
+            readOutLoud: { text, voice, providerID in
+                try await actor.readOutLoud(text: text, voice: voice, providerID: providerID)
             },
-            ttsVoices: { providerId, modelId in
-                try await actor.ttsVoices(providerId: providerId, modelId: modelId)
+            ttsVoices: { providerID, modelID in
+                try await actor.ttsVoices(providerID: providerID, modelID: modelID)
             },
-            aiartGenerate: { actionID, args in
-                try await actor.aiartGenerate(actionID: actionID, args: args)
+            generateAIArt: { request in
+                try await actor.generateAIArt(request)
             },
-            aiartStyles: { actionID in
-                try await actor.aiartStyles(actionID: actionID)
+            listAIArtStyles: { kind in
+                try await actor.listAIArtStyles(kind: kind)
             },
-            aiartVideoCreate: { args in
-                try await actor.aiartVideoCreate(args: args)
+            loadAIArtModelCatalog: { mode in
+                try await actor.loadAIArtModelCatalog(mode: mode)
             },
-            aiartVideoStatus: { videoID in
-                try await actor.aiartVideoStatus(videoID: videoID)
+            submitAIArtVideo: { request in
+                try await actor.submitAIArtVideo(request)
             },
-            aiartVideoPoll: { videoID, interval, onUpdate in
-                try await actor.aiartVideoPoll(
+            getAIArtVideoStatus: { videoID in
+                try await actor.getAIArtVideoStatus(videoID: videoID)
+            },
+            pollAIArtVideo: { videoID, interval, onUpdate in
+                try await actor.pollAIArtVideo(
                     videoID: videoID,
                     interval: interval,
                     onUpdate: onUpdate
@@ -194,10 +220,12 @@ extension WasmClient: DependencyKey {
             removeBackground: { image in
                 try await actor.removeBackground(image: image)
             },
-            erase: { image, sessionId, maskBrush, maskObjects in
+            erase: { image, sessionID, maskBrush, maskObjects in
                 try await actor.erase(
-                    image: image, sessionId: sessionId,
-                    maskBrush: maskBrush, maskObjects: maskObjects
+                    image: image,
+                    sessionID: sessionID,
+                    maskBrush: maskBrush,
+                    maskObjects: maskObjects
                 )
             },
             skinBeauty: { image in
@@ -215,12 +243,15 @@ extension WasmClient: DependencyKey {
             webpageLeagues: {
                 try await actor.webpageLeagues()
             },
-            webpageCompetitions: { q, limit, offset in
-                try await actor.webpageCompetitions(q: q, limit: limit, offset: offset)
+            webpageCompetitions: { query, limit, offset in
+                try await actor.webpageCompetitions(q: query, limit: limit, offset: offset)
             },
-            webpageTeams: { q, limit, offset, competitionId in
+            webpageTeams: { query, limit, offset, competitionID in
                 try await actor.webpageTeams(
-                    q: q, limit: limit, offset: offset, competitionId: competitionId
+                    q: query,
+                    limit: limit,
+                    offset: offset,
+                    competitionID: competitionID
                 )
             },
             webpage: { url in
@@ -235,20 +266,23 @@ extension WasmClient: DependencyKey {
             webpageTeam: { id in
                 try await actor.webpageTeam(id: id)
             },
-            webpageVideos: { videoType, competitionID, teamID, q, page, pageSize in
+            webpageVideos: { videoType, competitionID, teamID, query, page, pageSize in
                 try await actor.webpageVideos(
                     videoType: videoType,
                     competitionID: competitionID,
                     teamID: teamID,
-                    q: q,
+                    q: query,
                     page: page,
                     pageSize: pageSize
                 )
             },
-            webpageNews: { limit, offset, q, competitionID, teamID in
+            webpageNews: { limit, offset, query, competitionID, teamID in
                 try await actor.webpageNews(
-                    limit: limit, offset: offset, q: q,
-                    competitionID: competitionID, teamID: teamID
+                    limit: limit,
+                    offset: offset,
+                    q: query,
+                    competitionID: competitionID,
+                    teamID: teamID
                 )
             },
             upcoming: {
@@ -272,12 +306,13 @@ extension WasmClient: DependencyKey {
             submitSurvey: { questions, answers in
                 try await actor.submitSurvey(questions: questions, answers: answers)
             },
-            setNotification: { enabled, firebaseToken, firebaseUID, liveActivityToken in
+            setNotification: { enabled, firebaseToken, firebaseUID, liveActivityToken, liveActivityAttributesType in
                 try await actor.setNotification(
                     enabled: enabled,
                     firebaseToken: firebaseToken,
                     firebaseUID: firebaseUID,
-                    liveActivityToken: liveActivityToken
+                    liveActivityToken: liveActivityToken,
+                    liveActivityAttributesType: liveActivityAttributesType
                 )
             },
             getNotificationSettings: {
@@ -286,9 +321,11 @@ extension WasmClient: DependencyKey {
             notificationSubscribe: { entity, id, enabled in
                 try await actor.notificationSubscribe(entity: entity, id: id, enabled: enabled)
             },
-            reportLiveActivityToken: { entity, entityId, laToken in
+            reportLiveActivityToken: { entity, entityID, laToken in
                 try await actor.reportLiveActivityToken(
-                    entity: entity, entityId: entityId, laToken: laToken
+                    entity: entity,
+                    entityID: entityID,
+                    laToken: laToken
                 )
             }
         )

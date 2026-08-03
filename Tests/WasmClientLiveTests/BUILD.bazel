@@ -1,14 +1,14 @@
 load("@build_bazel_rules_swift//swift:swift_test.bzl", "swift_test")
 
 swift_test(
-    name = "WasmClientTests",
+    name = "WasmClientLiveTests",
     srcs = [
-        "AIArtRequestTests.swift",
-        "AuditCleanupTests.swift",
+        "ChatStreamTests.swift",
     ],
-    module_name = "WasmClientTests",
+    module_name = "WasmClientLiveTests",
     deps = [
         "//Sources/WasmClient",
+        "//Sources/WasmClientLive",
         "@swiftpkg_swift_dependencies//:Dependencies",
     ],
 )
