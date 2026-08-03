@@ -29,10 +29,6 @@ private enum MockConstants {
 // MARK: - Mock Implementations
 
 extension WasmClient {
-    /// Inert mock — every operation returns immediately with empty/default
-    /// values and streams finish without emitting. Use as a baseline in tests
-    /// and override only the operations exercised by the test under
-    /// `withDependencies { $0.wasm = .noop; $0.wasm.scan = { ... } }`.
     public static let noop = Self(
         start: {},
         observeEngineState: { AsyncStream { $0.finish() } },
@@ -65,12 +61,12 @@ extension WasmClient {
         listVoices: { _, _, _, _ in Chat.VoiceList() },
         createVoice: { _, _, _, _, _ in Chat.VoiceInfo(id: "") },
         deleteVoice: { _, _ in },
-        musicDiscover: { _, _ in MusicTrackList() },
-        musicDetails: { _ in MusicTrackDetail() },
-        musicTracks: { _, _ in MusicTrackList() },
-        musicSearch: { _, _ in MusicTrackList() },
+        musicDiscover: { _, _ in WasmClient.Music.TrackList() },
+        musicDetails: { _ in WasmClient.Music.TrackDetail() },
+        musicTracks: { _, _ in WasmClient.Music.TrackList() },
+        musicSearch: { _, _ in WasmClient.Music.TrackList() },
         musicLyrics: { _ in [] },
-        musicRelated: { _, _ in MusicTrackList() },
+        musicRelated: { _, _ in WasmClient.Music.TrackList() },
         musicSuggestions: { _ in [] },
         suggest: { _, _ in [] },
         readOutLoud: { _, _, _ in .data(Data(), mime: "") },
@@ -86,9 +82,9 @@ extension WasmClient {
         observeTaskCreated: { AsyncStream { $0.finish() } },
         removePendingTask: { _ in },
         clearPendingTasks: {},
-        searchPhotos: { _, _, _, _ in PhotoSearchResult() },
-        photoVisualSearch: { _, _, _, _ in PhotoSearchResult() },
-        listMedia: { _, _, _, _ in PhotoSearchResult() },
+        searchPhotos: { _, _, _, _ in WasmClient.Visual.SearchResult() },
+        photoVisualSearch: { _, _, _, _ in WasmClient.Visual.SearchResult() },
+        listMedia: { _, _, _, _ in WasmClient.Visual.SearchResult() },
         homeDesign: { _, _ in HomeDecor.Result() },
         homeDesignStatus: { _, _ in HomeDecor.Result() },
         homeDesignRequest: { _, _ in HomeDecor.Result() },
@@ -140,8 +136,8 @@ extension WasmClient {
         },
         liveMatchEvents: { AsyncStream { $0.finish() } },
         submitSurvey: { _, _ in },
-        setNotification: { _, _, _, _ in },
-        getNotificationSettings: { NotificationSettings(enabled: false, topics: []) },
+        setNotification: { _, _, _, _, _ in },
+        getNotificationSettings: { WasmClient.Notification.Settings(enabled: false, topics: []) },
         notificationSubscribe: { _, _, _ in },
         reportLiveActivityToken: { _, _, _ in }
     )
@@ -228,40 +224,40 @@ extension WasmClient {
         chatModels: { offset, limit, keyword, category in
             let all: [Chat.ModelInfo] = [
                 Chat.ModelInfo(
-                    modelId: "gpt-4o-mini",
+                    modelID: "gpt-4o-mini",
                     name: "GPT-4o mini",
                     ownedBy: "openai",
                     vision: true,
                     description: "Fast, affordable multimodal model.",
-                    providerId: "openai",
+                    providerID: "openai",
                     providerName: "OpenAI"
                 ),
                 Chat.ModelInfo(
-                    modelId: "gpt-4o",
+                    modelID: "gpt-4o",
                     name: "GPT-4o",
                     ownedBy: "openai",
                     isPro: true,
                     vision: true,
                     description: "Flagship multimodal model.",
-                    providerId: "openai",
+                    providerID: "openai",
                     providerName: "OpenAI"
                 ),
                 Chat.ModelInfo(
-                    modelId: "claude-sonnet-4-6",
+                    modelID: "claude-sonnet-4-6",
                     name: "Claude Sonnet 4.6",
                     ownedBy: "anthropic",
                     isPro: true,
                     vision: true,
                     description: "Anthropic's balanced model.",
-                    providerId: "anthropic",
+                    providerID: "anthropic",
                     providerName: "Anthropic"
                 ),
             ]
             var filtered = all
-            if let kw = keyword?.trimmingCharacters(in: .whitespaces), !kw.isEmpty {
-                let lower = kw.lowercased()
+            if let keyword = keyword?.trimmingCharacters(in: .whitespaces), !keyword.isEmpty {
+                let lower = keyword.lowercased()
                 filtered = filtered.filter {
-                    $0.modelId.lowercased().contains(lower)
+                    $0.modelID.lowercased().contains(lower)
                         || $0.name.lowercased().contains(lower)
                 }
             }
@@ -309,9 +305,9 @@ extension WasmClient {
                 Chat.ProviderInfo(id: "p2", name: "Second Provider"),
             ]
         },
-        authProvider: { providerId in
+        authProvider: { providerID in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
-            return (providerID: providerId.isEmpty ? "p1" : providerId, cacheDir: "/mock/cache")
+            return (providerID: providerID.isEmpty ? "p1" : providerID, cacheDir: "/mock/cache")
         },
         listVoices: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
@@ -331,13 +327,13 @@ extension WasmClient {
         },
         musicDiscover: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return MusicTrackList(items: [
-                MusicTrackItem(id: "track-1", title: "Mock Song", kind: "song", authorName: "Mock Artist")
+            return WasmClient.Music.TrackList(items: [
+                WasmClient.Music.TrackItem(id: "track-1", title: "Mock Song", kind: "song", authorName: "Mock Artist")
             ])
         },
         musicDetails: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return MusicTrackDetail(
+            return WasmClient.Music.TrackDetail(
                 id: "track-1",
                 title: "Mock Song",
                 description: "A great mock song",
@@ -345,34 +341,49 @@ extension WasmClient {
                 duration: 240,
                 views: 1_000_000,
                 formats: [
-                    MusicFormat(id: "f1", url: "https://example.com/audio.mp3", quality: "high", mimeType: "audio/mpeg")
+                    WasmClient.Music.Format(
+                        id: "f1",
+                        url: "https://example.com/audio.mp3",
+                        quality: "high",
+                        mimeType: "audio/mpeg"
+                    )
                 ]
             )
         },
         musicTracks: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return MusicTrackList(items: [
-                MusicTrackItem(id: "track-1", title: "Track One", kind: "song", authorName: "Artist A"),
-                MusicTrackItem(id: "track-2", title: "Track Two", kind: "song", authorName: "Artist B"),
+            return WasmClient.Music.TrackList(items: [
+                WasmClient.Music.TrackItem(id: "track-1", title: "Track One", kind: "song", authorName: "Artist A"),
+                WasmClient.Music.TrackItem(id: "track-2", title: "Track Two", kind: "song", authorName: "Artist B"),
             ])
         },
         musicSearch: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return MusicTrackList(items: [
-                MusicTrackItem(id: "track-1", title: "Search Result", kind: "song", authorName: "Mock Artist")
+            return WasmClient.Music.TrackList(items: [
+                WasmClient.Music.TrackItem(
+                    id: "track-1",
+                    title: "Search Result",
+                    kind: "song",
+                    authorName: "Mock Artist"
+                )
             ])
         },
         musicLyrics: { _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
             return [
-                MusicLyricSegment(text: "Hello, world", offset: 0, duration: 3000),
-                MusicLyricSegment(text: "This is a mock song", offset: 3000, duration: 4000),
+                WasmClient.Music.LyricSegment(text: "Hello, world", offset: 0, duration: 3000),
+                WasmClient.Music.LyricSegment(text: "This is a mock song", offset: 3000, duration: 4000),
             ]
         },
         musicRelated: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return MusicTrackList(items: [
-                MusicTrackItem(id: "track-3", title: "Related Track", kind: "song", authorName: "Related Artist")
+            return WasmClient.Music.TrackList(items: [
+                WasmClient.Music.TrackItem(
+                    id: "track-3",
+                    title: "Related Track",
+                    kind: "song",
+                    authorName: "Related Artist"
+                )
             ])
         },
         musicSuggestions: { _ in
@@ -488,16 +499,16 @@ extension WasmClient {
         clearPendingTasks: {},
         searchPhotos: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return PhotoSearchResult(
+            return WasmClient.Visual.SearchResult(
                 total: 100,
                 totalPages: 5,
                 results: [
-                    Photo(
+                    WasmClient.Visual.Photo(
                         id: "photo-1",
                         description: "A landscape photo",
                         width: 1920,
                         height: 1080,
-                        urls: PhotoUrls(
+                        urls: WasmClient.Visual.URLs(
                             small: "https://example.com/photo-sm.jpg",
                             thumb: "https://example.com/photo-th.jpg"
                         ),
@@ -509,11 +520,11 @@ extension WasmClient {
         },
         photoVisualSearch: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return PhotoSearchResult(total: 10, totalPages: 1, results: [])
+            return WasmClient.Visual.SearchResult(total: 10, totalPages: 1, results: [])
         },
         listMedia: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return PhotoSearchResult(total: 50, totalPages: 3, results: [])
+            return WasmClient.Visual.SearchResult(total: 50, totalPages: 3, results: [])
         },
         homeDesign: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
@@ -807,12 +818,12 @@ extension WasmClient {
         submitSurvey: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
         },
-        setNotification: { _, _, _, _ in
+        setNotification: { _, _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
         },
         getNotificationSettings: {
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
-            return NotificationSettings(enabled: true, topics: ["live_scores"])
+            return WasmClient.Notification.Settings(enabled: true, topics: ["live_scores"])
         },
         notificationSubscribe: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)

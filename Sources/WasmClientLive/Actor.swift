@@ -8,47 +8,22 @@ import WasmClient
 
 // MARK: - Delegate
 
-/// Bridges FlowKit's TaskWasmEngine lifecycle to the actor.
-/// Implements WasmInstanceDelegate to receive engine state changes —
-/// the engine requires a delegate to be set BEFORE start() to fully initialize.
 internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Sendable {
     private(set) var engine: TaskWasmProtocol?
     private(set) var isStarted = false
-    /// True while ensureStarted() is actively building the engine.
     private var isStarting = false
-    /// Cached actions keyed by action ID — populated after engine stabilises.
     private var actionCache: [String: [WaTAction]] = [:]
-    /// In-flight load task — concurrent callers of `ensureActionsLoaded` await
-    /// this instead of starting their own poll loop. The actor is reentrant on
-    /// `await`, and `actionCache` is only written after `engine.actions()`
-    /// suspends, so without this every concurrent caller passes the empty-cache
-    /// guard and runs a redundant 30s discovery cycle.
     private var actionsLoadTask: Task<Void, Error>?
     private let actionsLoadLock = NSLock()
-    /// Per-action round-robin counter for `resolveNextAction`.
     private var providerRotationIndex: [String: Int] = [:]
     private var logger: (@Sendable (String) -> Void)?
-    /// Continuations for all active engine state observers.
     private var stateContinuations: [UUID: AsyncStream<WasmClient.EngineState>.Continuation] = [:]
-    /// Last state we yielded, replayed to new subscribers so callers that
-    /// observe `observeEngineState()` AFTER the engine has already reached
-    /// `.running` still see it (otherwise the stream stays silent until the
-    /// next state change and consumers wait forever).
     private var lastState: WasmClient.EngineState = .stopped
     private let stateLock = NSLock()
-    /// Continuation waiting for the engine to reach .running state.
     private var startContinuation: CheckedContinuation<Void, Swift.Error>?
-    /// Timeout task for start continuation — cancelled on success.
     private var startTimeoutTask: Task<Void, Never>?
-    /// Set to true when stateChanged(.running) fires. Thread-safe via lock.
     private var engineDidReachRunning = false
     private let runningLock = NSLock()
-    /// Host-supplied closure returning the wasm version the app expects.
-    /// Consulted inside `ensureStarted` before `FlowKit.default()`; a mismatch
-    /// with `AsyncifyWasmCompat.currentVersionID` triggers `AsyncifyWasmCompat.resetDownloads(...)`.
-    /// Persists across `resetEngine()` — registered once at app launch.
-    /// Lock-protected so a nonisolated setter can race-free coexist with the
-    /// actor-context reader inside `ensureStarted`.
     private var _expectedVersionProvider: (@Sendable () async throws -> String?)?
     private let providerLock = NSLock()
 
@@ -60,26 +35,17 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         providerLock.withLock { _expectedVersionProvider }
     }
 
-    /// Tracks providerIds that have already completed `providerInit` during this
-    /// engine session. Mirrors flow-kit-example's `ChatView.initializedProviders`
-    /// so repeated calls to `initializeChatProvider` (and the auto-init step in
-    /// `readOutLoud`) short-circuit without firing the underlying action again.
-    /// Cleared in `resetEngine()`.
     private var initializedProviders: Set<String> = []
     private let initLock = NSLock()
 
-    func markProviderInitialized(_ providerId: String) {
-        initLock.withLock { _ = initializedProviders.insert(providerId) }
+    func markProviderInitialized(_ providerID: String) {
+        initLock.withLock { _ = initializedProviders.insert(providerID) }
     }
 
-    func isProviderInitialized(_ providerId: String) -> Bool {
-        initLock.withLock { initializedProviders.contains(providerId) }
+    func isProviderInitialized(_ providerID: String) -> Bool {
+        initLock.withLock { initializedProviders.contains(providerID) }
     }
 
-    /// Display name used by `providerInit` (CAI registers under it). Set by
-    /// the host once via `WasmClient.setUserName` and read by auto-init paths
-    /// that don't want to thread the name through every call. Lock-protected
-    /// so `nonisolated` callers can update it race-free.
     private var _userName: String = ""
     private let userNameLock = NSLock()
 
@@ -141,22 +107,15 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
                 mapped = .running
                 markRunning()
                 let (continuation, timeout) = runningLock.withLock {
-                    let c = startContinuation
+                    let continuation = startContinuation
                     startContinuation = nil
-                    let t = startTimeoutTask
+                    let timeoutTask = startTimeoutTask
                     startTimeoutTask = nil
-                    return (c, t)
+                    return (continuation, timeoutTask)
                 }
                 timeout?.cancel()
                 continuation?.resume()
             case .reload:
-                // After `.updating(1.0)` FlowKit fires `.reload` to swap the
-                // freshly downloaded wasm into the engine, then emits `.running`.
-                // Surfacing this as `.starting` makes consumers reset progress
-                // to 0% for the reload window — the user sees the boot bar snap
-                // 100 → 0 → 100 right before crossfade. Skip the yield;
-                // `lastState` still holds the prior `.updating(p)` snapshot for
-                // late subscribers.
                 return
             case .updating(let progress):
                 mapped = .updating(progress)
@@ -169,9 +128,6 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
 
     // MARK: - Engine Lifecycle
 
-    /// Build and start the engine. Uses CheckedContinuation to wait for the
-    /// delegate's `.running` callback instead of polling. Eagerly discovers
-    /// action providers as part of the start flow.
     func ensureStarted(logger: @escaping @Sendable (String) -> Void) async throws -> TaskWasmProtocol {
         #if canImport(Darwin)
             signal(SIGPIPE, SIG_IGN)
@@ -221,11 +177,6 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             logger("Building engine via FlowKit.default()...")
             yieldState(.starting)
             var instance = try await FlowKit.default()
-            // Non-premium: the host filters premium users BEFORE the funnel runs
-            // (LaunchStore short-circuits `if state.isPremium`, and AdRules gate on
-            // premium), so any gate that reaches the guest is a non-premium user.
-            // Hard-setting `true` here made the guest SKIP every gate with
-            // `user_is_premium`, suppressing all funnel ads.
             instance.premium = false
             instance.delegate = self
 
@@ -251,9 +202,9 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
                     self.startTimeoutTask = Task {
                         try? await Task.sleep(nanoseconds: 30_000_000_000)
                         let pending = self.runningLock.withLock { () -> CheckedContinuation<Void, Swift.Error>? in
-                            let c = self.startContinuation
+                            let continuation = self.startContinuation
                             self.startContinuation = nil
-                            return c
+                            return continuation
                         }
                         pending?.resume(throwing: WasmClient.Error.engineInitFailed)
                     }
@@ -279,10 +230,6 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         }
     }
 
-    /// Poll the engine for action providers. Called lazily on first
-    /// resolveAction() or explicitly via refreshActions(). Coalesces concurrent
-    /// callers onto a single load task so reentrant entry doesn't trigger
-    /// duplicate 30s discovery cycles.
     func ensureActionsLoaded(logger: @escaping @Sendable (String) -> Void) async throws {
         if !actionCache.isEmpty { return }
 
@@ -330,9 +277,6 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         }
     }
 
-    /// Re-poll the engine for available actions. Waits for the provider count
-    /// to stabilize (same count on two consecutive polls) to catch late-registering
-    /// providers like Banana/Replicate/FalAI/Runware.
     func refreshActions(logger: @escaping @Sendable (String) -> Void) async throws {
         guard let engine else { throw WasmClient.Error.engineNotStarted }
         var previousCount = 0
@@ -357,18 +301,6 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         }
     }
 
-    /// Ensure a *specific* action provider is registered, re-polling the engine
-    /// when it's missing from the cache.
-    ///
-    /// On a fresh install providers register over the network *after* the engine
-    /// reaches `.running`. The initial discovery poll (`performActionsLoad`)
-    /// breaks on the first-any provider, so it can cache a partial set that omits
-    /// a still-registering provider — and because `actionCache` is then non-empty,
-    /// `ensureActionsLoaded` early-returns on every later call, freezing that gap.
-    /// A caller asking for the missing action would throw `noProviderFound` and
-    /// keep throwing until the app is restarted. This re-polls for the specific
-    /// action so a late provider self-heals instead of requiring a relaunch. On
-    /// warm launches the action is already cached, so this returns immediately.
     private func ensureActionAvailable(
         actionID: String,
         logger: @escaping @Sendable (String) -> Void
@@ -379,9 +311,6 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             try await ensureActionsLoaded(logger: logger)
             if actionCache[actionID]?.isEmpty == false { return }
         }
-        // Cached but this action is absent — provider may be registering late.
-        // Re-poll the engine directly (bypassing the non-empty-cache guard) and
-        // refresh the cache until the action appears or we time out.
         for attempt in 1...10 {  // 10 × 500ms = up to 5s
             guard let engine else { throw WasmClient.Error.engineNotStarted }
             let all = try await engine.actions()
@@ -401,10 +330,6 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         }
     }
 
-    /// Resolve an action — lazily discovers providers on first call.
-    /// When `preferredProvider` is given, selects the action from that provider
-    /// (matching flow-kit-example's pattern of using the same provider across
-    /// scan/describe/visualSearch/shopping). Falls back to first available.
     func resolveAction(
         actionID: String,
         preferredProvider: String? = nil,
@@ -422,7 +347,6 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         return actions[0]
     }
 
-    /// Return all providers registered for a given action ID.
     func resolveAllActions(
         actionID: String,
         logger: @escaping @Sendable (String) -> Void
@@ -434,11 +358,6 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         return actions
     }
 
-    /// Resolve the next provider for an action using round-robin rotation.
-    /// Mirrors flow-kit-example's `ProviderSettings.selectedAction(for:)` default
-    /// `.roundRobin` strategy — each call returns the next provider in the cached
-    /// order, cycling back to the first after reaching the end. In-memory state;
-    /// not persisted across process launches.
     func resolveNextAction(
         actionID: String,
         logger: @escaping @Sendable (String) -> Void
@@ -455,7 +374,6 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         return picked
     }
 
-    /// Reset the engine — clear all cached state.
     func resetEngine() {
         engine = nil
         isStarted = false
@@ -465,18 +383,17 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         providerRotationIndex = [:]
         initLock.withLock { initializedProviders.removeAll() }
         let (pending, timeout) = runningLock.withLock {
-            let c = startContinuation
+            let continuation = startContinuation
             startContinuation = nil
-            let t = startTimeoutTask
+            let timeoutTask = startTimeoutTask
             startTimeoutTask = nil
-            return (c, t)
+            return (continuation, timeoutTask)
         }
         timeout?.cancel()
         pending?.resume(throwing: CancellationError())
         yieldState(.stopped)
     }
 
-    /// All cached actions flattened.
     func allActions() -> [WaTAction] {
         actionCache.values.flatMap { $0 }
     }
@@ -484,26 +401,11 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
 
 // MARK: - Actor
 
-/// Plain actor that manages WASM engine lifecycle and business logic via the delegate.
-/// All methods are serialized by the actor — no concurrent WASM engine access.
 actor WasmActor {
-    /// Nonisolated so `setExpectedVersionProvider` can write race-free from any
-    /// context. The delegate's own state remains accessed only from actor
-    /// methods, except for `_expectedVersionProvider` which is lock-guarded.
     nonisolated let delegate = WasmDelegate()
     let logger: @Sendable (String) -> Void
-    /// True while a `resumePendingTasks` loop is in flight. Prevents
-    /// observers / repeated `aiartVideoCreate` callers from spawning
-    /// duplicate concurrent loops; each one would re-poll every descriptor
-    /// independently, wasting bandwidth.
     var isResumingPendingTasks: Bool = false
 
-    /// Serializes chat streaming. FlowKit's CAI/WebSocket SSE path routes chunks
-    /// to the most-recently-installed handler (not by requestID), so two
-    /// overlapping `chatStream` calls bleed one conversation's frames into the
-    /// other. Each `chatStream` parks on the previous stream's task and installs
-    /// its SSE handler only after that stream has fully drained, guaranteeing a
-    /// single live handler at any time.
     var streamGate: Task<Void, Never>?
 
     // MARK: - Init
@@ -522,6 +424,10 @@ actor WasmActor {
 
     func readyEngine() async throws -> TaskWasmProtocol {
         try await delegate.ensureStarted(logger: logger)
+    }
+
+    func funnelEngine() async throws -> WasmClient.EngineHandle {
+        WasmClient.EngineHandle(try await readyEngine())
     }
 
     func start() async throws {
@@ -559,9 +465,6 @@ actor WasmActor {
         delegate.setExpectedVersionProvider(provider)
     }
 
-    /// Set the display name used by auto-init paths (e.g. `readOutLoud`'s
-    /// implicit `providerInit` for CAI). Forwarded to the delegate so the
-    /// setter remains race-free without crossing the actor boundary.
     nonisolated func setUserName(_ name: String) {
         delegate.setUserName(name)
     }
@@ -588,7 +491,6 @@ actor WasmActor {
         return delegate.allActions().map { Self.mapActionInfo($0) }
     }
 
-    /// Map a FlowKit WaTAction to our ActionInfo, extracting arg metadata.
     static func mapActionInfo(_ action: WaTAction) -> WasmClient.ActionInfo {
         let providerName = action.metadata.fields["provider_name"]?.stringValue ?? ""
         let sortedKeys = action.sortedArgs
@@ -598,11 +500,14 @@ actor WasmActor {
             let kind: WasmClient.ActionArg.ArgKind
             if arg.hasValidator, case .media = arg.validator.data {
                 kind = .media
-            } else if arg.hasValidator, case .string(let s) = arg.validator.data {
-                if s.hasRegex, let values = Self.regexValues(s.regex), !values.isEmpty {
-                    kind = .picker(values: values, defaultValue: s.hasDefault ? s.default : (values.first ?? ""))
+            } else if arg.hasValidator, case .string(let stringValidator) = arg.validator.data {
+                if stringValidator.hasRegex, let values = Self.regexValues(stringValidator.regex), !values.isEmpty {
+                    kind = .picker(
+                        values: values,
+                        defaultValue: stringValidator.hasDefault ? stringValidator.default : (values.first ?? "")
+                    )
                 } else {
-                    kind = .text(defaultValue: s.hasDefault ? s.default : "")
+                    kind = .text(defaultValue: stringValidator.hasDefault ? stringValidator.default : "")
                 }
             } else {
                 kind = .text(defaultValue: "")
@@ -619,7 +524,6 @@ actor WasmActor {
         )
     }
 
-    /// Parse regex pattern `^(val1|val2|...)$` into values array.
     private static func regexValues(_ pattern: String) -> [String]? {
         guard pattern.hasPrefix("^("), pattern.hasSuffix(")$") else { return nil }
         let inner = String(pattern.dropFirst(2).dropLast(2))
