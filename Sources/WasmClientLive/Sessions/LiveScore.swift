@@ -34,6 +34,25 @@ extension WasmActor {
         throw lastError ?? WasmClient.Error.taskFailed(status: "unknown")
     }
 
+    /// Unpacks a livescore proto from an `Any`, logging the type mismatch
+    /// (`typeURL` vs the expected message name) before rethrowing so a bad
+    /// engine response is diagnosable. `label` is `@autoclosure` — the call
+    /// context string is only built on the failure path.
+    private func unpack<T: SwiftProtobuf.Message>(
+        _ type: T.Type,
+        from value: Google_Protobuf_Any,
+        label: @autoclosure () -> String
+    ) throws -> T {
+        do {
+            return try T(unpackingAny: value)
+        } catch {
+            logger(
+                "\(label()) unpack failed: typeURL='\(value.typeURL)' expected=\(T.protoMessageName) error=\(error)"
+            )
+            throw error
+        }
+    }
+
     // MARK: - Webpage
 
     private func webpageList(
@@ -45,15 +64,7 @@ extension WasmActor {
         ]
         for (k, v) in extraArgs { args[k] = v }
         let value = try await runLivescoreAction(WasmClient.ActionID.lsWebpage.rawValue, args: args)
-        let list: LivescoreWebPageList
-        do {
-            list = try LivescoreWebPageList(unpackingAny: value)
-        } catch {
-            logger(
-                "lsWebpage(type=\(type)) unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreWebPageList.protoMessageName) error=\(error)"
-            )
-            throw error
-        }
+        let list = try unpack(LivescoreWebPageList.self, from: value, label: "lsWebpage(type=\(type))")
         return list.pages.map(mapEntry)
     }
 
@@ -169,15 +180,7 @@ extension WasmActor {
 
     func upcoming() async throws -> [WasmClient.LiveScore.MatchSummary] {
         let value = try await runLivescoreAction(WasmClient.ActionID.lsUpcoming.rawValue)
-        let list: LivescoreMatchSummaryList
-        do {
-            list = try LivescoreMatchSummaryList(unpackingAny: value)
-        } catch {
-            logger(
-                "lsUpcoming unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreMatchSummaryList.protoMessageName) error=\(error)"
-            )
-            throw error
-        }
+        let list = try unpack(LivescoreMatchSummaryList.self, from: value, label: "lsUpcoming")
         return list.matches.map(mapMatchSummary)
     }
 
@@ -188,15 +191,7 @@ extension WasmActor {
             WasmClient.ActionID.lsMatchDetail.rawValue,
             args: ["id": Google_Protobuf_Value(stringValue: id)]
         )
-        let proto: LivescoreMatch
-        do {
-            proto = try LivescoreMatch(unpackingAny: value)
-        } catch {
-            logger(
-                "lsMatchDetail(id=\(id)) unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreMatch.protoMessageName) error=\(error)"
-            )
-            throw error
-        }
+        let proto = try unpack(LivescoreMatch.self, from: value, label: "lsMatchDetail(id=\(id))")
         return mapMatch(proto)
     }
 
@@ -312,15 +307,11 @@ extension WasmActor {
         var args: [String: Google_Protobuf_Value] = [:]
         if let date { args["date"] = Google_Protobuf_Value(stringValue: date) }
         let value = try await runLivescoreAction(WasmClient.ActionID.lsScores.rawValue, args: args)
-        let list: LivescoreMatchSummaryList
-        do {
-            list = try LivescoreMatchSummaryList(unpackingAny: value)
-        } catch {
-            logger(
-                "lsScores(date=\(date ?? "nil")) unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreMatchSummaryList.protoMessageName) error=\(error)"
-            )
-            throw error
-        }
+        let list = try unpack(
+            LivescoreMatchSummaryList.self,
+            from: value,
+            label: "lsScores(date=\(date ?? "nil"))"
+        )
         return list.matches.map(mapMatchSummary)
     }
 
@@ -363,15 +354,7 @@ extension WasmActor {
             WasmClient.ActionID.lsCompetitionDetail.rawValue,
             args: ["id": Google_Protobuf_Value(stringValue: id)]
         )
-        let proto: LivescoreCompetition
-        do {
-            proto = try LivescoreCompetition(unpackingAny: value)
-        } catch {
-            logger(
-                "lsCompetitionDetail(id=\(id)) unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreCompetition.protoMessageName) error=\(error)"
-            )
-            throw error
-        }
+        let proto = try unpack(LivescoreCompetition.self, from: value, label: "lsCompetitionDetail(id=\(id))")
         return mapCompetition(proto)
     }
 
@@ -382,15 +365,7 @@ extension WasmActor {
             WasmClient.ActionID.lsTeamDetail.rawValue,
             args: ["id": Google_Protobuf_Value(stringValue: id)]
         )
-        let proto: LivescoreTeam
-        do {
-            proto = try LivescoreTeam(unpackingAny: value)
-        } catch {
-            logger(
-                "lsTeamDetail(id=\(id)) unpack failed: typeURL='\(value.typeURL)' expected=\(LivescoreTeam.protoMessageName) error=\(error)"
-            )
-            throw error
-        }
+        let proto = try unpack(LivescoreTeam.self, from: value, label: "lsTeamDetail(id=\(id))")
         return mapTeam(proto)
     }
 
