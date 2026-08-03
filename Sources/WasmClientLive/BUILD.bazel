@@ -3,7 +3,6 @@ load("@build_bazel_rules_swift//swift:swift_library.bzl", "swift_library")
 swift_library(
     name = "WasmClientLive",
     srcs = [
-        "Actor.swift",
         "Live.swift",
         "Protos/aiart.pb.swift",
         "Protos/blobstore.pb.swift",
@@ -17,7 +16,7 @@ swift_library(
         "Sessions/AIArt.swift",
         "Sessions/Blobstore.swift",
         "Sessions/Chat.swift",
-        "Sessions/ChatStreamSession.swift",
+        "Sessions/ChatStream.swift",
         "Sessions/HomeDecor.swift",
         "Sessions/Inpaint.swift",
         "Sessions/LiveScore.swift",
@@ -28,6 +27,7 @@ swift_library(
         "Sessions/Survey.swift",
         "Sessions/TTS.swift",
         "Sessions/Vision.swift",
+        "Sessions/Wasm.swift",
         "Sessions/Visual.swift",
     ],
     module_name = "WasmClientLive",

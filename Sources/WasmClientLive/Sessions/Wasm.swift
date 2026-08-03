@@ -195,18 +195,21 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
                         continuation.resume()
                         return
                     }
-                    runningLock.withLock {
-                        self.startContinuation = continuation
-                    }
-
-                    self.startTimeoutTask = Task {
+                    // L4: [weak self] so a cancelled start doesn't pin the delegate for 30s.
+                    let timeoutTask = Task { [weak self] in
                         try? await Task.sleep(nanoseconds: 30_000_000_000)
+                        guard let self else { return }
                         let pending = self.runningLock.withLock { () -> CheckedContinuation<Void, Swift.Error>? in
                             let continuation = self.startContinuation
                             self.startContinuation = nil
                             return continuation
                         }
                         pending?.resume(throwing: WasmClient.Error.engineInitFailed)
+                    }
+                    // L2: set both fields under one lock so they clear together atomically.
+                    runningLock.withLock {
+                        self.startContinuation = continuation
+                        self.startTimeoutTask = timeoutTask
                     }
                 }
             }
@@ -436,7 +439,8 @@ actor WasmActor {
 
     func observeEngineState() -> AsyncStream<WasmClient.EngineState> {
         let id = UUID()
-        return AsyncStream { continuation in
+        // L6: EngineState is latest-wins — a slow consumer only needs the newest value.
+        return AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
             delegate.addStateContinuation(id: id, continuation)
             continuation.onTermination = { [weak delegate] _ in
                 delegate?.removeStateContinuation(id: id)

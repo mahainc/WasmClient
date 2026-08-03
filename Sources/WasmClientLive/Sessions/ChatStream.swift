@@ -2,7 +2,7 @@ import Dependencies
 import Foundation
 import WasmClient
 
-public actor ChatStreamSession {
+public actor ChatStream {
 
     // MARK: - Public surface
 
@@ -282,14 +282,14 @@ public actor ChatStreamSession {
 
 // MARK: - Dependency Registration
 
-extension ChatStreamSession: DependencyKey {
-    public static let liveValue = ChatStreamSession()
-    public static let testValue = ChatStreamSession()
+extension ChatStream: DependencyKey {
+    public static let liveValue = ChatStream()
+    public static let testValue = ChatStream()
 }
 
 extension DependencyValues {
-    public var chatStreamSession: ChatStreamSession {
-        get { self[ChatStreamSession.self] }
-        set { self[ChatStreamSession.self] = newValue }
+    public var chatStreamSession: ChatStream {
+        get { self[ChatStream.self] }
+        set { self[ChatStream.self] = newValue }
     }
 }

@@ -4,7 +4,7 @@ import WasmClient
 import WasmClientLive
 import XCTest
 
-final class ChatStreamSessionTests: XCTestCase {
+final class ChatStreamTests: XCTestCase {
 
     // MARK: - Helpers
 
@@ -34,7 +34,7 @@ final class ChatStreamSessionTests: XCTestCase {
             $0.wasm = .noop
             $0.wasm.chatStream = stubStream(["Hel", "lo", " there"])
         } operation: {
-            let session = ChatStreamSession()
+            let session = ChatStream()
             let stream = await session.subscribe(conversationID: cid)
             // Give the parked subscription a beat to register before start.
             try? await Task.sleep(for: .milliseconds(20))
@@ -75,7 +75,7 @@ final class ChatStreamSessionTests: XCTestCase {
             $0.wasm = .noop
             $0.wasm.chatStream = stubStream(["Done."])
         } operation: {
-            let session = ChatStreamSession()
+            let session = ChatStream()
             await session.start(
                 conversationID: cid,
                 assistantMessageID: assistantID,
@@ -116,7 +116,7 @@ final class ChatStreamSessionTests: XCTestCase {
             $0.wasm = .noop
             $0.wasm.chatStream = firstStub
         } operation: {
-            let session = ChatStreamSession()
+            let session = ChatStream()
             let stream = await session.subscribe(conversationID: cid)
             try? await Task.sleep(for: .milliseconds(20))
 
@@ -171,7 +171,7 @@ final class ChatStreamSessionTests: XCTestCase {
                 }
             }
         } operation: {
-            let session = ChatStreamSession()
+            let session = ChatStream()
             let stream = await session.subscribe(conversationID: cid)
             try? await Task.sleep(for: .milliseconds(20))
 
@@ -219,7 +219,7 @@ final class ChatStreamSessionTests: XCTestCase {
             $0.wasm = .noop
             $0.wasm.chatStream = stubStream(["Hi"])
         } operation: {
-            let session = ChatStreamSession()
+            let session = ChatStream()
             // Subscribe BEFORE any start → parked, no stream entry exists yet.
             let stream = await session.subscribe(conversationID: cid)
             let preStartSnapshot = await session.snapshot(conversationID: cid)
@@ -266,7 +266,7 @@ final class ChatStreamSessionTests: XCTestCase {
                 }
             }
         } operation: {
-            let session = ChatStreamSession()
+            let session = ChatStream()
             let streamA = await session.subscribe(conversationID: cidA)
             try? await Task.sleep(for: .milliseconds(20))
 
@@ -341,13 +341,13 @@ final class ChatStreamSessionTests: XCTestCase {
 /// Collect events from a subscription, breaking once `stopWhen` matches.
 /// Bounded by a deadline so a logic bug fails the test instead of hanging.
 private func collect(
-    _ stream: AsyncStream<ChatStreamSession.Event>,
+    _ stream: AsyncStream<ChatStream.Event>,
     timeout: Duration = .seconds(2),
-    stopWhen: @escaping @Sendable (ChatStreamSession.Event) -> Bool
-) async -> [ChatStreamSession.Event] {
-    await withTaskGroup(of: [ChatStreamSession.Event]?.self) { group in
+    stopWhen: @escaping @Sendable (ChatStream.Event) -> Bool
+) async -> [ChatStream.Event] {
+    await withTaskGroup(of: [ChatStream.Event]?.self) { group in
         group.addTask {
-            var out: [ChatStreamSession.Event] = []
+            var out: [ChatStream.Event] = []
             for await event in stream {
                 out.append(event)
                 if stopWhen(event) { break }
@@ -365,9 +365,9 @@ private func collect(
 }
 
 private func waitForStatus(
-    _ session: ChatStreamSession,
+    _ session: ChatStream,
     conversationID: UUID,
-    status: ChatStreamSession.Status,
+    status: ChatStream.Status,
     timeout: Duration = .seconds(2)
 ) async {
     let deadline = ContinuousClock.now.advanced(by: timeout)
