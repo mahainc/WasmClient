@@ -9,16 +9,82 @@ extension WasmActor {
 
     func generateAIArt(_ request: WasmClient.AIArt.ImageRequest) async throws -> WasmClient.AIArt.ImageResult {
         let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(
-            actionID: Self.aiartActionID(for: request.kind),
-            logger: logger
+        let actionID = Self.aiartActionID(for: request.kind)
+        let candidates = try await delegate.resolveAllActions(actionID: actionID, logger: logger)
+        let wireArgs = request.toWireArgs()
+        let protoArgs = Self.protoArgs(from: wireArgs)
+
+        // Order providers so the ones that actually advertise a model for this
+        // mode (via ListModels) come first, then fail over provider-by-provider.
+        // The engine registers providers that have no model for MOD_CAR (e.g. a
+        // runware entry with no catalogue row); picking one blindly throws
+        // "missing runware data entry". Catalogue-ranking avoids it up front,
+        // and the failover loop recovers even when the catalogue is unavailable.
+        let ordered = await orderedAIArtProviders(
+            candidates,
+            kind: request.kind,
+            preferredProviderID: wireArgs["provider_id"]
         )
 
-        let result: AiartGenerateResult = try await instance.run(
-            action: action,
-            args: Self.protoArgs(from: request.toWireArgs())
+        var lastError: (any Swift.Error)?
+        for action in ordered {
+            do {
+                let result: AiartGenerateResult = try await instance.run(action: action, args: protoArgs)
+                return Self.mapAiartResult(result)
+            } catch {
+                logger("generateAIArt: provider=\(action.provider) failed (\(error)) — trying next")
+                lastError = error
+            }
+        }
+        throw lastError ?? WasmClient.Error.noProviderFound(action: actionID)
+    }
+
+    /// Ranks the registered providers for an AI-art action best-first: an
+    /// explicit `provider_id` from the caller, then providers that advertise a
+    /// model for this mode in the ListModels catalogue, then the rest. A
+    /// best-effort catalogue lookup (skipped when there is only one candidate)
+    /// keeps unprovisioned providers last without ever blocking generation.
+    private func orderedAIArtProviders(
+        _ candidates: [WaTAction],
+        kind: WasmClient.AIArt.ImageRequest.Kind,
+        preferredProviderID: String?
+    ) async -> [WaTAction] {
+        guard candidates.count > 1 else { return candidates }
+
+        var catalogueProviderIDs: Set<String> = []
+        if let catalog = try? await loadAIArtModelCatalog(mode: .init(rawValue: kind.rawValue)) {
+            catalogueProviderIDs = Set(catalog.models.map(\.providerID).filter { !$0.isEmpty })
+        }
+
+        let order = Self.providerFailoverOrder(
+            providers: candidates.map(\.provider),
+            catalogueProviderIDs: catalogueProviderIDs,
+            preferredProviderID: preferredProviderID
         )
-        return Self.mapAiartResult(result)
+        return order.map { candidates[$0] }
+    }
+
+    /// Pure ranking core (no FlowKit types) so it is unit-testable: returns the
+    /// indices of `providers` reordered best-first — preferred id, then
+    /// catalogue-backed providers, then the rest — with a stable sort that keeps
+    /// same-rank providers in their original registered order.
+    static func providerFailoverOrder(
+        providers: [String],
+        catalogueProviderIDs: Set<String>,
+        preferredProviderID: String?
+    ) -> [Int] {
+        func rank(_ provider: String) -> Int {
+            if let preferredProviderID, !preferredProviderID.isEmpty, provider == preferredProviderID {
+                return 0
+            }
+            return catalogueProviderIDs.contains(provider) ? 1 : 2
+        }
+
+        return providers.indices.sorted { lhs, rhs in
+            let leftRank = rank(providers[lhs])
+            let rightRank = rank(providers[rhs])
+            return leftRank == rightRank ? lhs < rhs : leftRank < rightRank
+        }
     }
 
     func loadAIArtModelCatalog(mode: WasmClient.AIArt.Mode) async throws -> WasmClient.AIArt.ModelCatalog {
