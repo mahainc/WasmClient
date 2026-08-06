@@ -56,6 +56,9 @@ extension WasmClient: DependencyKey {
             shopping: { query, provider in
                 try await actor.shopping(query: query, provider: provider)
             },
+            lookupVin: { vin in
+                try await actor.lookupVin(vin: vin)
+            },
             uploadImage: { imageData in
                 try await actor.uploadImage(imageData: imageData)
             },

@@ -56,6 +56,10 @@ public struct WasmClient: Sendable {
             _ query: String, _ provider: String
         ) async throws -> [WasmClient.Vision.ShoppingProduct]
 
+    // MARK: - Smart Car
+
+    public var lookupVin: @Sendable (_ vin: String) async throws -> WasmClient.Smartcar.Vehicle
+
     // MARK: - Blobstore
 
     public var uploadImage: @Sendable (_ imageData: Data) async throws -> String

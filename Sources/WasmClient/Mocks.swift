@@ -46,6 +46,7 @@ extension WasmClient {
         describe: { _, _, _, _ in Vision.ScanResult() },
         visualSearch: { _, _ in [] },
         shopping: { _, _ in [] },
+        lookupVin: { _ in Smartcar.Vehicle() },
         uploadImage: { _ in "" },
         uploadFile: { _, _ in "" },
         chatModels: { _, _, _, _ in ([], 0) },
@@ -212,6 +213,10 @@ extension WasmClient {
             return [
                 Vision.ShoppingProduct(title: "Mock Product", price: "$24.99", url: "https://example.com/shop")
             ]
+        },
+        lookupVin: { vin in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return Smartcar.Vehicle(vin: vin, make: "Toyota", model: "Camry", year: "2021")
         },
         uploadImage: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)

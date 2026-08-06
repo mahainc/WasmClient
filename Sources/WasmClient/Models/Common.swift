@@ -97,6 +97,20 @@ extension WasmClient {
     }
 }
 
+// MARK: - Smart Car Method
+
+extension WasmClient {
+    public struct SmartcarMethod: RawRepresentable, Sendable, Equatable, Hashable {
+        public let rawValue: String
+
+        public init(rawValue: String) {
+            self.rawValue = rawValue
+        }
+
+        public static let lookupVin = Self(rawValue: "asyncify.smartcar.SmartcarService/LookupVin")
+    }
+}
+
 // MARK: - Task Status
 
 extension WasmClient {
