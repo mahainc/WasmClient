@@ -59,6 +59,97 @@ extension WasmClient: DependencyKey {
             lookupVin: { vin in
                 try await actor.lookupVin(vin: vin)
             },
+            smartcarConnectConfig: { mode in
+                try await actor.smartcarConnectConfig(mode: mode)
+            },
+            smartcarHostedConnectEvent: { url, bodyText in
+                try await actor.smartcarHostedConnectEvent(url: url, bodyText: bodyText)
+            },
+            smartcarAccounts: {
+                try await actor.smartcarAccounts()
+            },
+            smartcarSwitchAccount: { userID in
+                try await actor.smartcarSwitchAccount(userID: userID)
+            },
+            smartcarDeleteAccount: { userID in
+                try await actor.smartcarDeleteAccount(userID: userID)
+            },
+            smartcarAllVehicles: { vehicleID, make in
+                try await actor.smartcarAllVehicles(vehicleID: vehicleID, make: make)
+            },
+            smartcarGetOdometer: { vehicleID, make in
+                try await actor.smartcarGetOdometer(vehicleID: vehicleID, make: make)
+            },
+            smartcarGetBatteryLevel: { vehicleID, make in
+                try await actor.smartcarGetBatteryLevel(vehicleID: vehicleID, make: make)
+            },
+            smartcarGetChargeLimit: { vehicleID, make in
+                try await actor.smartcarGetChargeLimit(vehicleID: vehicleID, make: make)
+            },
+            smartcarGetNominalCapacity: { vehicleID, make in
+                try await actor.smartcarGetNominalCapacity(vehicleID: vehicleID, make: make)
+            },
+            smartcarGetLockStatus: { vehicleID, make in
+                try await actor.smartcarGetLockStatus(vehicleID: vehicleID, make: make)
+            },
+            smartcarGetTiresPressure: { vehicleID, make in
+                try await actor.smartcarGetTiresPressure(vehicleID: vehicleID, make: make)
+            },
+            smartcarGetOilLife: { vehicleID, make in
+                try await actor.smartcarGetOilLife(vehicleID: vehicleID, make: make)
+            },
+            smartcarGetPermissions: { vehicleID, make in
+                try await actor.smartcarGetPermissions(vehicleID: vehicleID, make: make)
+            },
+            smartcarGetSpeedometer: { vehicleID, make in
+                try await actor.smartcarGetSpeedometer(vehicleID: vehicleID, make: make)
+            },
+            smartcarTeslaVehicleStatus: { vehicleID, make in
+                try await actor.smartcarTeslaVehicleStatus(vehicleID: vehicleID, make: make)
+            },
+            smartcarTeslaVehicleAttributes: { vehicleID, make in
+                try await actor.smartcarTeslaVehicleAttributes(vehicleID: vehicleID, make: make)
+            },
+            smartcarTeslaBatteryStatus: { vehicleID, make in
+                try await actor.smartcarTeslaBatteryStatus(vehicleID: vehicleID, make: make)
+            },
+            smartcarTeslaChargeStatus: { vehicleID, make in
+                try await actor.smartcarTeslaChargeStatus(vehicleID: vehicleID, make: make)
+            },
+            smartcarTeslaInteriorTemperature: { vehicleID, make in
+                try await actor.smartcarTeslaInteriorTemperature(vehicleID: vehicleID, make: make)
+            },
+            smartcarTeslaExteriorTemperature: { vehicleID, make in
+                try await actor.smartcarTeslaExteriorTemperature(vehicleID: vehicleID, make: make)
+            },
+            smartcarTeslaGetCabinClimate: { vehicleID, make in
+                try await actor.smartcarTeslaGetCabinClimate(vehicleID: vehicleID, make: make)
+            },
+            smartcarTeslaGetDefroster: { vehicleID, make in
+                try await actor.smartcarTeslaGetDefroster(vehicleID: vehicleID, make: make)
+            },
+            smartcarTeslaGetSteeringWheel: { vehicleID, make in
+                try await actor.smartcarTeslaGetSteeringWheel(vehicleID: vehicleID, make: make)
+            },
+            smartcarSetChargeLimit: { vehicleID, action in
+                try await actor.smartcarSetChargeLimit(vehicleID: vehicleID, action: action)
+            },
+            smartcarSetCabinClimate: { vehicleID, action, temperatureCelsius in
+                try await actor.smartcarSetCabinClimate(
+                    vehicleID: vehicleID,
+                    action: action,
+                    temperatureCelsius: temperatureCelsius
+                )
+            },
+            smartcarSetDefroster: { vehicleID, action in
+                try await actor.smartcarSetDefroster(vehicleID: vehicleID, action: action)
+            },
+            smartcarSetSteeringWheel: { vehicleID, action in
+                try await actor.smartcarSetSteeringWheel(vehicleID: vehicleID, action: action)
+            },
+            smartcarSetSecurity: { vehicleID, action in
+                try await actor.smartcarSetSecurity(vehicleID: vehicleID, action: action)
+            },
             uploadImage: { imageData in
                 try await actor.uploadImage(imageData: imageData)
             },
