@@ -5,10 +5,8 @@ swift_test(
     srcs = [
         "AIArtRequestTests.swift",
         "AuditCleanupTests.swift",
+        "SmartcarTests.swift",
     ],
     module_name = "WasmClientTests",
-    deps = [
-        "//Sources/WasmClient",
-        "@swiftpkg_swift_dependencies//:Dependencies",
-    ],
+    deps = ["//Sources/WasmClient"],
 )

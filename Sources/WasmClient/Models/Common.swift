@@ -97,6 +97,59 @@ extension WasmClient {
     }
 }
 
+// MARK: - Smart Car Method
+
+extension WasmClient {
+    public struct SmartcarMethod: RawRepresentable, Sendable, Equatable, Hashable {
+        public let rawValue: String
+
+        public init(rawValue: String) {
+            self.rawValue = rawValue
+        }
+
+        public static let connectConfig = Self(rawValue: "asyncify.smartcar.SmartcarService/ConnectConfig")
+        public static let hostedConnectEvent = Self(rawValue: "asyncify.smartcar.SmartcarService/HostedConnectEvent")
+        public static let accounts = Self(rawValue: "asyncify.smartcar.SmartcarService/Accounts")
+        public static let switchAccount = Self(rawValue: "asyncify.smartcar.SmartcarService/SwitchAccount")
+        public static let deleteAccount = Self(rawValue: "asyncify.smartcar.SmartcarService/DeleteAccount")
+        public static let allVehicles = Self(rawValue: "asyncify.smartcar.SmartcarService/AllVehicles")
+        public static let getOdometer = Self(rawValue: "asyncify.smartcar.SmartcarService/GetOdometer")
+        public static let getBatteryLevel = Self(rawValue: "asyncify.smartcar.SmartcarService/GetBatteryLevel")
+        public static let getChargeLimit = Self(rawValue: "asyncify.smartcar.SmartcarService/GetChargeLimit")
+        public static let getNominalCapacity = Self(rawValue: "asyncify.smartcar.SmartcarService/GetNominalCapacity")
+        public static let getLockStatus = Self(rawValue: "asyncify.smartcar.SmartcarService/GetLockStatus")
+        public static let getTiresPressure = Self(rawValue: "asyncify.smartcar.SmartcarService/GetTiresPressure")
+        public static let getOilLife = Self(rawValue: "asyncify.smartcar.SmartcarService/GetOilLife")
+        public static let getPermissions = Self(rawValue: "asyncify.smartcar.SmartcarService/GetPermissions")
+        public static let getSpeedometer = Self(rawValue: "asyncify.smartcar.SmartcarService/GetSpeedometer")
+        public static let lookupVin = Self(rawValue: "asyncify.smartcar.SmartcarService/LookupVin")
+        public static let teslaVehicleStatus = Self(rawValue: "asyncify.smartcar.SmartcarService/TeslaVehicleStatus")
+        public static let teslaVehicleAttributes = Self(
+            rawValue: "asyncify.smartcar.SmartcarService/TeslaVehicleAttributes"
+        )
+        public static let teslaBatteryStatus = Self(rawValue: "asyncify.smartcar.SmartcarService/TeslaBatteryStatus")
+        public static let teslaChargeStatus = Self(rawValue: "asyncify.smartcar.SmartcarService/TeslaChargeStatus")
+        public static let teslaInteriorTemperature = Self(
+            rawValue: "asyncify.smartcar.SmartcarService/TeslaInteriorTemperature"
+        )
+        public static let teslaExteriorTemperature = Self(
+            rawValue: "asyncify.smartcar.SmartcarService/TeslaExteriorTemperature"
+        )
+        public static let teslaGetCabinClimate = Self(
+            rawValue: "asyncify.smartcar.SmartcarService/TeslaGetCabinClimate"
+        )
+        public static let teslaGetDefroster = Self(rawValue: "asyncify.smartcar.SmartcarService/TeslaGetDefroster")
+        public static let teslaGetSteeringWheel = Self(
+            rawValue: "asyncify.smartcar.SmartcarService/TeslaGetSteeringWheel"
+        )
+        public static let setChargeLimit = Self(rawValue: "asyncify.smartcar.SmartcarService/SetChargeLimit")
+        public static let setCabinClimate = Self(rawValue: "asyncify.smartcar.SmartcarService/SetCabinClimate")
+        public static let setDefroster = Self(rawValue: "asyncify.smartcar.SmartcarService/SetDefroster")
+        public static let setSteeringWheel = Self(rawValue: "asyncify.smartcar.SmartcarService/SetSteeringWheel")
+        public static let setSecurity = Self(rawValue: "asyncify.smartcar.SmartcarService/SetSecurity")
+    }
+}
+
 // MARK: - Task Status
 
 extension WasmClient {

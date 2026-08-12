@@ -15,6 +15,7 @@ swift_library(
         "Models/Music.swift",
         "Models/Notification.swift",
         "Models/PendingTask.swift",
+        "Models/Smartcar.swift",
         "Models/Survey.swift",
         "Models/TTS.swift",
         "Models/Vision.swift",

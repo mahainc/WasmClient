@@ -46,6 +46,36 @@ extension WasmClient {
         describe: { _, _, _, _ in Vision.ScanResult() },
         visualSearch: { _, _ in [] },
         shopping: { _, _ in [] },
+        lookupVin: { _ in Smartcar.Vehicle() },
+        smartcarConnectConfig: { _ in Smartcar.ConnectConfig() },
+        smartcarHostedConnectEvent: { _, _ in Smartcar.HostedConnectDecision() },
+        smartcarAccounts: { Smartcar.AccountList() },
+        smartcarSwitchAccount: { _ in Smartcar.AccountList() },
+        smartcarDeleteAccount: { _ in Smartcar.AccountList() },
+        smartcarAllVehicles: { _, _ in [] },
+        smartcarGetOdometer: { _, _ in Smartcar.Odometer() },
+        smartcarGetBatteryLevel: { _, _ in Smartcar.BatteryLevel() },
+        smartcarGetChargeLimit: { _, _ in Smartcar.ChargeLimit() },
+        smartcarGetNominalCapacity: { _, _ in Smartcar.NominalCapacity() },
+        smartcarGetLockStatus: { _, _ in Smartcar.LockStatus() },
+        smartcarGetTiresPressure: { _, _ in Smartcar.TirePressure() },
+        smartcarGetOilLife: { _, _ in Smartcar.EngineOil() },
+        smartcarGetPermissions: { _, _ in Smartcar.Permissions() },
+        smartcarGetSpeedometer: { _, _ in Smartcar.Speedometer() },
+        smartcarTeslaVehicleStatus: { _, _ in Smartcar.VehicleStatus() },
+        smartcarTeslaVehicleAttributes: { _, _ in Smartcar.Vehicle() },
+        smartcarTeslaBatteryStatus: { _, _ in Smartcar.BatteryLevel() },
+        smartcarTeslaChargeStatus: { _, _ in Smartcar.ChargeStatus() },
+        smartcarTeslaInteriorTemperature: { _, _ in Smartcar.Temperature() },
+        smartcarTeslaExteriorTemperature: { _, _ in Smartcar.Temperature() },
+        smartcarTeslaGetCabinClimate: { _, _ in Smartcar.CabinClimate() },
+        smartcarTeslaGetDefroster: { _, _ in Smartcar.ToggleState() },
+        smartcarTeslaGetSteeringWheel: { _, _ in Smartcar.ToggleState() },
+        smartcarSetChargeLimit: { _, _ in Smartcar.ControlResponse() },
+        smartcarSetCabinClimate: { _, _, _ in Smartcar.ControlResponse() },
+        smartcarSetDefroster: { _, _ in Smartcar.ControlResponse() },
+        smartcarSetSteeringWheel: { _, _ in Smartcar.ControlResponse() },
+        smartcarSetSecurity: { _, _ in Smartcar.ControlResponse() },
         uploadImage: { _ in "" },
         uploadFile: { _, _ in "" },
         chatModels: { _, _, _, _ in ([], 0) },
@@ -56,6 +86,9 @@ extension WasmClient {
         createChatModel: { _, _ in "" },
         initializeChatProvider: { _, _ in },
         completion: { _, _ in Chat.Message(role: .assistant, content: "") },
+        chatRun: { _, _, _, _, _ in
+            Chat.ChatRunResult(message: Chat.Message(role: .assistant, content: ""))
+        },
         listProviders: { [] },
         authProvider: { _ in (providerID: "", cacheDir: "") },
         listVoices: { _, _, _, _ in Chat.VoiceList() },
@@ -213,6 +246,63 @@ extension WasmClient {
                 Vision.ShoppingProduct(title: "Mock Product", price: "$24.99", url: "https://example.com/shop")
             ]
         },
+        lookupVin: { vin in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return Smartcar.Vehicle(vin: vin, make: "Toyota", model: "Camry", year: "2021")
+        },
+        smartcarConnectConfig: { mode in
+            Smartcar.ConnectConfig(
+                applicationID: "mock-app-id",
+                redirectURI: "scmock://exchange",
+                scope: ["read_odometer", "read_battery", "read_charge", "read_tires"],
+                mode: mode == .unspecified ? .test : mode,
+                connectURL: "https://connect.smartcar.com/oauth/authorize?mock=1"
+            )
+        },
+        smartcarHostedConnectEvent: { url, _ in
+            url.contains("exchange")
+                ? Smartcar.HostedConnectDecision(action: .complete, userID: "mock-user-id")
+                : Smartcar.HostedConnectDecision(action: .continue)
+        },
+        smartcarAccounts: {
+            Smartcar.AccountList(accounts: [Smartcar.Account(userID: "mock-user-id", label: "Mock Tesla")])
+        },
+        smartcarSwitchAccount: { userID in
+            Smartcar.AccountList(accounts: [Smartcar.Account(userID: userID, label: "Mock Tesla")])
+        },
+        smartcarDeleteAccount: { _ in Smartcar.AccountList() },
+        smartcarAllVehicles: { _, _ in
+            [Smartcar.Vehicle(vin: "5YJ3E1EA7KF000000", make: "TESLA", model: "Model 3", year: "2022")]
+        },
+        smartcarGetOdometer: { _, _ in Smartcar.Odometer(distanceKm: 34_512.7) },
+        smartcarGetBatteryLevel: { _, _ in Smartcar.BatteryLevel(percentRemaining: 0.72, rangeKm: 310.5) },
+        smartcarGetChargeLimit: { _, _ in Smartcar.ChargeLimit(limit: 0.8) },
+        smartcarGetNominalCapacity: { _, _ in Smartcar.NominalCapacity(capacityKwh: 57.5) },
+        smartcarGetLockStatus: { _, _ in Smartcar.LockStatus(isLocked: true) },
+        smartcarGetTiresPressure: { _, _ in
+            Smartcar.TirePressure(frontLeftKpa: 240, frontRightKpa: 241, backLeftKpa: 238, backRightKpa: 239)
+        },
+        smartcarGetOilLife: { _, _ in Smartcar.EngineOil() },
+        smartcarGetPermissions: { _, _ in
+            Smartcar.Permissions(permissions: ["read_odometer", "read_battery", "read_charge", "read_tires"])
+        },
+        smartcarGetSpeedometer: { _, _ in Smartcar.Speedometer(speedKph: 0) },
+        smartcarTeslaVehicleStatus: { _, _ in Smartcar.VehicleStatus(status: "asleep") },
+        smartcarTeslaVehicleAttributes: { _, _ in
+            Smartcar.Vehicle(vin: "5YJ3E1EA7KF000000", make: "TESLA", model: "Model 3", year: "2022")
+        },
+        smartcarTeslaBatteryStatus: { _, _ in Smartcar.BatteryLevel(percentRemaining: 0.72, rangeKm: 310.5) },
+        smartcarTeslaChargeStatus: { _, _ in Smartcar.ChargeStatus(isPluggedIn: false, state: "NOT_CHARGING") },
+        smartcarTeslaInteriorTemperature: { _, _ in Smartcar.Temperature(celsius: 21.5) },
+        smartcarTeslaExteriorTemperature: { _, _ in Smartcar.Temperature(celsius: 18.0) },
+        smartcarTeslaGetCabinClimate: { _, _ in Smartcar.CabinClimate(on: false, temperatureCelsius: 22.0) },
+        smartcarTeslaGetDefroster: { _, _ in Smartcar.ToggleState(on: false) },
+        smartcarTeslaGetSteeringWheel: { _, _ in Smartcar.ToggleState(on: false) },
+        smartcarSetChargeLimit: { _, action in Smartcar.ControlResponse(action: action.rawValue) },
+        smartcarSetCabinClimate: { _, action, _ in Smartcar.ControlResponse(action: action.rawValue) },
+        smartcarSetDefroster: { _, action in Smartcar.ControlResponse(action: action.rawValue) },
+        smartcarSetSteeringWheel: { _, action in Smartcar.ControlResponse(action: action.rawValue) },
+        smartcarSetSecurity: { _, action in Smartcar.ControlResponse(action: action.rawValue) },
         uploadImage: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return "https://example.com/mock-image.jpg"
@@ -297,6 +387,12 @@ extension WasmClient {
         completion: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return Chat.Message(role: .assistant, content: "A mock completion.")
+        },
+        chatRun: { _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return Chat.ChatRunResult(
+                message: Chat.Message(role: .assistant, content: "A mock completion.")
+            )
         },
         listProviders: {
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)

@@ -60,6 +60,9 @@ that workaround.
 - Engine state observation supports multiple concurrent subscribers via UUID-keyed continuations
 - Engine start uses `CheckedContinuation` (not polling) to wait for `.running` state
 - Action discovery happens eagerly during `start()`, not lazily on first use
+- AIArt is the only session that catalogue-ranks providers + fails over (to dodge an
+  unprovisioned `runware`); read `docs/aiart-provider-failover.md` **only** when touching
+  `Sessions/AIArt.swift` provider resolution or debugging a `missing runware data entry`.
 
 ## Code Quality (clean-code)
 

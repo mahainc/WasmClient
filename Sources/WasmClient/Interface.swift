@@ -56,6 +56,152 @@ public struct WasmClient: Sendable {
             _ query: String, _ provider: String
         ) async throws -> [WasmClient.Vision.ShoppingProduct]
 
+    // MARK: - Smart Car
+
+    public var lookupVin: @Sendable (_ vin: String) async throws -> WasmClient.Smartcar.Vehicle
+
+    public var smartcarConnectConfig:
+        @Sendable (
+            _ mode: WasmClient.Smartcar.ConnectMode
+        ) async throws -> WasmClient.Smartcar.ConnectConfig
+
+    public var smartcarHostedConnectEvent:
+        @Sendable (
+            _ url: String, _ bodyText: String
+        ) async throws -> WasmClient.Smartcar.HostedConnectDecision
+
+    public var smartcarAccounts: @Sendable () async throws -> WasmClient.Smartcar.AccountList
+
+    public var smartcarSwitchAccount:
+        @Sendable (
+            _ userID: String
+        ) async throws -> WasmClient.Smartcar.AccountList
+
+    public var smartcarDeleteAccount:
+        @Sendable (
+            _ userID: String
+        ) async throws -> WasmClient.Smartcar.AccountList
+
+    public var smartcarAllVehicles:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> [WasmClient.Smartcar.Vehicle]
+
+    public var smartcarGetOdometer:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.Odometer
+
+    public var smartcarGetBatteryLevel:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.BatteryLevel
+
+    public var smartcarGetChargeLimit:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.ChargeLimit
+
+    public var smartcarGetNominalCapacity:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.NominalCapacity
+
+    public var smartcarGetLockStatus:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.LockStatus
+
+    public var smartcarGetTiresPressure:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.TirePressure
+
+    public var smartcarGetOilLife:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.EngineOil
+
+    public var smartcarGetPermissions:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.Permissions
+
+    public var smartcarGetSpeedometer:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.Speedometer
+
+    public var smartcarTeslaVehicleStatus:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.VehicleStatus
+
+    public var smartcarTeslaVehicleAttributes:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.Vehicle
+
+    public var smartcarTeslaBatteryStatus:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.BatteryLevel
+
+    public var smartcarTeslaChargeStatus:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.ChargeStatus
+
+    public var smartcarTeslaInteriorTemperature:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.Temperature
+
+    public var smartcarTeslaExteriorTemperature:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.Temperature
+
+    public var smartcarTeslaGetCabinClimate:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.CabinClimate
+
+    public var smartcarTeslaGetDefroster:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.ToggleState
+
+    public var smartcarTeslaGetSteeringWheel:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> WasmClient.Smartcar.ToggleState
+
+    public var smartcarSetChargeLimit:
+        @Sendable (
+            _ vehicleID: String, _ action: WasmClient.Smartcar.ChargeAction
+        ) async throws -> WasmClient.Smartcar.ControlResponse
+
+    public var smartcarSetCabinClimate:
+        @Sendable (
+            _ vehicleID: String, _ action: WasmClient.Smartcar.ClimateAction, _ temperatureCelsius: Double
+        ) async throws -> WasmClient.Smartcar.ControlResponse
+
+    public var smartcarSetDefroster:
+        @Sendable (
+            _ vehicleID: String, _ action: WasmClient.Smartcar.DefrosterAction
+        ) async throws -> WasmClient.Smartcar.ControlResponse
+
+    public var smartcarSetSteeringWheel:
+        @Sendable (
+            _ vehicleID: String, _ action: WasmClient.Smartcar.HeaterAction
+        ) async throws -> WasmClient.Smartcar.ControlResponse
+
+    public var smartcarSetSecurity:
+        @Sendable (
+            _ vehicleID: String, _ action: WasmClient.Smartcar.SecurityAction
+        ) async throws -> WasmClient.Smartcar.ControlResponse
+
     // MARK: - Blobstore
 
     public var uploadImage: @Sendable (_ imageData: Data) async throws -> String
@@ -98,6 +244,20 @@ public struct WasmClient: Sendable {
             _ config: WasmClient.Chat.Config,
             _ messages: [WasmClient.Chat.Message]
         ) async throws -> WasmClient.Chat.Message
+
+    /// Run the agentic tool-calling loop: send the conversation, and while the
+    /// model keeps emitting `toolCalls`, run each tool's handler, feed the
+    /// result back as a `role: .tool` message, and re-invoke the model — up to
+    /// `maxRounds` times. Additive over `completion`; existing chat entry points
+    /// are untouched.
+    public var chatRun:
+        @Sendable (
+            _ config: WasmClient.Chat.Config,
+            _ messages: [WasmClient.Chat.Message],
+            _ tools: [WasmClient.Chat.ExecutableTool],
+            _ maxRounds: Int,
+            _ onEvent: (@Sendable (WasmClient.Chat.ChatRunEvent) async -> Void)?
+        ) async throws -> WasmClient.Chat.ChatRunResult
 
     public var listProviders: @Sendable () async throws -> [WasmClient.Chat.ProviderInfo]
 
