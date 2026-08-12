@@ -542,7 +542,7 @@ extension WasmActor {
 
     // MARK: - Private Chat Helpers
 
-    private static func buildChatBody(
+    static func buildChatBody(
         config: WasmClient.Chat.Config,
         messages: [WasmClient.Chat.Message],
         stream: Bool
@@ -569,6 +569,9 @@ extension WasmActor {
                         if !part.imageDetail.isEmpty { img["detail"] = part.imageDetail }
                         p["image_url"] = img
                     }
+                    if !part.audioData.isEmpty {
+                        p["input_audio"] = ["data": part.audioData, "format": part.audioFormat]
+                    }
                     return p
                 }
             } else {
@@ -592,6 +595,14 @@ extension WasmActor {
         }
 
         body["messages"] = allMessages
+
+        if !config.modalities.isEmpty {
+            body["modalities"] = config.modalities
+        }
+
+        if config.webSearch {
+            body["web_search_options"] = [String: Any]()
+        }
 
         if !config.tools.isEmpty {
             body["tools"] = config.tools.map { tool -> [String: Any] in

@@ -17,6 +17,7 @@ swift_library(
         "Sessions/AIArt.swift",
         "Sessions/Blobstore.swift",
         "Sessions/Chat.swift",
+        "Sessions/ChatRun.swift",
         "Sessions/ChatStream.swift",
         "Sessions/HomeDecor.swift",
         "Sessions/Inpaint.swift",

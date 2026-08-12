@@ -86,6 +86,9 @@ extension WasmClient {
         createChatModel: { _, _ in "" },
         initializeChatProvider: { _, _ in },
         completion: { _, _ in Chat.Message(role: .assistant, content: "") },
+        chatRun: { _, _, _, _, _ in
+            Chat.ChatRunResult(message: Chat.Message(role: .assistant, content: ""))
+        },
         listProviders: { [] },
         authProvider: { _ in (providerID: "", cacheDir: "") },
         listVoices: { _, _, _, _ in Chat.VoiceList() },
@@ -384,6 +387,12 @@ extension WasmClient {
         completion: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return Chat.Message(role: .assistant, content: "A mock completion.")
+        },
+        chatRun: { _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return Chat.ChatRunResult(
+                message: Chat.Message(role: .assistant, content: "A mock completion.")
+            )
         },
         listProviders: {
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)

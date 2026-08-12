@@ -245,6 +245,20 @@ public struct WasmClient: Sendable {
             _ messages: [WasmClient.Chat.Message]
         ) async throws -> WasmClient.Chat.Message
 
+    /// Run the agentic tool-calling loop: send the conversation, and while the
+    /// model keeps emitting `toolCalls`, run each tool's handler, feed the
+    /// result back as a `role: .tool` message, and re-invoke the model — up to
+    /// `maxRounds` times. Additive over `completion`; existing chat entry points
+    /// are untouched.
+    public var chatRun:
+        @Sendable (
+            _ config: WasmClient.Chat.Config,
+            _ messages: [WasmClient.Chat.Message],
+            _ tools: [WasmClient.Chat.ExecutableTool],
+            _ maxRounds: Int,
+            _ onEvent: (@Sendable (WasmClient.Chat.ChatRunEvent) async -> Void)?
+        ) async throws -> WasmClient.Chat.ChatRunResult
+
     public var listProviders: @Sendable () async throws -> [WasmClient.Chat.ProviderInfo]
 
     public var authProvider:

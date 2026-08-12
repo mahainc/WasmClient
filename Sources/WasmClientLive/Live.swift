@@ -179,6 +179,15 @@ extension WasmClient: DependencyKey {
             completion: { config, messages in
                 try await actor.completion(config: config, messages: messages)
             },
+            chatRun: { config, messages, tools, maxRounds, onEvent in
+                try await actor.chatRun(
+                    config: config,
+                    messages: messages,
+                    tools: tools,
+                    maxRounds: maxRounds,
+                    onEvent: onEvent
+                )
+            },
             listProviders: {
                 try await actor.listProviders()
             },
