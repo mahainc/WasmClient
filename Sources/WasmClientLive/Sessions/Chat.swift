@@ -239,28 +239,55 @@ extension WasmActor {
         guard task.hasValue else {
             throw WasmClient.Error.missingValue
         }
-        guard let payload = try? Google_Protobuf_Struct(unpackingAny: task.value) else {
-            throw WasmClient.Error.unexpectedResponseFormat
-        }
 
+        // The engine returns listModels as the typed `asyncify.types.ListModels`
+        // proto (`TypesListModels`), NOT a generic `Struct`. Unpacking only as
+        // `Struct` threw `unexpectedResponseFormat` on-device, so model
+        // resolution failed. Decode the real proto first, then keep Struct /
+        // raw-JSON fallbacks for other engine builds.
         var models: [WasmClient.Chat.ModelInfo] = []
-        if case .listValue(let list)? = payload.fields["data"]?.kind {
-            for value in list.values {
-                guard case .structValue(let row)? = value.kind else { continue }
-                guard let model = Self.mapModelRow(row.fields, providerNames: providerNames) else {
-                    continue
+        var total = 0
+
+        if let list = try? TypesListModels(unpackingAny: task.value) {
+            total = Int(list.total)
+            for row in list.data {
+                if let model = Self.mapModelInfo(row, providerNames: providerNames) {
+                    models.append(model)
                 }
-                models.append(model)
+            }
+            if total == 0 { total = models.count }
+        } else {
+            let payload: Google_Protobuf_Struct
+            if let asStruct = try? Google_Protobuf_Struct(unpackingAny: task.value) {
+                payload = asStruct
+            } else if let bytes = try? TypesBytes(unpackingAny: task.value),
+                case .raw(let data) = bytes.data,
+                let parsed = Self.parseModelsJSON(data)
+            {
+                payload = parsed
+            } else {
+                logger(
+                    "chatModels: unexpected response — typeURL=\(task.value.typeURL), hasValue=\(task.hasValue)"
+                )
+                throw WasmClient.Error.unexpectedResponseFormat
+            }
+            if case .listValue(let list)? = payload.fields["data"]?.kind {
+                for value in list.values {
+                    guard case .structValue(let row)? = value.kind else { continue }
+                    guard let model = Self.mapModelRow(row.fields, providerNames: providerNames) else {
+                        continue
+                    }
+                    models.append(model)
+                }
+            }
+            if case .numberValue(let t)? = payload.fields["total"]?.kind {
+                total = Int(t)
+            } else {
+                total = models.count
             }
         }
 
-        let total: Int = {
-            if case .numberValue(let t)? = payload.fields["total"]?.kind {
-                return Int(t)
-            }
-            return models.count
-        }()
-
+        logger("chatModels: parsed \(models.count) models (total=\(total))")
         return (models, total)
     }
 
@@ -538,6 +565,45 @@ extension WasmActor {
             providerID: providerID,
             providerName: providerNames[providerID] ?? ""
         )
+    }
+
+    /// Map a typed `TypesModelInfo` proto row into `Chat.ModelInfo`.
+    /// `id`/`name` are top-level; vision / provider_id / … live in `metadata`.
+    private static func mapModelInfo(
+        _ info: TypesModelInfo,
+        providerNames: [String: String]
+    ) -> WasmClient.Chat.ModelInfo? {
+        guard !info.id.isEmpty else { return nil }
+        var fields: [String: Google_Protobuf_Value] = [
+            "id": Google_Protobuf_Value(stringValue: info.id),
+            "name": Google_Protobuf_Value(
+                stringValue: info.name.isEmpty ? info.id : info.name
+            ),
+        ]
+        if info.hasMetadata {
+            fields["metadata"] = Google_Protobuf_Value(structValue: info.metadata)
+        }
+        if !info.ownedBy.isEmpty {
+            fields["owned_by"] = Google_Protobuf_Value(stringValue: info.ownedBy)
+        }
+        return mapModelRow(fields, providerNames: providerNames)
+    }
+
+    /// Parse a raw-JSON listModels payload into a `Google_Protobuf_Struct` so
+    /// the existing `data[]`/`total` extraction path can consume it unchanged.
+    private static func parseModelsJSON(_ data: Data) -> Google_Protobuf_Struct? {
+        guard let object = try? JSONSerialization.jsonObject(with: data) else { return nil }
+        let normalized: Any
+        if object is [Any] {
+            normalized = ["data": object]
+        } else {
+            normalized = object
+        }
+        guard let dict = normalized as? [String: Any],
+            let jsonData = try? JSONSerialization.data(withJSONObject: dict),
+            let struct_ = try? Google_Protobuf_Struct(jsonUTF8Data: jsonData)
+        else { return nil }
+        return struct_
     }
 
     // MARK: - Private Chat Helpers
