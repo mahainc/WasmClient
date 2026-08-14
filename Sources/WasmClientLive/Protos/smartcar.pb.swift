@@ -403,6 +403,125 @@ public struct SmartcarHostedConnectEventRequest: Sendable {
   /// JavaScript bridge message.
   public var bodyText: String = String()
 
+  /// Connected vehicle id to preview when reusing cached credentials. Empty
+  /// lets the guest choose the first connected vehicle.
+  public var vehicleID: String = String()
+
+  /// Preview angle/body contour to render. Empty lets the guest use its default.
+  public var contour: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Preview image generated for one connected vehicle during hosted Connect
+/// completion. The guest downloads the provider image and returns the local
+/// file URL so native UI can render it without parsing provider JSON.
+public struct SmartcarVehiclePreview: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Vehicle identifier used to build the preview request.
+  public var vehicleID: String = String()
+
+  /// Preview angle/body contour sent to the provider (for example
+  /// `frontRight`).
+  public var contour: String = String()
+
+  /// Local `file://` URL of the downloaded preview image.
+  public var image: String = String()
+
+  /// Vehicle attributes used as the raw preview source, normalized into the
+  /// provider-agnostic vehicle shape.
+  public var vehicle: SmartcarVehicle {
+    get {_vehicle ?? SmartcarVehicle()}
+    set {_vehicle = newValue}
+  }
+  /// Returns true if `vehicle` has been explicitly set.
+  public var hasVehicle: Bool {self._vehicle != nil}
+  /// Clears the value of `vehicle`. Subsequent reads from it will return its default value.
+  public mutating func clearVehicle() {self._vehicle = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _vehicle: SmartcarVehicle? = nil
+}
+
+/// Request for the embedded car catalog. The catalog is bundled with
+/// the guest so the app can present a make/model picker without network access.
+public struct SmartcarCarCatalogRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// One model entry in the car catalog.
+public struct SmartcarCarModel: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Model display name, e.g. `Model 3` or `A5 PHEV`.
+  public var name: String = String()
+
+  /// Supported model-year range as display text, e.g. `2020+`.
+  public var yearManufacture: String = String()
+
+  /// Image path relative to `CarCatalog.path`.
+  public var image: String = String()
+
+  /// Fuel or energy consumption display text from the bundled catalog.
+  public var fuelConsumption: String = String()
+
+  /// Acceleration display text from the bundled catalog.
+  public var speedBoost: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// One manufacturer entry in the car catalog.
+public struct SmartcarCarMake: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Manufacturer display name.
+  public var company: String = String()
+
+  /// Logo path relative to `CarCatalog.path`.
+  public var logo: String = String()
+
+  /// Models available for selection under this manufacturer.
+  public var carModels: [SmartcarCarModel] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Embedded car catalog used to map make/model choices to normalized
+/// image paths.
+public struct SmartcarCarCatalog: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Public base URL for every relative logo/image path.
+  public var path: String = String()
+
+  /// Manufacturer list, ordered as bundled in the catalog.
+  public var dataCar: [SmartcarCarMake] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -425,9 +544,25 @@ public struct SmartcarHostedConnectEventResponse: Sendable {
   /// Human-readable error when `action == ERROR`.
   public var error: String = String()
 
+  /// Best-effort preview image data populated when Connect completes.
+  public var preview: SmartcarVehiclePreview {
+    get {_preview ?? SmartcarVehiclePreview()}
+    set {_preview = newValue}
+  }
+  /// Returns true if `preview` has been explicitly set.
+  public var hasPreview: Bool {self._preview != nil}
+  /// Clears the value of `preview`. Subsequent reads from it will return its default value.
+  public mutating func clearPreview() {self._preview = nil}
+
+  /// Non-fatal diagnostic when preview generation or image download failed.
+  /// `action` can still be COMPLETE when this is set.
+  public var previewError: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _preview: SmartcarVehiclePreview? = nil
 }
 
 /// Request for cached Smartcar accounts for the provider. The guest reads
@@ -533,6 +668,18 @@ public struct SmartcarVehicle: Sendable {
   public var hasExtra: Bool {self._extra != nil}
   /// Clears the value of `extra`. Subsequent reads from it will return its default value.
   public mutating func clearExtra() {self._extra = nil}
+
+  /// Local `file://` URL of the guest-downloaded vehicle image. Empty when the
+  /// catalog has no matching make/model or the image could not be cached.
+  public var previewImage: String = String()
+
+  /// Preview angle/body contour used for `preview_image`. Empty when no preview
+  /// image was generated for this vehicle.
+  public var previewContour: String = String()
+
+  /// Non-fatal diagnostic for preview lookup/download failures. The vehicle row
+  /// remains usable when this is set.
+  public var previewError: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1246,7 +1393,7 @@ extension SmartcarConnectConfigResponse: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension SmartcarHostedConnectEventRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HostedConnectEventRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0\u{3}body_text\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0\u{3}body_text\0\u{3}vehicle_id\0\u{1}contour\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1256,6 +1403,8 @@ extension SmartcarHostedConnectEventRequest: SwiftProtobuf.Message, SwiftProtobu
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.url) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.bodyText) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.vehicleID) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.contour) }()
       default: break
       }
     }
@@ -1268,12 +1417,213 @@ extension SmartcarHostedConnectEventRequest: SwiftProtobuf.Message, SwiftProtobu
     if !self.bodyText.isEmpty {
       try visitor.visitSingularStringField(value: self.bodyText, fieldNumber: 2)
     }
+    if !self.vehicleID.isEmpty {
+      try visitor.visitSingularStringField(value: self.vehicleID, fieldNumber: 3)
+    }
+    if !self.contour.isEmpty {
+      try visitor.visitSingularStringField(value: self.contour, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: SmartcarHostedConnectEventRequest, rhs: SmartcarHostedConnectEventRequest) -> Bool {
     if lhs.url != rhs.url {return false}
     if lhs.bodyText != rhs.bodyText {return false}
+    if lhs.vehicleID != rhs.vehicleID {return false}
+    if lhs.contour != rhs.contour {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension SmartcarVehiclePreview: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".VehiclePreview"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}vehicle_id\0\u{1}contour\0\u{1}image\0\u{1}vehicle\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.vehicleID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.contour) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.image) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._vehicle) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.vehicleID.isEmpty {
+      try visitor.visitSingularStringField(value: self.vehicleID, fieldNumber: 1)
+    }
+    if !self.contour.isEmpty {
+      try visitor.visitSingularStringField(value: self.contour, fieldNumber: 2)
+    }
+    if !self.image.isEmpty {
+      try visitor.visitSingularStringField(value: self.image, fieldNumber: 3)
+    }
+    try { if let v = self._vehicle {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: SmartcarVehiclePreview, rhs: SmartcarVehiclePreview) -> Bool {
+    if lhs.vehicleID != rhs.vehicleID {return false}
+    if lhs.contour != rhs.contour {return false}
+    if lhs.image != rhs.image {return false}
+    if lhs._vehicle != rhs._vehicle {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension SmartcarCarCatalogRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CarCatalogRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: SmartcarCarCatalogRequest, rhs: SmartcarCarCatalogRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension SmartcarCarModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CarModel"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}year_manufacture\0\u{1}image\0\u{3}fuel_consumption\0\u{3}speed_boost\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.yearManufacture) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.image) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.fuelConsumption) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.speedBoost) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
+    }
+    if !self.yearManufacture.isEmpty {
+      try visitor.visitSingularStringField(value: self.yearManufacture, fieldNumber: 2)
+    }
+    if !self.image.isEmpty {
+      try visitor.visitSingularStringField(value: self.image, fieldNumber: 3)
+    }
+    if !self.fuelConsumption.isEmpty {
+      try visitor.visitSingularStringField(value: self.fuelConsumption, fieldNumber: 4)
+    }
+    if !self.speedBoost.isEmpty {
+      try visitor.visitSingularStringField(value: self.speedBoost, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: SmartcarCarModel, rhs: SmartcarCarModel) -> Bool {
+    if lhs.name != rhs.name {return false}
+    if lhs.yearManufacture != rhs.yearManufacture {return false}
+    if lhs.image != rhs.image {return false}
+    if lhs.fuelConsumption != rhs.fuelConsumption {return false}
+    if lhs.speedBoost != rhs.speedBoost {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension SmartcarCarMake: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CarMake"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}company\0\u{1}logo\0\u{3}car_models\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.company) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.logo) }()
+      case 3: try { try decoder.decodeRepeatedMessageField(value: &self.carModels) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.company.isEmpty {
+      try visitor.visitSingularStringField(value: self.company, fieldNumber: 1)
+    }
+    if !self.logo.isEmpty {
+      try visitor.visitSingularStringField(value: self.logo, fieldNumber: 2)
+    }
+    if !self.carModels.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.carModels, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: SmartcarCarMake, rhs: SmartcarCarMake) -> Bool {
+    if lhs.company != rhs.company {return false}
+    if lhs.logo != rhs.logo {return false}
+    if lhs.carModels != rhs.carModels {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension SmartcarCarCatalog: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CarCatalog"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{3}data_car\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.dataCar) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
+    }
+    if !self.dataCar.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.dataCar, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: SmartcarCarCatalog, rhs: SmartcarCarCatalog) -> Bool {
+    if lhs.path != rhs.path {return false}
+    if lhs.dataCar != rhs.dataCar {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1281,7 +1631,7 @@ extension SmartcarHostedConnectEventRequest: SwiftProtobuf.Message, SwiftProtobu
 
 extension SmartcarHostedConnectEventResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HostedConnectEventResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{3}user_id\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{3}user_id\0\u{1}error\0\u{1}preview\0\u{3}preview_error\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1292,12 +1642,18 @@ extension SmartcarHostedConnectEventResponse: SwiftProtobuf.Message, SwiftProtob
       case 1: try { try decoder.decodeSingularEnumField(value: &self.action) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.userID) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._preview) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.previewError) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if self.action != .continue {
       try visitor.visitSingularEnumField(value: self.action, fieldNumber: 1)
     }
@@ -1307,6 +1663,12 @@ extension SmartcarHostedConnectEventResponse: SwiftProtobuf.Message, SwiftProtob
     if !self.error.isEmpty {
       try visitor.visitSingularStringField(value: self.error, fieldNumber: 3)
     }
+    try { if let v = self._preview {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
+    if !self.previewError.isEmpty {
+      try visitor.visitSingularStringField(value: self.previewError, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1314,6 +1676,8 @@ extension SmartcarHostedConnectEventResponse: SwiftProtobuf.Message, SwiftProtob
     if lhs.action != rhs.action {return false}
     if lhs.userID != rhs.userID {return false}
     if lhs.error != rhs.error {return false}
+    if lhs._preview != rhs._preview {return false}
+    if lhs.previewError != rhs.previewError {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1465,7 +1829,7 @@ extension SmartcarAccountList: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension SmartcarVehicle: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Vehicle"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}vehicle_id\0\u{1}make\0\u{1}model\0\u{1}year\0\u{1}extra\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}vehicle_id\0\u{1}make\0\u{1}model\0\u{1}year\0\u{1}extra\0\u{3}preview_image\0\u{3}preview_contour\0\u{3}preview_error\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1478,6 +1842,9 @@ extension SmartcarVehicle: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       case 3: try { try decoder.decodeSingularStringField(value: &self.model) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.year) }()
       case 5: try { try decoder.decodeSingularMessageField(value: &self._extra) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.previewImage) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.previewContour) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.previewError) }()
       default: break
       }
     }
@@ -1503,6 +1870,15 @@ extension SmartcarVehicle: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     try { if let v = self._extra {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
     } }()
+    if !self.previewImage.isEmpty {
+      try visitor.visitSingularStringField(value: self.previewImage, fieldNumber: 6)
+    }
+    if !self.previewContour.isEmpty {
+      try visitor.visitSingularStringField(value: self.previewContour, fieldNumber: 7)
+    }
+    if !self.previewError.isEmpty {
+      try visitor.visitSingularStringField(value: self.previewError, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1512,6 +1888,9 @@ extension SmartcarVehicle: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     if lhs.model != rhs.model {return false}
     if lhs.year != rhs.year {return false}
     if lhs._extra != rhs._extra {return false}
+    if lhs.previewImage != rhs.previewImage {return false}
+    if lhs.previewContour != rhs.previewContour {return false}
+    if lhs.previewError != rhs.previewError {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -67,7 +67,7 @@ public struct WasmClient: Sendable {
 
     public var smartcarHostedConnectEvent:
         @Sendable (
-            _ url: String, _ bodyText: String
+            _ url: String, _ bodyText: String, _ vehicleID: String, _ contour: String
         ) async throws -> WasmClient.Smartcar.Connection.Decision
 
     public var smartcarAccounts: @Sendable () async throws -> [WasmClient.Smartcar.Account]
@@ -81,6 +81,8 @@ public struct WasmClient: Sendable {
         @Sendable (
             _ userID: String
         ) async throws -> [WasmClient.Smartcar.Account]
+
+    public var smartcarCatalog: @Sendable () async throws -> WasmClient.Smartcar.Catalog
 
     public var smartcarAllVehicles:
         @Sendable (

@@ -9,6 +9,7 @@ extension WasmClient {
 extension WasmClient.Smartcar {
     /// One vehicle: from a VIN decode (`lookupVin`) or a connected account.
     /// `identifier` is the VIN for a decode, the Smartcar vehicle UUID otherwise.
+    /// `preview*` carry a rendered image of the vehicle when the catalog matched.
     public struct Vehicle: Sendable, Equatable, Identifiable {
         public var id: String {
             identifier
@@ -19,19 +20,28 @@ extension WasmClient.Smartcar {
         public var model: String
         public var year: String
         public var extra: [String: String]
+        public var previewImage: String
+        public var previewContour: String
+        public var previewError: String
 
         public init(
             identifier: String = "",
             make: String = "",
             model: String = "",
             year: String = "",
-            extra: [String: String] = [:]
+            extra: [String: String] = [:],
+            previewImage: String = "",
+            previewContour: String = "",
+            previewError: String = ""
         ) {
             self.identifier = identifier
             self.make = make
             self.model = model
             self.year = year
             self.extra = extra
+            self.previewImage = previewImage
+            self.previewContour = previewContour
+            self.previewError = previewError
         }
     }
 }
@@ -98,20 +108,111 @@ extension WasmClient.Smartcar.Connection {
     }
 
     /// Guest decision for one hosted-Connect observation. On `.complete`,
-    /// `userID` carries the cached credential; on `.error`, `error` is set.
+    /// `userID` carries the cached credential and `preview` may carry a rendered
+    /// image; on `.error`, `error` is set.
     public struct Decision: Sendable, Equatable {
         public var action: Action
         public var userID: String
         public var error: String
+        public var preview: Preview?
+        public var previewError: String
 
         public init(
             action: Action = .continue,
             userID: String = "",
-            error: String = ""
+            error: String = "",
+            preview: Preview? = nil,
+            previewError: String = ""
         ) {
             self.action = action
             self.userID = userID
             self.error = error
+            self.preview = preview
+            self.previewError = previewError
+        }
+    }
+
+    /// Rendered preview image of a connected vehicle, produced by the guest when
+    /// hosted Connect completes. `image` is a local `file://` URL.
+    public struct Preview: Sendable, Equatable {
+        public var vehicleID: String
+        public var contour: String
+        public var image: String
+        public var vehicle: WasmClient.Smartcar.Vehicle
+
+        public init(
+            vehicleID: String = "",
+            contour: String = "",
+            image: String = "",
+            vehicle: WasmClient.Smartcar.Vehicle = .init()
+        ) {
+            self.vehicleID = vehicleID
+            self.contour = contour
+            self.image = image
+            self.vehicle = vehicle
+        }
+    }
+}
+
+// MARK: - Catalog
+
+extension WasmClient.Smartcar {
+
+    /// The bundled showroom catalog: manufacturers and their models with
+    /// marketing imagery. Distinct from `Vehicle` (an owned/connected car):
+    /// `Catalog` is a browse-only reference. `path` is the base URL for every
+    /// relative image/logo path.
+    public struct Catalog: Sendable, Equatable {
+
+        /// One model entry under a `Make`.
+        public struct Model: Sendable, Equatable {
+            public var name: String
+            public var year: String
+            public var image: String
+            public var fuelConsumption: String
+            public var speedBoost: String
+
+            public init(
+                name: String = "",
+                year: String = "",
+                image: String = "",
+                fuelConsumption: String = "",
+                speedBoost: String = ""
+            ) {
+                self.name = name
+                self.year = year
+                self.image = image
+                self.fuelConsumption = fuelConsumption
+                self.speedBoost = speedBoost
+            }
+        }
+
+        /// One manufacturer entry, with its selectable models.
+        public struct Make: Sendable, Equatable {
+            public var company: String
+            public var logo: String
+            public var models: [Model]
+
+            public init(
+                company: String = "",
+                logo: String = "",
+                models: [Model] = []
+            ) {
+                self.company = company
+                self.logo = logo
+                self.models = models
+            }
+        }
+
+        public var makes: [Make]
+        public var path: String
+
+        public init(
+            makes: [Make] = [],
+            path: String = ""
+        ) {
+            self.makes = makes
+            self.path = path
         }
     }
 }

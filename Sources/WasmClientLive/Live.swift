@@ -62,8 +62,13 @@ extension WasmClient: DependencyKey {
             smartcarConnectConfig: { mode in
                 try await actor.smartcarConnectConfig(mode: mode)
             },
-            smartcarHostedConnectEvent: { url, bodyText in
-                try await actor.smartcarHostedConnectEvent(url: url, bodyText: bodyText)
+            smartcarHostedConnectEvent: { url, bodyText, vehicleID, contour in
+                try await actor.smartcarHostedConnectEvent(
+                    url: url,
+                    bodyText: bodyText,
+                    vehicleID: vehicleID,
+                    contour: contour
+                )
             },
             smartcarAccounts: {
                 try await actor.smartcarAccounts()
@@ -73,6 +78,9 @@ extension WasmClient: DependencyKey {
             },
             smartcarDeleteAccount: { userID in
                 try await actor.smartcarDeleteAccount(userID: userID)
+            },
+            smartcarCatalog: {
+                try await actor.smartcarCatalog()
             },
             smartcarAllVehicles: { vehicleID, make in
                 try await actor.smartcarAllVehicles(vehicleID: vehicleID, make: make)

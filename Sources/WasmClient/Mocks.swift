@@ -89,10 +89,11 @@ extension WasmClient {
         shopping: { _, _ in [] },
         lookupVin: { _ in Smartcar.Vehicle() },
         smartcarConnectConfig: { _ in Smartcar.Connection.Config() },
-        smartcarHostedConnectEvent: { _, _ in Smartcar.Connection.Decision() },
+        smartcarHostedConnectEvent: { _, _, _, _ in Smartcar.Connection.Decision() },
         smartcarAccounts: { [] },
         smartcarSwitchAccount: { _ in [] },
         smartcarDeleteAccount: { _ in [] },
+        smartcarCatalog: { Smartcar.Catalog() },
         smartcarAllVehicles: { _, _ in [] },
         smartcarGetPermissions: { _, _ in [] },
         smartcarRead: { _, _, _ in [:] },
@@ -280,9 +281,23 @@ extension WasmClient {
                 connectURL: "https://connect.smartcar.com/oauth/authorize?mock=1"
             )
         },
-        smartcarHostedConnectEvent: { url, _ in
+        smartcarHostedConnectEvent: { url, _, _, _ in
             url.contains("exchange")
-                ? Smartcar.Connection.Decision(action: .complete, userID: "mock-user-id")
+                ? Smartcar.Connection.Decision(
+                    action: .complete,
+                    userID: "mock-user-id",
+                    preview: Smartcar.Connection.Preview(
+                        vehicleID: "mock-vehicle-id",
+                        contour: "frontRight",
+                        image: "file:///mock/preview.png",
+                        vehicle: Smartcar.Vehicle(
+                            identifier: "5YJ3E1EA7KF000000",
+                            make: "TESLA",
+                            model: "Model 3",
+                            year: "2022"
+                        )
+                    )
+                )
                 : Smartcar.Connection.Decision(action: .continue)
         },
         smartcarAccounts: {
@@ -292,6 +307,26 @@ extension WasmClient {
             [Smartcar.Account(userID: userID, label: "Mock Tesla")]
         },
         smartcarDeleteAccount: { _ in [] },
+        smartcarCatalog: {
+            Smartcar.Catalog(
+                makes: [
+                    Smartcar.Catalog.Make(
+                        company: "Tesla",
+                        logo: "tesla/logo.png",
+                        models: [
+                            Smartcar.Catalog.Model(
+                                name: "Model 3",
+                                year: "2020+",
+                                image: "tesla/model3.png",
+                                fuelConsumption: "15 kWh/100km",
+                                speedBoost: "0-100 in 3.3s"
+                            )
+                        ]
+                    )
+                ],
+                path: "https://cdn.example.com/catalog"
+            )
+        },
         smartcarAllVehicles: { _, _ in
             [Smartcar.Vehicle(identifier: "5YJ3E1EA7KF000000", make: "TESLA", model: "Model 3", year: "2022")]
         },

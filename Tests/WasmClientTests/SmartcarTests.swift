@@ -20,6 +20,10 @@ final class SmartcarTests: XCTestCase {
             "asyncify.smartcar.SmartcarService/AllVehicles"
         )
         XCTAssertEqual(
+            WasmClient.Smartcar.Method.getCarCatalog.rawValue,
+            "asyncify.smartcar.SmartcarService/GetCarCatalog"
+        )
+        XCTAssertEqual(
             WasmClient.Smartcar.Method.setSecurity.rawValue,
             "asyncify.smartcar.SmartcarService/SetSecurity"
         )
@@ -117,6 +121,22 @@ final class SmartcarTests: XCTestCase {
 
         let reading = try await client.smartcarRead(.getBatteryLevel, "", "")
         XCTAssertTrue(reading.isEmpty)
+
+        let catalog = try await client.smartcarCatalog()
+        XCTAssertTrue(catalog.makes.isEmpty)
+    }
+
+    func testHappyMockCatalogListsMakesAndModels() async throws {
+        let client = WasmClient.happy
+
+        let catalog = try await client.smartcarCatalog()
+        XCTAssertFalse(catalog.path.isEmpty)
+        XCTAssertEqual(catalog.makes.first?.company, "Tesla")
+
+        let model = catalog.makes.first?.models.first
+        XCTAssertEqual(model?.name, "Model 3")
+        XCTAssertEqual(model?.year, "2020+")
+        XCTAssertFalse(model?.fuelConsumption.isEmpty ?? true)
     }
 
     func testHappyMockConnectsAndReportsCapability() async throws {
@@ -128,10 +148,13 @@ final class SmartcarTests: XCTestCase {
 
         let decision = try await client.smartcarHostedConnectEvent(
             "scmock://exchange?code=abc",
+            "",
+            "",
             ""
         )
         XCTAssertEqual(decision.action, .complete)
         XCTAssertEqual(decision.userID, "mock-user-id")
+        XCTAssertEqual(decision.preview?.vehicle.make, "TESLA")
 
         let vehicles = try await client.smartcarAllVehicles("", "")
         XCTAssertEqual(vehicles.first?.make, "TESLA")

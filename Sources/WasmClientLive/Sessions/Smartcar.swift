@@ -28,7 +28,9 @@ extension WasmActor {
     /// credential when it detects the provider's terminal token payload.
     func smartcarHostedConnectEvent(
         url: String,
-        bodyText: String
+        bodyText: String,
+        vehicleID: String,
+        contour: String
     ) async throws -> WasmClient.Smartcar.Connection.Decision {
         let instance = try await readyEngine()
         var args: [String: Google_Protobuf_Value] = [:]
@@ -37,6 +39,12 @@ extension WasmActor {
         }
         if !bodyText.isEmpty {
             args["body_text"] = Google_Protobuf_Value(stringValue: bodyText)
+        }
+        if !vehicleID.isEmpty {
+            args["vehicle_id"] = Google_Protobuf_Value(stringValue: vehicleID)
+        }
+        if !contour.isEmpty {
+            args["contour"] = Google_Protobuf_Value(stringValue: contour)
         }
         let response: SmartcarHostedConnectEventResponse = try await instance.run(
             method: WasmClient.Smartcar.Method.hostedConnectEvent.rawValue,
@@ -77,6 +85,17 @@ extension WasmActor {
         }
         let response: SmartcarAccountList = try await instance.run(method: method.rawValue, args: args)
         return Self.mapAccountList(response)
+    }
+
+    /// Fetch the bundled showroom catalog (makes/models + marketing imagery) so
+    /// the app can present a make/model picker without a network call.
+    func smartcarCatalog() async throws -> WasmClient.Smartcar.Catalog {
+        let instance = try await readyEngine()
+        let response: SmartcarCarCatalog = try await instance.run(
+            method: WasmClient.Smartcar.Method.getCarCatalog.rawValue,
+            args: [:]
+        )
+        return Self.mapCatalog(response)
     }
 
     func smartcarAllVehicles(
@@ -319,7 +338,44 @@ extension WasmActor {
             make: vehicle.make,
             model: vehicle.model,
             year: vehicle.year,
-            extra: vehicle.hasExtra ? mapExtra(vehicle.extra) : [:]
+            extra: vehicle.hasExtra ? mapExtra(vehicle.extra) : [:],
+            previewImage: vehicle.previewImage,
+            previewContour: vehicle.previewContour,
+            previewError: vehicle.previewError
+        )
+    }
+
+    static func mapCatalog(_ catalog: SmartcarCarCatalog) -> WasmClient.Smartcar.Catalog {
+        WasmClient.Smartcar.Catalog(
+            makes: catalog.dataCar.map(mapCatalogMake),
+            path: catalog.path
+        )
+    }
+
+    private static func mapCatalogMake(_ make: SmartcarCarMake) -> WasmClient.Smartcar.Catalog.Make {
+        WasmClient.Smartcar.Catalog.Make(
+            company: make.company,
+            logo: make.logo,
+            models: make.carModels.map(mapCatalogModel)
+        )
+    }
+
+    private static func mapCatalogModel(_ model: SmartcarCarModel) -> WasmClient.Smartcar.Catalog.Model {
+        WasmClient.Smartcar.Catalog.Model(
+            name: model.name,
+            year: model.yearManufacture,
+            image: model.image,
+            fuelConsumption: model.fuelConsumption,
+            speedBoost: model.speedBoost
+        )
+    }
+
+    private static func mapPreview(_ preview: SmartcarVehiclePreview) -> WasmClient.Smartcar.Connection.Preview {
+        WasmClient.Smartcar.Connection.Preview(
+            vehicleID: preview.vehicleID,
+            contour: preview.contour,
+            image: preview.image,
+            vehicle: preview.hasVehicle ? mapVehicle(preview.vehicle) : .init()
         )
     }
 
@@ -341,7 +397,9 @@ extension WasmActor {
         WasmClient.Smartcar.Connection.Decision(
             action: WasmClient.Smartcar.Connection.Action(rawValue: response.action.actionString),
             userID: response.userID,
-            error: response.error
+            error: response.error,
+            preview: response.hasPreview ? mapPreview(response.preview) : nil,
+            previewError: response.previewError
         )
     }
 

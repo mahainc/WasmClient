@@ -112,6 +112,7 @@ extension WasmClient.Smartcar {
         public static let accounts = Self(rawValue: "asyncify.smartcar.SmartcarService/Accounts")
         public static let switchAccount = Self(rawValue: "asyncify.smartcar.SmartcarService/SwitchAccount")
         public static let deleteAccount = Self(rawValue: "asyncify.smartcar.SmartcarService/DeleteAccount")
+        public static let getCarCatalog = Self(rawValue: "asyncify.smartcar.SmartcarService/GetCarCatalog")
         public static let allVehicles = Self(rawValue: "asyncify.smartcar.SmartcarService/AllVehicles")
         public static let getOdometer = Self(rawValue: "asyncify.smartcar.SmartcarService/GetOdometer")
         public static let getBatteryLevel = Self(rawValue: "asyncify.smartcar.SmartcarService/GetBatteryLevel")
