@@ -124,9 +124,6 @@ extension WasmClient.Smartcar {
         public static let getSpeedometer = Self(rawValue: "asyncify.smartcar.SmartcarService/GetSpeedometer")
         public static let lookupVin = Self(rawValue: "asyncify.smartcar.SmartcarService/LookupVin")
         public static let teslaVehicleStatus = Self(rawValue: "asyncify.smartcar.SmartcarService/TeslaVehicleStatus")
-        public static let teslaVehicleAttributes = Self(
-            rawValue: "asyncify.smartcar.SmartcarService/TeslaVehicleAttributes"
-        )
         public static let teslaBatteryStatus = Self(rawValue: "asyncify.smartcar.SmartcarService/TeslaBatteryStatus")
         public static let teslaChargeStatus = Self(rawValue: "asyncify.smartcar.SmartcarService/TeslaChargeStatus")
         public static let teslaInteriorTemperature = Self(

@@ -31,11 +31,11 @@ final class SmartcarTests: XCTestCase {
 
     // MARK: - Wire-mapped action / mode raw values
 
-    func testConnectModeRawValues() {
-        XCTAssertEqual(WasmClient.Smartcar.ConnectMode.unspecified.rawValue, "")
-        XCTAssertEqual(WasmClient.Smartcar.ConnectMode.live.rawValue, "live")
-        XCTAssertEqual(WasmClient.Smartcar.ConnectMode.test.rawValue, "test")
-        XCTAssertEqual(WasmClient.Smartcar.ConnectMode.simulated.rawValue, "simulated")
+    func testConnectionModeRawValues() {
+        XCTAssertEqual(WasmClient.Smartcar.Connection.Mode.unspecified.rawValue, "")
+        XCTAssertEqual(WasmClient.Smartcar.Connection.Mode.live.rawValue, "live")
+        XCTAssertEqual(WasmClient.Smartcar.Connection.Mode.test.rawValue, "test")
+        XCTAssertEqual(WasmClient.Smartcar.Connection.Mode.simulated.rawValue, "simulated")
     }
 
     func testControlActionRawValues() {
@@ -46,9 +46,9 @@ final class SmartcarTests: XCTestCase {
         XCTAssertEqual(WasmClient.Smartcar.SecurityAction.unlock.rawValue, "UNLOCK")
     }
 
-    func testHostedConnectActionRawValues() {
-        XCTAssertEqual(WasmClient.Smartcar.HostedConnectAction.complete.rawValue, "complete")
-        XCTAssertEqual(WasmClient.Smartcar.HostedConnectAction.error.rawValue, "error")
+    func testConnectionActionRawValues() {
+        XCTAssertEqual(WasmClient.Smartcar.Connection.Action.complete.rawValue, "complete")
+        XCTAssertEqual(WasmClient.Smartcar.Connection.Action.error.rawValue, "error")
     }
 
     // MARK: - Permissions capability

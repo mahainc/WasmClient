@@ -80,9 +80,6 @@ extension WasmClient: DependencyKey {
             smartcarGetPermissions: { vehicleID, make in
                 try await actor.smartcarGetPermissions(vehicleID: vehicleID, make: make)
             },
-            smartcarTeslaVehicleAttributes: { vehicleID, make in
-                try await actor.smartcarTeslaVehicleAttributes(vehicleID: vehicleID, make: make)
-            },
             smartcarRead: { method, vehicleID, make in
                 try await actor.smartcarRead(method: method, vehicleID: vehicleID, make: make)
             },

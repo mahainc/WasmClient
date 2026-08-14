@@ -10,8 +10,8 @@ extension WasmActor {
     /// Fetch the provider's OAuth Connect configuration so the app can launch
     /// hosted Connect without hardcoding backend identity.
     func smartcarConnectConfig(
-        mode: WasmClient.Smartcar.ConnectMode
-    ) async throws -> WasmClient.Smartcar.ConnectConfig {
+        mode: WasmClient.Smartcar.Connection.Mode
+    ) async throws -> WasmClient.Smartcar.Connection.Config {
         let instance = try await readyEngine()
         var args: [String: Google_Protobuf_Value] = [:]
         if !mode.rawValue.isEmpty {
@@ -29,7 +29,7 @@ extension WasmActor {
     func smartcarHostedConnectEvent(
         url: String,
         bodyText: String
-    ) async throws -> WasmClient.Smartcar.HostedConnectDecision {
+    ) async throws -> WasmClient.Smartcar.Connection.Decision {
         let instance = try await readyEngine()
         var args: [String: Google_Protobuf_Value] = [:]
         if !url.isEmpty {
@@ -92,7 +92,7 @@ extension WasmActor {
     }
 }
 
-// MARK: - Typed Reads (kept: permission gate source + structured attributes)
+// MARK: - Typed Reads (permission gate source)
 
 extension WasmActor {
 
@@ -102,18 +102,6 @@ extension WasmActor {
     ) async throws -> [WasmClient.Smartcar.Permission] {
         let response: SmartcarPermissions = try await runVehicleRead(.getPermissions, vehicleID: vehicleID, make: make)
         return response.permissions.map(WasmClient.Smartcar.Permission.init(rawValue:))
-    }
-
-    func smartcarTeslaVehicleAttributes(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.Vehicle {
-        let response: SmartcarVehicle = try await runVehicleRead(
-            .teslaVehicleAttributes,
-            vehicleID: vehicleID,
-            make: make
-        )
-        return Self.mapVehicle(response)
     }
 }
 
@@ -337,21 +325,21 @@ extension WasmActor {
 
     private static func mapConnectConfig(
         _ response: SmartcarConnectConfigResponse
-    ) -> WasmClient.Smartcar.ConnectConfig {
-        WasmClient.Smartcar.ConnectConfig(
+    ) -> WasmClient.Smartcar.Connection.Config {
+        WasmClient.Smartcar.Connection.Config(
             applicationID: response.applicationID,
             redirectURI: response.redirectUri,
             scope: response.scope,
-            mode: WasmClient.Smartcar.ConnectMode(rawValue: response.mode.argString),
+            mode: WasmClient.Smartcar.Connection.Mode(rawValue: response.mode.argString),
             connectURL: response.connectURL
         )
     }
 
     private static func mapHostedConnectDecision(
         _ response: SmartcarHostedConnectEventResponse
-    ) -> WasmClient.Smartcar.HostedConnectDecision {
-        WasmClient.Smartcar.HostedConnectDecision(
-            action: WasmClient.Smartcar.HostedConnectAction(rawValue: response.action.actionString),
+    ) -> WasmClient.Smartcar.Connection.Decision {
+        WasmClient.Smartcar.Connection.Decision(
+            action: WasmClient.Smartcar.Connection.Action(rawValue: response.action.actionString),
             userID: response.userID,
             error: response.error
         )
@@ -458,7 +446,7 @@ extension SmartcarConnectMode {
 }
 
 extension SmartcarHostedConnectAction {
-    /// Lowercased decision string matching `HostedConnectAction` rawValues.
+    /// Lowercased decision string matching `Connection.Action` rawValues.
     var actionString: String {
         switch self {
             case .continue:

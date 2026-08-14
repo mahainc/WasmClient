@@ -88,14 +88,13 @@ extension WasmClient {
         visualSearch: { _, _ in [] },
         shopping: { _, _ in [] },
         lookupVin: { _ in Smartcar.Vehicle() },
-        smartcarConnectConfig: { _ in Smartcar.ConnectConfig() },
-        smartcarHostedConnectEvent: { _, _ in Smartcar.HostedConnectDecision() },
+        smartcarConnectConfig: { _ in Smartcar.Connection.Config() },
+        smartcarHostedConnectEvent: { _, _ in Smartcar.Connection.Decision() },
         smartcarAccounts: { [] },
         smartcarSwitchAccount: { _ in [] },
         smartcarDeleteAccount: { _ in [] },
         smartcarAllVehicles: { _, _ in [] },
         smartcarGetPermissions: { _, _ in [] },
-        smartcarTeslaVehicleAttributes: { _, _ in Smartcar.Vehicle() },
         smartcarRead: { _, _, _ in [:] },
         smartcarControl: { _, _, _ in Smartcar.ControlResponse() },
         uploadImage: { _ in "" },
@@ -273,7 +272,7 @@ extension WasmClient {
             return Smartcar.Vehicle(identifier: vin, make: "Toyota", model: "Camry", year: "2021")
         },
         smartcarConnectConfig: { mode in
-            Smartcar.ConnectConfig(
+            Smartcar.Connection.Config(
                 applicationID: "mock-app-id",
                 redirectURI: "scmock://exchange",
                 scope: ["read_odometer", "read_battery", "read_charge", "read_tires"],
@@ -283,8 +282,8 @@ extension WasmClient {
         },
         smartcarHostedConnectEvent: { url, _ in
             url.contains("exchange")
-                ? Smartcar.HostedConnectDecision(action: .complete, userID: "mock-user-id")
-                : Smartcar.HostedConnectDecision(action: .continue)
+                ? Smartcar.Connection.Decision(action: .complete, userID: "mock-user-id")
+                : Smartcar.Connection.Decision(action: .continue)
         },
         smartcarAccounts: {
             [Smartcar.Account(userID: "mock-user-id", label: "Mock Tesla")]
@@ -298,9 +297,6 @@ extension WasmClient {
         },
         smartcarGetPermissions: { _, _ in
             [.readOdometer, .readBattery, .readCharge, .readTires]
-        },
-        smartcarTeslaVehicleAttributes: { _, _ in
-            Smartcar.Vehicle(identifier: "5YJ3E1EA7KF000000", make: "TESLA", model: "Model 3", year: "2022")
         },
         smartcarRead: { method, _, _ in mockSmartcarReading(for: method) },
         smartcarControl: { _, _, args in

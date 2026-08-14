@@ -36,38 +36,42 @@ extension WasmClient.Smartcar {
     }
 }
 
-// MARK: - Connect & Accounts
+// MARK: - Connection (OAuth hosted Connect)
 
 extension WasmClient.Smartcar {
+    public enum Connection {}
+}
+
+extension WasmClient.Smartcar.Connection {
     /// Launch mode for Smartcar Connect. `rawValue` IS the wire arg string
     /// (`connectConfig` sends it lowercased); unknown values round-trip.
-    public struct ConnectMode: RawRepresentable, Sendable, Equatable, Hashable {
+    public struct Mode: RawRepresentable, Sendable, Equatable, Hashable {
         public let rawValue: String
 
         public init(rawValue: String) {
             self.rawValue = rawValue
         }
 
-        public static let unspecified = ConnectMode(rawValue: "")
-        public static let live = ConnectMode(rawValue: "live")
-        public static let test = ConnectMode(rawValue: "test")
-        public static let simulated = ConnectMode(rawValue: "simulated")
+        public static let unspecified = Mode(rawValue: "")
+        public static let live = Mode(rawValue: "live")
+        public static let test = Mode(rawValue: "test")
+        public static let simulated = Mode(rawValue: "simulated")
     }
 
     /// OAuth Connect configuration returned by the guest so the app can launch
     /// hosted Connect without hardcoding backend identity.
-    public struct ConnectConfig: Sendable, Equatable {
+    public struct Config: Sendable, Equatable {
         public var applicationID: String
         public var redirectURI: String
         public var scope: [String]
-        public var mode: ConnectMode
+        public var mode: Mode
         public var connectURL: String
 
         public init(
             applicationID: String = "",
             redirectURI: String = "",
             scope: [String] = [],
-            mode: ConnectMode = .unspecified,
+            mode: Mode = .unspecified,
             connectURL: String = ""
         ) {
             self.applicationID = applicationID
@@ -80,28 +84,28 @@ extension WasmClient.Smartcar {
 
     /// What the native hosted-Connect WebView should do next, decided by the
     /// guest after parsing one URL/body observation.
-    public struct HostedConnectAction: RawRepresentable, Sendable, Equatable, Hashable {
+    public struct Action: RawRepresentable, Sendable, Equatable, Hashable {
         public let rawValue: String
 
         public init(rawValue: String) {
             self.rawValue = rawValue
         }
 
-        public static let `continue` = HostedConnectAction(rawValue: "continue")
-        public static let cancel = HostedConnectAction(rawValue: "cancel")
-        public static let complete = HostedConnectAction(rawValue: "complete")
-        public static let error = HostedConnectAction(rawValue: "error")
+        public static let `continue` = Action(rawValue: "continue")
+        public static let cancel = Action(rawValue: "cancel")
+        public static let complete = Action(rawValue: "complete")
+        public static let error = Action(rawValue: "error")
     }
 
     /// Guest decision for one hosted-Connect observation. On `.complete`,
     /// `userID` carries the cached credential; on `.error`, `error` is set.
-    public struct HostedConnectDecision: Sendable, Equatable {
-        public var action: HostedConnectAction
+    public struct Decision: Sendable, Equatable {
+        public var action: Action
         public var userID: String
         public var error: String
 
         public init(
-            action: HostedConnectAction = .continue,
+            action: Action = .continue,
             userID: String = "",
             error: String = ""
         ) {
@@ -110,6 +114,11 @@ extension WasmClient.Smartcar {
             self.error = error
         }
     }
+}
+
+// MARK: - Accounts
+
+extension WasmClient.Smartcar {
 
     /// One locally cached connected account. The first account in the returned
     /// `[Account]` is the active one that reads/controls use.
@@ -245,66 +254,63 @@ extension WasmClient.Smartcar {
 // MARK: - Controls
 
 extension WasmClient.Smartcar {
-    /// EV charge session toggle. `rawValue` IS the wire arg string.
-    public struct ChargeAction: RawRepresentable, Sendable, Equatable, Hashable {
+    /// A vehicle-control action whose `rawValue` IS the wire arg string. The
+    /// phantom `Tag` makes each control's vocabulary a distinct type.
+    public struct RawAction<Tag>: RawRepresentable, Sendable, Equatable, Hashable {
         public let rawValue: String
 
         public init(rawValue: String) {
             self.rawValue = rawValue
         }
-
-        public static let start = ChargeAction(rawValue: "START")
-        public static let stop = ChargeAction(rawValue: "STOP")
     }
 
+    public enum ChargeTag {}
+    public enum ClimateTag {}
+    public enum DefrosterTag {}
+    public enum HeaterTag {}
+    public enum SecurityTag {}
+
+    /// EV charge session toggle.
+    public typealias ChargeAction = RawAction<ChargeTag>
     /// Cabin-climate command. `SET` applies `temperatureCelsius`.
-    public struct ClimateAction: RawRepresentable, Sendable, Equatable, Hashable {
-        public let rawValue: String
-
-        public init(rawValue: String) {
-            self.rawValue = rawValue
-        }
-
-        public static let start = ClimateAction(rawValue: "START")
-        public static let stop = ClimateAction(rawValue: "STOP")
-        public static let set = ClimateAction(rawValue: "SET")
-    }
-
+    public typealias ClimateAction = RawAction<ClimateTag>
     /// Front-defroster command.
-    public struct DefrosterAction: RawRepresentable, Sendable, Equatable, Hashable {
-        public let rawValue: String
-
-        public init(rawValue: String) {
-            self.rawValue = rawValue
-        }
-
-        public static let open = DefrosterAction(rawValue: "OPEN")
-        public static let close = DefrosterAction(rawValue: "CLOSE")
-    }
-
+    public typealias DefrosterAction = RawAction<DefrosterTag>
     /// Steering-wheel heater toggle.
-    public struct HeaterAction: RawRepresentable, Sendable, Equatable, Hashable {
-        public let rawValue: String
-
-        public init(rawValue: String) {
-            self.rawValue = rawValue
-        }
-
-        public static let start = HeaterAction(rawValue: "START")
-        public static let stop = HeaterAction(rawValue: "STOP")
-    }
-
+    public typealias HeaterAction = RawAction<HeaterTag>
     /// Vehicle lock command.
-    public struct SecurityAction: RawRepresentable, Sendable, Equatable, Hashable {
-        public let rawValue: String
+    public typealias SecurityAction = RawAction<SecurityTag>
+}
 
-        public init(rawValue: String) {
-            self.rawValue = rawValue
-        }
+extension WasmClient.Smartcar.RawAction where Tag == WasmClient.Smartcar.ChargeTag {
+    public static let start = Self(rawValue: "START")
+    public static let stop = Self(rawValue: "STOP")
+}
 
-        public static let lock = SecurityAction(rawValue: "LOCK")
-        public static let unlock = SecurityAction(rawValue: "UNLOCK")
-    }
+extension WasmClient.Smartcar.RawAction where Tag == WasmClient.Smartcar.ClimateTag {
+    public static let start = Self(rawValue: "START")
+    public static let stop = Self(rawValue: "STOP")
+    public static let set = Self(rawValue: "SET")
+}
+
+extension WasmClient.Smartcar.RawAction where Tag == WasmClient.Smartcar.DefrosterTag {
+    public static let open = Self(rawValue: "OPEN")
+    public static let close = Self(rawValue: "CLOSE")
+}
+
+extension WasmClient.Smartcar.RawAction where Tag == WasmClient.Smartcar.HeaterTag {
+    public static let start = Self(rawValue: "START")
+    public static let stop = Self(rawValue: "STOP")
+}
+
+extension WasmClient.Smartcar.RawAction where Tag == WasmClient.Smartcar.SecurityTag {
+    public static let lock = Self(rawValue: "LOCK")
+    public static let unlock = Self(rawValue: "UNLOCK")
+}
+
+// MARK: - Control Response
+
+extension WasmClient.Smartcar {
 
     /// Result of a control command: the action the backend echoes after
     /// applying it, plus any extra fields it returned.

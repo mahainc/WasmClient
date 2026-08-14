@@ -62,13 +62,13 @@ public struct WasmClient: Sendable {
 
     public var smartcarConnectConfig:
         @Sendable (
-            _ mode: WasmClient.Smartcar.ConnectMode
-        ) async throws -> WasmClient.Smartcar.ConnectConfig
+            _ mode: WasmClient.Smartcar.Connection.Mode
+        ) async throws -> WasmClient.Smartcar.Connection.Config
 
     public var smartcarHostedConnectEvent:
         @Sendable (
             _ url: String, _ bodyText: String
-        ) async throws -> WasmClient.Smartcar.HostedConnectDecision
+        ) async throws -> WasmClient.Smartcar.Connection.Decision
 
     public var smartcarAccounts: @Sendable () async throws -> [WasmClient.Smartcar.Account]
 
@@ -91,11 +91,6 @@ public struct WasmClient: Sendable {
         @Sendable (
             _ vehicleID: String, _ make: String
         ) async throws -> [WasmClient.Smartcar.Permission]
-
-    public var smartcarTeslaVehicleAttributes:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.Vehicle
 
     public var smartcarRead:
         @Sendable (
