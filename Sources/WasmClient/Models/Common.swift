@@ -99,8 +99,8 @@ extension WasmClient {
 
 // MARK: - Smart Car Method
 
-extension WasmClient {
-    public struct SmartcarMethod: RawRepresentable, Sendable, Equatable, Hashable {
+extension WasmClient.Smartcar {
+    public struct Method: RawRepresentable, Sendable, Equatable, Hashable {
         public let rawValue: String
 
         public init(rawValue: String) {
@@ -172,6 +172,7 @@ extension WasmClient {
         case missingValue
         case uploadFailed(String)
         case unexpectedResponseFormat
+        case missingPermission(permission: String)
 
         public var errorDescription: String? {
             switch self {
@@ -191,6 +192,8 @@ extension WasmClient {
                     "Upload failed: \(reason)"
                 case .unexpectedResponseFormat:
                     "Unexpected response data format"
+                case .missingPermission(let permission):
+                    "The connected vehicle has not granted the required permission: \(permission)"
             }
         }
     }

@@ -18,7 +18,7 @@ extension WasmActor {
             args["mode"] = Google_Protobuf_Value(stringValue: mode.rawValue)
         }
         let response: SmartcarConnectConfigResponse = try await instance.run(
-            method: WasmClient.SmartcarMethod.connectConfig.rawValue,
+            method: WasmClient.Smartcar.Method.connectConfig.rawValue,
             args: args
         )
         return Self.mapConnectConfig(response)
@@ -39,16 +39,16 @@ extension WasmActor {
             args["body_text"] = Google_Protobuf_Value(stringValue: bodyText)
         }
         let response: SmartcarHostedConnectEventResponse = try await instance.run(
-            method: WasmClient.SmartcarMethod.hostedConnectEvent.rawValue,
+            method: WasmClient.Smartcar.Method.hostedConnectEvent.rawValue,
             args: args
         )
         return Self.mapHostedConnectDecision(response)
     }
 
-    func smartcarAccounts() async throws -> WasmClient.Smartcar.AccountList {
+    func smartcarAccounts() async throws -> [WasmClient.Smartcar.Account] {
         let instance = try await readyEngine()
         let response: SmartcarAccountList = try await instance.run(
-            method: WasmClient.SmartcarMethod.accounts.rawValue,
+            method: WasmClient.Smartcar.Method.accounts.rawValue,
             args: [:]
         )
         return Self.mapAccountList(response)
@@ -56,20 +56,20 @@ extension WasmActor {
 
     func smartcarSwitchAccount(
         userID: String
-    ) async throws -> WasmClient.Smartcar.AccountList {
+    ) async throws -> [WasmClient.Smartcar.Account] {
         try await smartcarAccountMutation(userID: userID, method: .switchAccount)
     }
 
     func smartcarDeleteAccount(
         userID: String
-    ) async throws -> WasmClient.Smartcar.AccountList {
+    ) async throws -> [WasmClient.Smartcar.Account] {
         try await smartcarAccountMutation(userID: userID, method: .deleteAccount)
     }
 
     private func smartcarAccountMutation(
         userID: String,
-        method: WasmClient.SmartcarMethod
-    ) async throws -> WasmClient.Smartcar.AccountList {
+        method: WasmClient.Smartcar.Method
+    ) async throws -> [WasmClient.Smartcar.Account] {
         let instance = try await readyEngine()
         var args: [String: Google_Protobuf_Value] = [:]
         if !userID.isEmpty {
@@ -85,269 +85,168 @@ extension WasmActor {
     ) async throws -> [WasmClient.Smartcar.Vehicle] {
         let instance = try await readyEngine()
         let response: SmartcarVehicleList = try await instance.run(
-            method: WasmClient.SmartcarMethod.allVehicles.rawValue,
+            method: WasmClient.Smartcar.Method.allVehicles.rawValue,
             args: Self.vehicleArgs(vehicleID: vehicleID, make: make)
         )
         return response.vehicles.map(Self.mapVehicle)
     }
 }
 
-// MARK: - Universal Reads
+// MARK: - Typed Reads (kept: permission gate source + structured attributes)
 
 extension WasmActor {
-
-    func smartcarGetOdometer(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.Odometer {
-        let response: SmartcarOdometer = try await smartcarRead(.getOdometer, vehicleID: vehicleID, make: make)
-        return WasmClient.Smartcar.Odometer(distanceKm: response.hasDistanceKm ? response.distanceKm : nil)
-    }
-
-    func smartcarGetBatteryLevel(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.BatteryLevel {
-        let response: SmartcarBatteryLevel = try await smartcarRead(.getBatteryLevel, vehicleID: vehicleID, make: make)
-        return Self.mapBatteryLevel(response)
-    }
-
-    func smartcarGetChargeLimit(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.ChargeLimit {
-        let response: SmartcarChargeLimit = try await smartcarRead(.getChargeLimit, vehicleID: vehicleID, make: make)
-        return WasmClient.Smartcar.ChargeLimit(limit: response.hasLimit ? response.limit : nil)
-    }
-
-    func smartcarGetNominalCapacity(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.NominalCapacity {
-        let response: SmartcarNominalCapacity = try await smartcarRead(
-            .getNominalCapacity,
-            vehicleID: vehicleID,
-            make: make
-        )
-        return WasmClient.Smartcar.NominalCapacity(capacityKwh: response.hasCapacityKwh ? response.capacityKwh : nil)
-    }
-
-    func smartcarGetLockStatus(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.LockStatus {
-        let response: SmartcarLockStatus = try await smartcarRead(.getLockStatus, vehicleID: vehicleID, make: make)
-        return Self.mapLockStatus(response)
-    }
-
-    func smartcarGetTiresPressure(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.TirePressure {
-        let response: SmartcarTirePressure = try await smartcarRead(.getTiresPressure, vehicleID: vehicleID, make: make)
-        return Self.mapTirePressure(response)
-    }
-
-    func smartcarGetOilLife(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.EngineOil {
-        let response: SmartcarEngineOil = try await smartcarRead(.getOilLife, vehicleID: vehicleID, make: make)
-        return WasmClient.Smartcar.EngineOil(lifeRemaining: response.hasLifeRemaining ? response.lifeRemaining : nil)
-    }
 
     func smartcarGetPermissions(
         vehicleID: String,
         make: String
-    ) async throws -> WasmClient.Smartcar.Permissions {
-        let response: SmartcarPermissions = try await smartcarRead(.getPermissions, vehicleID: vehicleID, make: make)
-        return WasmClient.Smartcar.Permissions(permissions: response.permissions)
-    }
-
-    func smartcarGetSpeedometer(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.Speedometer {
-        let response: SmartcarSpeedometer = try await smartcarRead(.getSpeedometer, vehicleID: vehicleID, make: make)
-        return WasmClient.Smartcar.Speedometer(speedKph: response.hasSpeedKph ? response.speedKph : nil)
-    }
-}
-
-// MARK: - Vendor-scoped (Tesla) Reads
-
-extension WasmActor {
-
-    func smartcarTeslaVehicleStatus(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.VehicleStatus {
-        let response: SmartcarVehicleStatus = try await smartcarRead(
-            .teslaVehicleStatus,
-            vehicleID: vehicleID,
-            make: make
-        )
-        return WasmClient.Smartcar.VehicleStatus(status: response.hasStatus ? response.status : nil)
+    ) async throws -> [WasmClient.Smartcar.Permission] {
+        let response: SmartcarPermissions = try await runVehicleRead(.getPermissions, vehicleID: vehicleID, make: make)
+        return response.permissions.map(WasmClient.Smartcar.Permission.init(rawValue:))
     }
 
     func smartcarTeslaVehicleAttributes(
         vehicleID: String,
         make: String
     ) async throws -> WasmClient.Smartcar.Vehicle {
-        let response: SmartcarVehicle = try await smartcarRead(
+        let response: SmartcarVehicle = try await runVehicleRead(
             .teslaVehicleAttributes,
             vehicleID: vehicleID,
             make: make
         )
         return Self.mapVehicle(response)
     }
-
-    func smartcarTeslaBatteryStatus(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.BatteryLevel {
-        let response: SmartcarBatteryLevel = try await smartcarRead(
-            .teslaBatteryStatus,
-            vehicleID: vehicleID,
-            make: make
-        )
-        return Self.mapBatteryLevel(response)
-    }
-
-    func smartcarTeslaChargeStatus(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.ChargeStatus {
-        let response: SmartcarChargeStatus = try await smartcarRead(
-            .teslaChargeStatus,
-            vehicleID: vehicleID,
-            make: make
-        )
-        return WasmClient.Smartcar.ChargeStatus(
-            isPluggedIn: response.hasIsPluggedIn ? response.isPluggedIn : nil,
-            state: response.hasState ? response.state : nil
-        )
-    }
-
-    func smartcarTeslaInteriorTemperature(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.Temperature {
-        let response: SmartcarTemperature = try await smartcarRead(
-            .teslaInteriorTemperature,
-            vehicleID: vehicleID,
-            make: make
-        )
-        return WasmClient.Smartcar.Temperature(celsius: response.hasCelsius ? response.celsius : nil)
-    }
-
-    func smartcarTeslaExteriorTemperature(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.Temperature {
-        let response: SmartcarTemperature = try await smartcarRead(
-            .teslaExteriorTemperature,
-            vehicleID: vehicleID,
-            make: make
-        )
-        return WasmClient.Smartcar.Temperature(celsius: response.hasCelsius ? response.celsius : nil)
-    }
-
-    func smartcarTeslaGetCabinClimate(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.CabinClimate {
-        let response: SmartcarCabinClimate = try await smartcarRead(
-            .teslaGetCabinClimate,
-            vehicleID: vehicleID,
-            make: make
-        )
-        return WasmClient.Smartcar.CabinClimate(
-            on: response.hasOn ? response.on : nil,
-            temperatureCelsius: response.hasTemperatureCelsius ? response.temperatureCelsius : nil
-        )
-    }
-
-    func smartcarTeslaGetDefroster(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.ToggleState {
-        let response: SmartcarToggleState = try await smartcarRead(
-            .teslaGetDefroster,
-            vehicleID: vehicleID,
-            make: make
-        )
-        return WasmClient.Smartcar.ToggleState(on: response.hasOn ? response.on : nil)
-    }
-
-    func smartcarTeslaGetSteeringWheel(
-        vehicleID: String,
-        make: String
-    ) async throws -> WasmClient.Smartcar.ToggleState {
-        let response: SmartcarToggleState = try await smartcarRead(
-            .teslaGetSteeringWheel,
-            vehicleID: vehicleID,
-            make: make
-        )
-        return WasmClient.Smartcar.ToggleState(on: response.hasOn ? response.on : nil)
-    }
 }
 
-// MARK: - Controls
+// MARK: - Generic Reads & Controls
 
 extension WasmActor {
 
-    func smartcarSetChargeLimit(
+    /// Any vehicle-scoped GET method → a lossless value map. Decodes into the
+    /// method's concrete proto (the proven `run` path) and reflects it to
+    /// `[String: Value]`, so nested arrays/objects survive and keys are the
+    /// proto's deterministic camelCase json names. An unmapped method falls back
+    /// to a best-effort `Struct` decode, so a brand-new read still returns data.
+    func smartcarRead(
+        method: WasmClient.Smartcar.Method,
         vehicleID: String,
-        action: WasmClient.Smartcar.ChargeAction
-    ) async throws -> WasmClient.Smartcar.ControlResponse {
-        try await smartcarControl(.setChargeLimit, vehicleID: vehicleID, action: action.rawValue)
+        make: String
+    ) async throws -> [String: WasmClient.Smartcar.Value] {
+        switch method {
+            case .getOdometer:
+                return try await readReflected(SmartcarOdometer.self, method: method, vehicleID: vehicleID, make: make)
+            case .getBatteryLevel, .teslaBatteryStatus:
+                return try await readReflected(
+                    SmartcarBatteryLevel.self,
+                    method: method,
+                    vehicleID: vehicleID,
+                    make: make
+                )
+            case .getChargeLimit:
+                return try await readReflected(
+                    SmartcarChargeLimit.self,
+                    method: method,
+                    vehicleID: vehicleID,
+                    make: make
+                )
+            case .getNominalCapacity:
+                return try await readReflected(
+                    SmartcarNominalCapacity.self,
+                    method: method,
+                    vehicleID: vehicleID,
+                    make: make
+                )
+            case .getLockStatus:
+                return try await readReflected(
+                    SmartcarLockStatus.self,
+                    method: method,
+                    vehicleID: vehicleID,
+                    make: make
+                )
+            case .getTiresPressure:
+                return try await readReflected(
+                    SmartcarTirePressure.self,
+                    method: method,
+                    vehicleID: vehicleID,
+                    make: make
+                )
+            case .getOilLife:
+                return try await readReflected(SmartcarEngineOil.self, method: method, vehicleID: vehicleID, make: make)
+            case .getSpeedometer:
+                return try await readReflected(
+                    SmartcarSpeedometer.self,
+                    method: method,
+                    vehicleID: vehicleID,
+                    make: make
+                )
+            case .teslaVehicleStatus:
+                return try await readReflected(
+                    SmartcarVehicleStatus.self,
+                    method: method,
+                    vehicleID: vehicleID,
+                    make: make
+                )
+            case .teslaChargeStatus:
+                return try await readReflected(
+                    SmartcarChargeStatus.self,
+                    method: method,
+                    vehicleID: vehicleID,
+                    make: make
+                )
+            case .teslaInteriorTemperature, .teslaExteriorTemperature:
+                return try await readReflected(
+                    SmartcarTemperature.self,
+                    method: method,
+                    vehicleID: vehicleID,
+                    make: make
+                )
+            case .teslaGetCabinClimate:
+                return try await readReflected(
+                    SmartcarCabinClimate.self,
+                    method: method,
+                    vehicleID: vehicleID,
+                    make: make
+                )
+            case .teslaGetDefroster, .teslaGetSteeringWheel:
+                return try await readReflected(
+                    SmartcarToggleState.self,
+                    method: method,
+                    vehicleID: vehicleID,
+                    make: make
+                )
+            default:
+                let instance = try await readyEngine()
+                let response: Google_Protobuf_Struct = try await instance.run(
+                    method: method.rawValue,
+                    args: Self.vehicleArgs(vehicleID: vehicleID, make: make)
+                )
+                return Self.mapValues(response)
+        }
     }
 
-    func smartcarSetCabinClimate(
+    /// Decodes a read into its concrete proto, then reflects it to a value map
+    /// via a JSON round-trip — keeping nested fields and yielding deterministic
+    /// camelCase keys, independent of how the engine encodes the wire response.
+    private func readReflected<Response: SwiftProtobuf.Message>(
+        _ type: Response.Type,
+        method: WasmClient.Smartcar.Method,
         vehicleID: String,
-        action: WasmClient.Smartcar.ClimateAction,
-        temperatureCelsius: Double
-    ) async throws -> WasmClient.Smartcar.ControlResponse {
-        let instance = try await readyEngine()
-        var args = Self.controlArgs(vehicleID: vehicleID, action: action.rawValue)
-        args["temperature_celsius"] = Google_Protobuf_Value(numberValue: temperatureCelsius)
-        let response: SmartcarControlResponse = try await instance.run(
-            method: WasmClient.SmartcarMethod.setCabinClimate.rawValue,
-            args: args
-        )
-        return Self.mapControlResponse(response)
+        make: String
+    ) async throws -> [String: WasmClient.Smartcar.Value] {
+        let typed: Response = try await runVehicleRead(method, vehicleID: vehicleID, make: make)
+        let json = try typed.jsonUTF8Data()
+        return Self.mapValues(try Google_Protobuf_Struct(jsonUTF8Data: json))
     }
 
-    func smartcarSetDefroster(
+    /// Any SET/command method + wire args → the backend's control acknowledgement.
+    func smartcarControl(
+        method: WasmClient.Smartcar.Method,
         vehicleID: String,
-        action: WasmClient.Smartcar.DefrosterAction
-    ) async throws -> WasmClient.Smartcar.ControlResponse {
-        try await smartcarControl(.setDefroster, vehicleID: vehicleID, action: action.rawValue)
-    }
-
-    func smartcarSetSteeringWheel(
-        vehicleID: String,
-        action: WasmClient.Smartcar.HeaterAction
-    ) async throws -> WasmClient.Smartcar.ControlResponse {
-        try await smartcarControl(.setSteeringWheel, vehicleID: vehicleID, action: action.rawValue)
-    }
-
-    func smartcarSetSecurity(
-        vehicleID: String,
-        action: WasmClient.Smartcar.SecurityAction
-    ) async throws -> WasmClient.Smartcar.ControlResponse {
-        try await smartcarControl(.setSecurity, vehicleID: vehicleID, action: action.rawValue)
-    }
-
-    private func smartcarControl(
-        _ method: WasmClient.SmartcarMethod,
-        vehicleID: String,
-        action: String
+        args: [String: WasmClient.Smartcar.Value]
     ) async throws -> WasmClient.Smartcar.ControlResponse {
         let instance = try await readyEngine()
         let response: SmartcarControlResponse = try await instance.run(
             method: method.rawValue,
-            args: Self.controlArgs(vehicleID: vehicleID, action: action)
+            args: Self.controlArgs(vehicleID: vehicleID, extra: args)
         )
         return Self.mapControlResponse(response)
     }
@@ -366,9 +265,9 @@ extension WasmActor {
         if !vin.isEmpty {
             args["vin"] = Google_Protobuf_Value(stringValue: vin)
         }
-        logger("lookupVin: dispatch method=\(WasmClient.SmartcarMethod.lookupVin.rawValue) vin=\(vin)")
+        logger("lookupVin: dispatch method=\(WasmClient.Smartcar.Method.lookupVin.rawValue) vin=\(vin)")
         let vehicle: SmartcarVehicle = try await instance.run(
-            method: WasmClient.SmartcarMethod.lookupVin.rawValue,
+            method: WasmClient.Smartcar.Method.lookupVin.rawValue,
             args: args
         )
         return Self.mapVehicle(vehicle)
@@ -379,9 +278,10 @@ extension WasmActor {
 
 extension WasmActor {
 
-    /// Runs one vehicle-scoped read that takes only `vehicle_id` + `make`.
-    private func smartcarRead<Response: SwiftProtobuf.Message>(
-        _ method: WasmClient.SmartcarMethod,
+    /// Runs one vehicle-scoped read that takes only `vehicle_id` + `make`,
+    /// decoding into a specific proto (used by the kept typed reads).
+    private func runVehicleRead<Response: SwiftProtobuf.Message>(
+        _ method: WasmClient.Smartcar.Method,
         vehicleID: String,
         make: String
     ) async throws -> Response {
@@ -408,14 +308,14 @@ extension WasmActor {
 
     private static func controlArgs(
         vehicleID: String,
-        action: String
+        extra: [String: WasmClient.Smartcar.Value]
     ) -> [String: Google_Protobuf_Value] {
         var args: [String: Google_Protobuf_Value] = [:]
         if !vehicleID.isEmpty {
             args["vehicle_id"] = Google_Protobuf_Value(stringValue: vehicleID)
         }
-        if !action.isEmpty {
-            args["action"] = Google_Protobuf_Value(stringValue: action)
+        for (key, value) in extra {
+            args[key] = wireValue(value)
         }
         return args
     }
@@ -427,7 +327,7 @@ extension WasmActor {
 
     static func mapVehicle(_ vehicle: SmartcarVehicle) -> WasmClient.Smartcar.Vehicle {
         WasmClient.Smartcar.Vehicle(
-            vin: vehicle.vehicleID,
+            identifier: vehicle.vehicleID,
             make: vehicle.make,
             model: vehicle.model,
             year: vehicle.year,
@@ -457,41 +357,8 @@ extension WasmActor {
         )
     }
 
-    private static func mapAccountList(_ list: SmartcarAccountList) -> WasmClient.Smartcar.AccountList {
-        WasmClient.Smartcar.AccountList(
-            accounts: list.accounts.map { WasmClient.Smartcar.Account(userID: $0.userID, label: $0.label) }
-        )
-    }
-
-    private static func mapBatteryLevel(_ battery: SmartcarBatteryLevel) -> WasmClient.Smartcar.BatteryLevel {
-        WasmClient.Smartcar.BatteryLevel(
-            percentRemaining: battery.hasPercentRemaining ? battery.percentRemaining : nil,
-            rangeKm: battery.hasRangeKm ? battery.rangeKm : nil
-        )
-    }
-
-    private static func mapLockStatus(_ lock: SmartcarLockStatus) -> WasmClient.Smartcar.LockStatus {
-        WasmClient.Smartcar.LockStatus(
-            isLocked: lock.hasIsLocked ? lock.isLocked : nil,
-            doors: lock.doors.map(mapClosure),
-            windows: lock.windows.map(mapClosure),
-            sunroof: lock.sunroof.map(mapClosure),
-            storage: lock.storage.map(mapClosure),
-            chargingPort: lock.chargingPort.map(mapClosure)
-        )
-    }
-
-    private static func mapClosure(_ closure: SmartcarClosureStatus) -> WasmClient.Smartcar.ClosureStatus {
-        WasmClient.Smartcar.ClosureStatus(type: closure.type, status: closure.status)
-    }
-
-    private static func mapTirePressure(_ tires: SmartcarTirePressure) -> WasmClient.Smartcar.TirePressure {
-        WasmClient.Smartcar.TirePressure(
-            frontLeftKpa: tires.hasFrontLeftKpa ? tires.frontLeftKpa : nil,
-            frontRightKpa: tires.hasFrontRightKpa ? tires.frontRightKpa : nil,
-            backLeftKpa: tires.hasBackLeftKpa ? tires.backLeftKpa : nil,
-            backRightKpa: tires.hasBackRightKpa ? tires.backRightKpa : nil
-        )
+    private static func mapAccountList(_ list: SmartcarAccountList) -> [WasmClient.Smartcar.Account] {
+        list.accounts.map { WasmClient.Smartcar.Account(userID: $0.userID, label: $0.label) }
     }
 
     private static func mapControlResponse(_ response: SmartcarControlResponse) -> WasmClient.Smartcar.ControlResponse {
@@ -521,6 +388,53 @@ extension WasmActor {
                 return String(bool)
             default:
                 return nil
+        }
+    }
+
+    /// Maps a generic read response `Struct` into the public `[String: Value]`.
+    private static func mapValues(_ structValue: Google_Protobuf_Struct) -> [String: WasmClient.Smartcar.Value] {
+        structValue.fields.reduce(into: [:]) { result, entry in
+            result[entry.key] = mapValue(entry.value)
+        }
+    }
+
+    private static func mapValue(_ value: Google_Protobuf_Value) -> WasmClient.Smartcar.Value {
+        switch value.kind {
+            case .stringValue(let string):
+                return .string(string)
+            case .numberValue(let number):
+                return .number(number)
+            case .boolValue(let bool):
+                return .bool(bool)
+            case .listValue(let list):
+                return .array(list.values.map(mapValue))
+            case .structValue(let structValue):
+                return .object(mapValues(structValue))
+            case .nullValue, .none:
+                return .null
+        }
+    }
+
+    private static func wireValue(_ value: WasmClient.Smartcar.Value) -> Google_Protobuf_Value {
+        switch value {
+            case .string(let string):
+                return Google_Protobuf_Value(stringValue: string)
+            case .number(let number):
+                return Google_Protobuf_Value(numberValue: number)
+            case .bool(let bool):
+                return Google_Protobuf_Value(boolValue: bool)
+            case .array(let values):
+                var wire = Google_Protobuf_Value()
+                wire.listValue.values = values.map(wireValue)
+                return wire
+            case .object(let fields):
+                var wire = Google_Protobuf_Value()
+                wire.structValue.fields = fields.mapValues(wireValue)
+                return wire
+            case .null:
+                var value = Google_Protobuf_Value()
+                value.nullValue = .nullValue
+                return value
         }
     }
 }

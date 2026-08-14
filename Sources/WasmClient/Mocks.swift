@@ -26,6 +26,47 @@ private enum MockConstants {
     static let longDelay: UInt64 = 1_500_000_000
 }
 
+// MARK: - Smartcar mock reading
+
+/// Sample generic read payload per method, keyed by the same wire field names the
+/// live `Struct` decode produces, so downstream TCA tests see believable data.
+private func mockSmartcarReading(
+    for method: WasmClient.Smartcar.Method
+) -> [String: WasmClient.Smartcar.Value] {
+    switch method {
+        case .getOdometer:
+            ["distanceKm": .number(34_512.7)]
+        case .getBatteryLevel, .teslaBatteryStatus:
+            ["percentRemaining": .number(0.72), "rangeKm": .number(310.5)]
+        case .getChargeLimit:
+            ["limit": .number(0.8)]
+        case .getNominalCapacity:
+            ["capacityKwh": .number(57.5)]
+        case .getTiresPressure:
+            [
+                "frontLeftKpa": .number(240),
+                "frontRightKpa": .number(241),
+                "backLeftKpa": .number(238),
+                "backRightKpa": .number(239),
+            ]
+        case .getSpeedometer:
+            ["speedKph": .number(0)]
+        case .getLockStatus:
+            [
+                "isLocked": .bool(true),
+                "doors": .array([
+                    .object(["type": .string("frontLeft"), "status": .string("LOCKED")]),
+                    .object(["type": .string("frontRight"), "status": .string("UNLOCKED")]),
+                ]),
+                "windows": .array([
+                    .object(["type": .string("frontLeft"), "status": .string("CLOSED")])
+                ]),
+            ]
+        default:
+            [:]
+    }
+}
+
 // MARK: - Mock Implementations
 
 extension WasmClient {
@@ -49,33 +90,14 @@ extension WasmClient {
         lookupVin: { _ in Smartcar.Vehicle() },
         smartcarConnectConfig: { _ in Smartcar.ConnectConfig() },
         smartcarHostedConnectEvent: { _, _ in Smartcar.HostedConnectDecision() },
-        smartcarAccounts: { Smartcar.AccountList() },
-        smartcarSwitchAccount: { _ in Smartcar.AccountList() },
-        smartcarDeleteAccount: { _ in Smartcar.AccountList() },
+        smartcarAccounts: { [] },
+        smartcarSwitchAccount: { _ in [] },
+        smartcarDeleteAccount: { _ in [] },
         smartcarAllVehicles: { _, _ in [] },
-        smartcarGetOdometer: { _, _ in Smartcar.Odometer() },
-        smartcarGetBatteryLevel: { _, _ in Smartcar.BatteryLevel() },
-        smartcarGetChargeLimit: { _, _ in Smartcar.ChargeLimit() },
-        smartcarGetNominalCapacity: { _, _ in Smartcar.NominalCapacity() },
-        smartcarGetLockStatus: { _, _ in Smartcar.LockStatus() },
-        smartcarGetTiresPressure: { _, _ in Smartcar.TirePressure() },
-        smartcarGetOilLife: { _, _ in Smartcar.EngineOil() },
-        smartcarGetPermissions: { _, _ in Smartcar.Permissions() },
-        smartcarGetSpeedometer: { _, _ in Smartcar.Speedometer() },
-        smartcarTeslaVehicleStatus: { _, _ in Smartcar.VehicleStatus() },
+        smartcarGetPermissions: { _, _ in [] },
         smartcarTeslaVehicleAttributes: { _, _ in Smartcar.Vehicle() },
-        smartcarTeslaBatteryStatus: { _, _ in Smartcar.BatteryLevel() },
-        smartcarTeslaChargeStatus: { _, _ in Smartcar.ChargeStatus() },
-        smartcarTeslaInteriorTemperature: { _, _ in Smartcar.Temperature() },
-        smartcarTeslaExteriorTemperature: { _, _ in Smartcar.Temperature() },
-        smartcarTeslaGetCabinClimate: { _, _ in Smartcar.CabinClimate() },
-        smartcarTeslaGetDefroster: { _, _ in Smartcar.ToggleState() },
-        smartcarTeslaGetSteeringWheel: { _, _ in Smartcar.ToggleState() },
-        smartcarSetChargeLimit: { _, _ in Smartcar.ControlResponse() },
-        smartcarSetCabinClimate: { _, _, _ in Smartcar.ControlResponse() },
-        smartcarSetDefroster: { _, _ in Smartcar.ControlResponse() },
-        smartcarSetSteeringWheel: { _, _ in Smartcar.ControlResponse() },
-        smartcarSetSecurity: { _, _ in Smartcar.ControlResponse() },
+        smartcarRead: { _, _, _ in [:] },
+        smartcarControl: { _, _, _ in Smartcar.ControlResponse() },
         uploadImage: { _ in "" },
         uploadFile: { _, _ in "" },
         chatModels: { _, _, _, _ in ([], 0) },
@@ -248,7 +270,7 @@ extension WasmClient {
         },
         lookupVin: { vin in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return Smartcar.Vehicle(vin: vin, make: "Toyota", model: "Camry", year: "2021")
+            return Smartcar.Vehicle(identifier: vin, make: "Toyota", model: "Camry", year: "2021")
         },
         smartcarConnectConfig: { mode in
             Smartcar.ConnectConfig(
@@ -265,44 +287,25 @@ extension WasmClient {
                 : Smartcar.HostedConnectDecision(action: .continue)
         },
         smartcarAccounts: {
-            Smartcar.AccountList(accounts: [Smartcar.Account(userID: "mock-user-id", label: "Mock Tesla")])
+            [Smartcar.Account(userID: "mock-user-id", label: "Mock Tesla")]
         },
         smartcarSwitchAccount: { userID in
-            Smartcar.AccountList(accounts: [Smartcar.Account(userID: userID, label: "Mock Tesla")])
+            [Smartcar.Account(userID: userID, label: "Mock Tesla")]
         },
-        smartcarDeleteAccount: { _ in Smartcar.AccountList() },
+        smartcarDeleteAccount: { _ in [] },
         smartcarAllVehicles: { _, _ in
-            [Smartcar.Vehicle(vin: "5YJ3E1EA7KF000000", make: "TESLA", model: "Model 3", year: "2022")]
+            [Smartcar.Vehicle(identifier: "5YJ3E1EA7KF000000", make: "TESLA", model: "Model 3", year: "2022")]
         },
-        smartcarGetOdometer: { _, _ in Smartcar.Odometer(distanceKm: 34_512.7) },
-        smartcarGetBatteryLevel: { _, _ in Smartcar.BatteryLevel(percentRemaining: 0.72, rangeKm: 310.5) },
-        smartcarGetChargeLimit: { _, _ in Smartcar.ChargeLimit(limit: 0.8) },
-        smartcarGetNominalCapacity: { _, _ in Smartcar.NominalCapacity(capacityKwh: 57.5) },
-        smartcarGetLockStatus: { _, _ in Smartcar.LockStatus(isLocked: true) },
-        smartcarGetTiresPressure: { _, _ in
-            Smartcar.TirePressure(frontLeftKpa: 240, frontRightKpa: 241, backLeftKpa: 238, backRightKpa: 239)
-        },
-        smartcarGetOilLife: { _, _ in Smartcar.EngineOil() },
         smartcarGetPermissions: { _, _ in
-            Smartcar.Permissions(permissions: ["read_odometer", "read_battery", "read_charge", "read_tires"])
+            [.readOdometer, .readBattery, .readCharge, .readTires]
         },
-        smartcarGetSpeedometer: { _, _ in Smartcar.Speedometer(speedKph: 0) },
-        smartcarTeslaVehicleStatus: { _, _ in Smartcar.VehicleStatus(status: "asleep") },
         smartcarTeslaVehicleAttributes: { _, _ in
-            Smartcar.Vehicle(vin: "5YJ3E1EA7KF000000", make: "TESLA", model: "Model 3", year: "2022")
+            Smartcar.Vehicle(identifier: "5YJ3E1EA7KF000000", make: "TESLA", model: "Model 3", year: "2022")
         },
-        smartcarTeslaBatteryStatus: { _, _ in Smartcar.BatteryLevel(percentRemaining: 0.72, rangeKm: 310.5) },
-        smartcarTeslaChargeStatus: { _, _ in Smartcar.ChargeStatus(isPluggedIn: false, state: "NOT_CHARGING") },
-        smartcarTeslaInteriorTemperature: { _, _ in Smartcar.Temperature(celsius: 21.5) },
-        smartcarTeslaExteriorTemperature: { _, _ in Smartcar.Temperature(celsius: 18.0) },
-        smartcarTeslaGetCabinClimate: { _, _ in Smartcar.CabinClimate(on: false, temperatureCelsius: 22.0) },
-        smartcarTeslaGetDefroster: { _, _ in Smartcar.ToggleState(on: false) },
-        smartcarTeslaGetSteeringWheel: { _, _ in Smartcar.ToggleState(on: false) },
-        smartcarSetChargeLimit: { _, action in Smartcar.ControlResponse(action: action.rawValue) },
-        smartcarSetCabinClimate: { _, action, _ in Smartcar.ControlResponse(action: action.rawValue) },
-        smartcarSetDefroster: { _, action in Smartcar.ControlResponse(action: action.rawValue) },
-        smartcarSetSteeringWheel: { _, action in Smartcar.ControlResponse(action: action.rawValue) },
-        smartcarSetSecurity: { _, action in Smartcar.ControlResponse(action: action.rawValue) },
+        smartcarRead: { method, _, _ in mockSmartcarReading(for: method) },
+        smartcarControl: { _, _, args in
+            Smartcar.ControlResponse(action: args["action"]?.stringValue ?? "OK")
+        },
         uploadImage: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return "https://example.com/mock-image.jpg"

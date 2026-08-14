@@ -7,29 +7,27 @@ extension WasmClient {
 }
 
 extension WasmClient.Smartcar {
-    /// One vehicle decoded from a VIN via the public NHTSA vPIC service.
-    ///
-    /// `vin` maps from the wire `SmartcarVehicle.vehicleID`; `extra` flattens the
-    /// backend's open-ended `Struct` of raw vPIC fields into `[String: String]`.
+    /// One vehicle: from a VIN decode (`lookupVin`) or a connected account.
+    /// `identifier` is the VIN for a decode, the Smartcar vehicle UUID otherwise.
     public struct Vehicle: Sendable, Equatable, Identifiable {
         public var id: String {
-            vin
+            identifier
         }
 
-        public var vin: String
+        public var identifier: String
         public var make: String
         public var model: String
         public var year: String
         public var extra: [String: String]
 
         public init(
-            vin: String = "",
+            identifier: String = "",
             make: String = "",
             model: String = "",
             year: String = "",
             extra: [String: String] = [:]
         ) {
-            self.vin = vin
+            self.identifier = identifier
             self.make = make
             self.model = model
             self.year = year
@@ -113,8 +111,8 @@ extension WasmClient.Smartcar {
         }
     }
 
-    /// One locally cached connected account. The first account in `AccountList`
-    /// is the active one that reads/controls use.
+    /// One locally cached connected account. The first account in the returned
+    /// `[Account]` is the active one that reads/controls use.
     public struct Account: Sendable, Equatable, Identifiable {
         public var id: String {
             userID
@@ -131,236 +129,116 @@ extension WasmClient.Smartcar {
             self.label = label
         }
     }
+}
 
-    public struct AccountList: Sendable, Equatable {
-        public var accounts: [Account]
+// MARK: - Generic Reading Value
 
-        public init(accounts: [Account] = []) {
-            self.accounts = accounts
+extension WasmClient.Smartcar {
+    /// One field value in a generic read payload (`[String: Value]`). A closed,
+    /// fully recursive JSON variant (scalars + nested array/object), so an `enum`
+    /// — unlike the open wire vocabularies Scope/method. Recursive cases keep a
+    /// read lossless when a make returns nested data (e.g. lock closure arrays).
+    public enum Value: Sendable, Equatable, Hashable {
+        case string(String)
+        case number(Double)
+        case bool(Bool)
+        case array([Value])
+        case object([String: Value])
+        case null
+
+        public var stringValue: String? {
+            if case .string(let value) = self { value } else { nil }
+        }
+
+        public var doubleValue: Double? {
+            if case .number(let value) = self { value } else { nil }
+        }
+
+        public var boolValue: Bool? {
+            if case .bool(let value) = self { value } else { nil }
+        }
+
+        public var arrayValue: [Value]? {
+            if case .array(let value) = self { value } else { nil }
+        }
+
+        public var objectValue: [String: Value]? {
+            if case .object(let value) = self { value } else { nil }
         }
     }
 }
 
-// MARK: - Universal Reads
+// MARK: - Capability (permission ↔ read/control method)
 
 extension WasmClient.Smartcar {
-    /// Total distance traveled. `nil` means the vehicle did not report it.
-    public struct Odometer: Sendable, Equatable {
-        public var distanceKm: Double?
-
-        public init(distanceKm: Double? = nil) {
-            self.distanceKm = distanceKm
-        }
-    }
-
-    /// EV battery state of charge and estimated range.
-    public struct BatteryLevel: Sendable, Equatable {
-        public var percentRemaining: Double?
-        public var rangeKm: Double?
+    /// Pairs a permission with the wire methods that set it and read it back.
+    public struct Capability: Sendable, Equatable {
+        public let permission: Permission
+        public let controlMethod: Method
+        public let readMethod: Method
 
         public init(
-            percentRemaining: Double? = nil,
-            rangeKm: Double? = nil
+            permission: Permission,
+            controlMethod: Method,
+            readMethod: Method
         ) {
-            self.percentRemaining = percentRemaining
-            self.rangeKm = rangeKm
+            self.permission = permission
+            self.controlMethod = controlMethod
+            self.readMethod = readMethod
         }
-    }
 
-    /// Configured EV charge target as a fraction in [0, 1].
-    public struct ChargeLimit: Sendable, Equatable {
-        public var limit: Double?
-
-        public init(limit: Double? = nil) {
-            self.limit = limit
-        }
-    }
-
-    /// EV charge status: cable plugged-in flag and charging-state label.
-    public struct ChargeStatus: Sendable, Equatable {
-        public var isPluggedIn: Bool?
-        public var state: String?
-
-        public init(
-            isPluggedIn: Bool? = nil,
-            state: String? = nil
-        ) {
-            self.isPluggedIn = isPluggedIn
-            self.state = state
-        }
-    }
-
-    /// Rated (nominal) EV battery capacity, in kilowatt-hours.
-    public struct NominalCapacity: Sendable, Equatable {
-        public var capacityKwh: Double?
-
-        public init(capacityKwh: Double? = nil) {
-            self.capacityKwh = capacityKwh
-        }
-    }
-
-    /// Tire pressures by corner, in kilopascals.
-    public struct TirePressure: Sendable, Equatable {
-        public var frontLeftKpa: Double?
-        public var frontRightKpa: Double?
-        public var backLeftKpa: Double?
-        public var backRightKpa: Double?
-
-        public init(
-            frontLeftKpa: Double? = nil,
-            frontRightKpa: Double? = nil,
-            backLeftKpa: Double? = nil,
-            backRightKpa: Double? = nil
-        ) {
-            self.frontLeftKpa = frontLeftKpa
-            self.frontRightKpa = frontRightKpa
-            self.backLeftKpa = backLeftKpa
-            self.backRightKpa = backRightKpa
-        }
-    }
-
-    /// One closure's open/close state (door, window, sunroof, storage, port).
-    public struct ClosureStatus: Sendable, Equatable {
-        public var type: String
-        public var status: String
-
-        public init(
-            type: String = "",
-            status: String = ""
-        ) {
-            self.type = type
-            self.status = status
-        }
-    }
-
-    /// Lock status. The default backend may report only `isLocked`, leaving the
-    /// closure arrays empty.
-    public struct LockStatus: Sendable, Equatable {
-        public var isLocked: Bool?
-        public var doors: [ClosureStatus]
-        public var windows: [ClosureStatus]
-        public var sunroof: [ClosureStatus]
-        public var storage: [ClosureStatus]
-        public var chargingPort: [ClosureStatus]
-
-        public init(
-            isLocked: Bool? = nil,
-            doors: [ClosureStatus] = [],
-            windows: [ClosureStatus] = [],
-            sunroof: [ClosureStatus] = [],
-            storage: [ClosureStatus] = [],
-            chargingPort: [ClosureStatus] = []
-        ) {
-            self.isLocked = isLocked
-            self.doors = doors
-            self.windows = windows
-            self.sunroof = sunroof
-            self.storage = storage
-            self.chargingPort = chargingPort
-        }
-    }
-
-    /// Remaining engine-oil life as a fraction in [0, 1] (ICE/hybrid only).
-    public struct EngineOil: Sendable, Equatable {
-        public var lifeRemaining: Double?
-
-        public init(lifeRemaining: Double? = nil) {
-            self.lifeRemaining = lifeRemaining
-        }
-    }
-
-    /// Current vehicle speed, in kilometers per hour.
-    public struct Speedometer: Sendable, Equatable {
-        public var speedKph: Double?
-
-        public init(speedKph: Double? = nil) {
-            self.speedKph = speedKph
-        }
+        public static let charge = Capability(
+            permission: .controlCharge,
+            controlMethod: .setChargeLimit,
+            readMethod: .getChargeLimit
+        )
+        public static let security = Capability(
+            permission: .controlSecurity,
+            controlMethod: .setSecurity,
+            readMethod: .getLockStatus
+        )
+        public static let cabinClimate = Capability(
+            permission: .controlClimate,
+            controlMethod: .setCabinClimate,
+            readMethod: .teslaGetCabinClimate
+        )
+        public static let defroster = Capability(
+            permission: .controlClimate,
+            controlMethod: .setDefroster,
+            readMethod: .teslaGetDefroster
+        )
+        public static let steeringWheel = Capability(
+            permission: .controlClimate,
+            controlMethod: .setSteeringWheel,
+            readMethod: .teslaGetSteeringWheel
+        )
     }
 }
 
-// MARK: - Permissions (capability)
+// MARK: - Permission (granted vehicle capability)
 
 extension WasmClient.Smartcar {
-    /// A Smartcar scope string granted to a vehicle. `rawValue` IS the wire
-    /// scope; unknown scopes from a newer backend round-trip losslessly.
-    public struct Scope: RawRepresentable, Sendable, Equatable, Hashable {
+    /// A Smartcar scope granted to a vehicle. `rawValue` IS the wire scope;
+    /// unknown scopes from a newer backend round-trip losslessly. The granted set
+    /// is a plain `[Permission]` — membership is `Array.contains(_:)`.
+    public struct Permission: RawRepresentable, Sendable, Equatable, Hashable {
         public let rawValue: String
 
         public init(rawValue: String) {
             self.rawValue = rawValue
         }
 
-        public static let readOdometer = Scope(rawValue: "read_odometer")
-        public static let readBattery = Scope(rawValue: "read_battery")
-        public static let readCharge = Scope(rawValue: "read_charge")
-        public static let readTires = Scope(rawValue: "read_tires")
-        public static let readEngineOil = Scope(rawValue: "read_engine_oil")
-        public static let readSpeedometer = Scope(rawValue: "read_speedometer")
-        public static let readSecurity = Scope(rawValue: "read_security")
-        public static let readVehicleInfo = Scope(rawValue: "read_vehicle_info")
-        public static let controlCharge = Scope(rawValue: "control_charge")
-        public static let controlClimate = Scope(rawValue: "control_climate")
-        public static let controlSecurity = Scope(rawValue: "control_security")
-    }
-
-    /// Scopes the backend reports as granted for one vehicle — the answer to
-    /// "what can this connected vehicle read/control".
-    public struct Permissions: Sendable, Equatable {
-        public var permissions: [String]
-
-        public init(permissions: [String] = []) {
-            self.permissions = permissions
-        }
-
-        public func contains(_ scope: Scope) -> Bool {
-            permissions.contains(scope.rawValue)
-        }
-    }
-}
-
-// MARK: - Vendor-scoped (Tesla) Reads
-
-extension WasmClient.Smartcar {
-    /// A single temperature reading, in degrees Celsius.
-    public struct Temperature: Sendable, Equatable {
-        public var celsius: Double?
-
-        public init(celsius: Double? = nil) {
-            self.celsius = celsius
-        }
-    }
-
-    /// Cabin climate (HVAC) on/off state and current target temperature.
-    public struct CabinClimate: Sendable, Equatable {
-        public var on: Bool?
-        public var temperatureCelsius: Double?
-
-        public init(
-            on: Bool? = nil,
-            temperatureCelsius: Double? = nil
-        ) {
-            self.on = on
-            self.temperatureCelsius = temperatureCelsius
-        }
-    }
-
-    /// A vendor-scoped on/off accessory state (defroster, steering-wheel heater).
-    public struct ToggleState: Sendable, Equatable {
-        public var on: Bool?
-
-        public init(on: Bool? = nil) {
-            self.on = on
-        }
-    }
-
-    /// Free-form vehicle status label, passed through as reported.
-    public struct VehicleStatus: Sendable, Equatable {
-        public var status: String?
-
-        public init(status: String? = nil) {
-            self.status = status
-        }
+        public static let readOdometer = Permission(rawValue: "read_odometer")
+        public static let readBattery = Permission(rawValue: "read_battery")
+        public static let readCharge = Permission(rawValue: "read_charge")
+        public static let readTires = Permission(rawValue: "read_tires")
+        public static let readEngineOil = Permission(rawValue: "read_engine_oil")
+        public static let readSpeedometer = Permission(rawValue: "read_speedometer")
+        public static let readSecurity = Permission(rawValue: "read_security")
+        public static let readVehicleInfo = Permission(rawValue: "read_vehicle_info")
+        public static let controlCharge = Permission(rawValue: "control_charge")
+        public static let controlClimate = Permission(rawValue: "control_climate")
+        public static let controlSecurity = Permission(rawValue: "control_security")
     }
 }
 

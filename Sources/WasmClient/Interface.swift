@@ -70,136 +70,41 @@ public struct WasmClient: Sendable {
             _ url: String, _ bodyText: String
         ) async throws -> WasmClient.Smartcar.HostedConnectDecision
 
-    public var smartcarAccounts: @Sendable () async throws -> WasmClient.Smartcar.AccountList
+    public var smartcarAccounts: @Sendable () async throws -> [WasmClient.Smartcar.Account]
 
     public var smartcarSwitchAccount:
         @Sendable (
             _ userID: String
-        ) async throws -> WasmClient.Smartcar.AccountList
+        ) async throws -> [WasmClient.Smartcar.Account]
 
     public var smartcarDeleteAccount:
         @Sendable (
             _ userID: String
-        ) async throws -> WasmClient.Smartcar.AccountList
+        ) async throws -> [WasmClient.Smartcar.Account]
 
     public var smartcarAllVehicles:
         @Sendable (
             _ vehicleID: String, _ make: String
         ) async throws -> [WasmClient.Smartcar.Vehicle]
 
-    public var smartcarGetOdometer:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.Odometer
-
-    public var smartcarGetBatteryLevel:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.BatteryLevel
-
-    public var smartcarGetChargeLimit:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.ChargeLimit
-
-    public var smartcarGetNominalCapacity:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.NominalCapacity
-
-    public var smartcarGetLockStatus:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.LockStatus
-
-    public var smartcarGetTiresPressure:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.TirePressure
-
-    public var smartcarGetOilLife:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.EngineOil
-
     public var smartcarGetPermissions:
         @Sendable (
             _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.Permissions
-
-    public var smartcarGetSpeedometer:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.Speedometer
-
-    public var smartcarTeslaVehicleStatus:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.VehicleStatus
+        ) async throws -> [WasmClient.Smartcar.Permission]
 
     public var smartcarTeslaVehicleAttributes:
         @Sendable (
             _ vehicleID: String, _ make: String
         ) async throws -> WasmClient.Smartcar.Vehicle
 
-    public var smartcarTeslaBatteryStatus:
+    public var smartcarRead:
         @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.BatteryLevel
+            _ method: WasmClient.Smartcar.Method, _ vehicleID: String, _ make: String
+        ) async throws -> [String: WasmClient.Smartcar.Value]
 
-    public var smartcarTeslaChargeStatus:
+    public var smartcarControl:
         @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.ChargeStatus
-
-    public var smartcarTeslaInteriorTemperature:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.Temperature
-
-    public var smartcarTeslaExteriorTemperature:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.Temperature
-
-    public var smartcarTeslaGetCabinClimate:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.CabinClimate
-
-    public var smartcarTeslaGetDefroster:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.ToggleState
-
-    public var smartcarTeslaGetSteeringWheel:
-        @Sendable (
-            _ vehicleID: String, _ make: String
-        ) async throws -> WasmClient.Smartcar.ToggleState
-
-    public var smartcarSetChargeLimit:
-        @Sendable (
-            _ vehicleID: String, _ action: WasmClient.Smartcar.ChargeAction
-        ) async throws -> WasmClient.Smartcar.ControlResponse
-
-    public var smartcarSetCabinClimate:
-        @Sendable (
-            _ vehicleID: String, _ action: WasmClient.Smartcar.ClimateAction, _ temperatureCelsius: Double
-        ) async throws -> WasmClient.Smartcar.ControlResponse
-
-    public var smartcarSetDefroster:
-        @Sendable (
-            _ vehicleID: String, _ action: WasmClient.Smartcar.DefrosterAction
-        ) async throws -> WasmClient.Smartcar.ControlResponse
-
-    public var smartcarSetSteeringWheel:
-        @Sendable (
-            _ vehicleID: String, _ action: WasmClient.Smartcar.HeaterAction
-        ) async throws -> WasmClient.Smartcar.ControlResponse
-
-    public var smartcarSetSecurity:
-        @Sendable (
-            _ vehicleID: String, _ action: WasmClient.Smartcar.SecurityAction
+            _ method: WasmClient.Smartcar.Method, _ vehicleID: String, _ args: [String: WasmClient.Smartcar.Value]
         ) async throws -> WasmClient.Smartcar.ControlResponse
 
     // MARK: - Blobstore

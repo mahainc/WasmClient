@@ -8,23 +8,23 @@ final class SmartcarTests: XCTestCase {
 
     func testServiceMethodWireStrings() {
         XCTAssertEqual(
-            WasmClient.SmartcarMethod.connectConfig.rawValue,
+            WasmClient.Smartcar.Method.connectConfig.rawValue,
             "asyncify.smartcar.SmartcarService/ConnectConfig"
         )
         XCTAssertEqual(
-            WasmClient.SmartcarMethod.getPermissions.rawValue,
+            WasmClient.Smartcar.Method.getPermissions.rawValue,
             "asyncify.smartcar.SmartcarService/GetPermissions"
         )
         XCTAssertEqual(
-            WasmClient.SmartcarMethod.allVehicles.rawValue,
+            WasmClient.Smartcar.Method.allVehicles.rawValue,
             "asyncify.smartcar.SmartcarService/AllVehicles"
         )
         XCTAssertEqual(
-            WasmClient.SmartcarMethod.setSecurity.rawValue,
+            WasmClient.Smartcar.Method.setSecurity.rawValue,
             "asyncify.smartcar.SmartcarService/SetSecurity"
         )
         XCTAssertEqual(
-            WasmClient.SmartcarMethod.teslaBatteryStatus.rawValue,
+            WasmClient.Smartcar.Method.teslaBatteryStatus.rawValue,
             "asyncify.smartcar.SmartcarService/TeslaBatteryStatus"
         )
     }
@@ -53,10 +53,8 @@ final class SmartcarTests: XCTestCase {
 
     // MARK: - Permissions capability
 
-    func testPermissionsContainsKnownScope() {
-        let permissions = WasmClient.Smartcar.Permissions(
-            permissions: ["read_odometer", "read_battery"]
-        )
+    func testGrantedPermissionsContainKnownScope() {
+        let permissions: [WasmClient.Smartcar.Permission] = [.readOdometer, .readBattery]
 
         XCTAssertTrue(permissions.contains(.readOdometer))
         XCTAssertTrue(permissions.contains(.readBattery))
@@ -64,18 +62,46 @@ final class SmartcarTests: XCTestCase {
         XCTAssertFalse(permissions.contains(.controlSecurity))
     }
 
-    func testScopeRawValues() {
-        XCTAssertEqual(WasmClient.Smartcar.Scope.readOdometer.rawValue, "read_odometer")
-        XCTAssertEqual(WasmClient.Smartcar.Scope.controlClimate.rawValue, "control_climate")
+    func testPermissionRawValues() {
+        XCTAssertEqual(WasmClient.Smartcar.Permission.readOdometer.rawValue, "read_odometer")
+        XCTAssertEqual(WasmClient.Smartcar.Permission.controlClimate.rawValue, "control_climate")
     }
 
-    // MARK: - Optional read semantics
+    // MARK: - Generic value
 
-    func testReadsDefaultToNilNotZero() {
-        XCTAssertNil(WasmClient.Smartcar.Odometer().distanceKm)
-        XCTAssertNil(WasmClient.Smartcar.BatteryLevel().percentRemaining)
-        XCTAssertNil(WasmClient.Smartcar.LockStatus().isLocked)
-        XCTAssertTrue(WasmClient.Smartcar.LockStatus().doors.isEmpty)
+    func testValueAccessorsUnwrapMatchingCase() {
+        XCTAssertEqual(WasmClient.Smartcar.Value.number(0.8).doubleValue, 0.8)
+        XCTAssertEqual(WasmClient.Smartcar.Value.string("LOCK").stringValue, "LOCK")
+        XCTAssertEqual(WasmClient.Smartcar.Value.bool(true).boolValue, true)
+        XCTAssertNil(WasmClient.Smartcar.Value.string("x").doubleValue)
+        XCTAssertNil(WasmClient.Smartcar.Value.null.boolValue)
+    }
+
+    func testValueCarriesNestedArrayAndObject() {
+        let nested = WasmClient.Smartcar.Value.array([
+            .object(["type": .string("frontLeft"), "status": .string("OPEN")])
+        ])
+        XCTAssertEqual(nested.arrayValue?.count, 1)
+        XCTAssertEqual(nested.arrayValue?.first?.objectValue?["status"]?.stringValue, "OPEN")
+        XCTAssertNil(nested.stringValue)
+        XCTAssertNil(WasmClient.Smartcar.Value.string("x").arrayValue)
+    }
+
+    // MARK: - Capability table
+
+    func testCapabilityPairsPermissionWithMethods() {
+        XCTAssertEqual(WasmClient.Smartcar.Capability.charge.permission, .controlCharge)
+        XCTAssertEqual(WasmClient.Smartcar.Capability.charge.controlMethod, .setChargeLimit)
+        XCTAssertEqual(WasmClient.Smartcar.Capability.charge.readMethod, .getChargeLimit)
+        XCTAssertEqual(WasmClient.Smartcar.Capability.security.readMethod, .getLockStatus)
+    }
+
+    // MARK: - Error
+
+    func testMissingPermissionErrorNamesPermission() {
+        let error = WasmClient.Error.missingPermission(permission: "control_charge")
+        XCTAssertEqual(error, .missingPermission(permission: "control_charge"))
+        XCTAssertTrue(error.errorDescription?.contains("control_charge") ?? false)
     }
 
     // MARK: - Mocks
@@ -87,7 +113,10 @@ final class SmartcarTests: XCTestCase {
         XCTAssertTrue(vehicles.isEmpty)
 
         let permissions = try await client.smartcarGetPermissions("", "")
-        XCTAssertTrue(permissions.permissions.isEmpty)
+        XCTAssertTrue(permissions.isEmpty)
+
+        let reading = try await client.smartcarRead(.getBatteryLevel, "", "")
+        XCTAssertTrue(reading.isEmpty)
     }
 
     func testHappyMockConnectsAndReportsCapability() async throws {
@@ -110,14 +139,29 @@ final class SmartcarTests: XCTestCase {
         let permissions = try await client.smartcarGetPermissions("veh-1", "TESLA")
         XCTAssertTrue(permissions.contains(.readBattery))
 
-        let battery = try await client.smartcarGetBatteryLevel("veh-1", "TESLA")
-        XCTAssertEqual(battery.percentRemaining, 0.72)
+        let battery = try await client.smartcarRead(.getBatteryLevel, "veh-1", "TESLA")
+        XCTAssertEqual(battery["percentRemaining"]?.doubleValue, 0.72)
     }
 
     func testHappyMockControlEchoesAction() async throws {
         let client = WasmClient.happy
 
-        let response = try await client.smartcarSetSecurity("veh-1", .lock)
+        let response = try await client.smartcarControl(
+            .setSecurity,
+            "veh-1",
+            ["action": .string("LOCK")]
+        )
         XCTAssertEqual(response.action, "LOCK")
+    }
+
+    func testLockStatusReadExposesNestedClosureArrays() async throws {
+        let client = WasmClient.happy
+
+        let lock = try await client.smartcarRead(.getLockStatus, "veh-1", "TESLA")
+        XCTAssertEqual(lock["isLocked"]?.boolValue, true)
+
+        let doors = lock["doors"]?.arrayValue
+        XCTAssertEqual(doors?.count, 2)
+        XCTAssertEqual(doors?.first?.objectValue?["status"]?.stringValue, "LOCKED")
     }
 }
