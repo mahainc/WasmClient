@@ -105,8 +105,11 @@ extension WasmActor {
     /// their initial progress.
     func aiartVideoCreate(args: [String: String]) async throws -> WasmClient.AiartVideoResult {
         let instance = try await readyEngine()
+        let providerID = args["provider_id", default: ""]
+        let preferredProvider = providerID.isEmpty ? nil : providerID
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.aiartVideo.rawValue,
+            preferredProvider: preferredProvider,
             logger: logger
         )
 
@@ -127,8 +130,15 @@ extension WasmActor {
     /// `engine.status(task:)`, and maps the response.
     func aiartVideoStatus(videoID: String) async throws -> WasmClient.AiartVideoResult {
         let instance = try await readyEngine()
+        let providerID = TaskWasmEngine.listPendingTasks(
+            cacheDir: TaskWasmEngine.defaultCacheDir
+        )
+        .first { $0.id == videoID }?
+        .provider ?? ""
+        let preferredProvider = providerID.isEmpty ? nil : providerID
         let action = try await delegate.resolveAction(
             actionID: WasmClient.ActionID.aiartVideo.rawValue,
+            preferredProvider: preferredProvider,
             logger: logger
         )
         guard let engine = instance as? TaskWasmEngine else {
