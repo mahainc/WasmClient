@@ -171,14 +171,10 @@ extension WasmClient {
             WasmClient.LiveScore.Match(
                 summary: WasmClient.LiveScore.MatchSummary(
                     id: id,
-                    homeTeam: "",
-                    awayTeam: "",
-                    homeLogoURL: "",
-                    awayLogoURL: "",
+                    home: WasmClient.LiveScore.MatchSummarySide(),
+                    away: WasmClient.LiveScore.MatchSummarySide(),
                     kickoff: Date(),
                     competitionID: "",
-                    homeScore: 0,
-                    awayScore: 0,
                     embedURL: ""
                 )
             )
@@ -792,14 +788,13 @@ extension WasmClient {
             [
                 LiveScore.MatchSummary(
                     id: "1",
-                    homeTeam: "PSG",
-                    awayTeam: "Bayern Munich",
-                    homeLogoURL: "",
-                    awayLogoURL: "",
+                    home: LiveScore.MatchSummarySide(teamID: "team/psg", teamName: "PSG"),
+                    away: LiveScore.MatchSummarySide(
+                        teamID: "team/bayern-munich",
+                        teamName: "Bayern Munich"
+                    ),
                     kickoff: Date().addingTimeInterval(3600),
                     competitionID: "0",
-                    homeScore: 0,
-                    awayScore: 0,
                     status: .notStarted,
                     embedURL: ""
                 )
@@ -809,14 +804,18 @@ extension WasmClient {
             [
                 LiveScore.MatchSummary(
                     id: "2",
-                    homeTeam: "Arsenal",
-                    awayTeam: "Chelsea",
-                    homeLogoURL: "",
-                    awayLogoURL: "",
+                    home: LiveScore.MatchSummarySide(
+                        teamID: "team/arsenal",
+                        teamName: "Arsenal",
+                        score: 1
+                    ),
+                    away: LiveScore.MatchSummarySide(
+                        teamID: "team/chelsea",
+                        teamName: "Chelsea",
+                        score: 1
+                    ),
                     kickoff: Date(),
                     competitionID: "1",
-                    homeScore: 1,
-                    awayScore: 1,
                     status: .secondHalf,
                     embedURL: "",
                     competitionImage: "",
@@ -830,14 +829,18 @@ extension WasmClient {
             return LiveScore.Match(
                 summary: LiveScore.MatchSummary(
                     id: id,
-                    homeTeam: "Arsenal",
-                    awayTeam: "Chelsea",
-                    homeLogoURL: "",
-                    awayLogoURL: "",
+                    home: LiveScore.MatchSummarySide(
+                        teamID: "team/arsenal",
+                        teamName: "Arsenal",
+                        score: 2
+                    ),
+                    away: LiveScore.MatchSummarySide(
+                        teamID: "team/chelsea",
+                        teamName: "Chelsea",
+                        score: 1
+                    ),
                     kickoff: Date(),
                     competitionID: "1",
-                    homeScore: 2,
-                    awayScore: 1,
                     status: .secondHalf,
                     embedURL: "",
                     competitionImage: "",

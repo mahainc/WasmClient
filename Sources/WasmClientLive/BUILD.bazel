@@ -22,6 +22,7 @@ swift_library(
         "Sessions/HomeDecor.swift",
         "Sessions/Inpaint.swift",
         "Sessions/LiveScore.swift",
+        "Sessions/LivescoreArgs.swift",
         "Sessions/Music.swift",
         "Sessions/Notification.swift",
         "Sessions/PendingTasks.swift",

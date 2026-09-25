@@ -78,9 +78,9 @@ extension WasmActor {
         offset: Int64? = nil
     ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
-        if let q, !q.isEmpty { args["q"] = Google_Protobuf_Value(stringValue: q) }
-        if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
-        if let offset { args["offset"] = Google_Protobuf_Value(numberValue: Double(offset)) }
+        args.set("q", ifPresent: q)
+        args.set("limit", ifPresent: limit)
+        args.set("offset", ifPresent: offset)
         return try await webpageList(type: .competitions, extraArgs: args)
     }
 
@@ -91,12 +91,10 @@ extension WasmActor {
         competitionID: String? = nil
     ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
-        if let q, !q.isEmpty { args["q"] = Google_Protobuf_Value(stringValue: q) }
-        if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
-        if let offset { args["offset"] = Google_Protobuf_Value(numberValue: Double(offset)) }
-        if let competitionID, !competitionID.isEmpty {
-            args["competition_id"] = Google_Protobuf_Value(stringValue: competitionID)
-        }
+        args.set("q", ifPresent: q)
+        args.set("limit", ifPresent: limit)
+        args.set("offset", ifPresent: offset)
+        args.set("competition_id", ifPresent: competitionID)
         return try await webpageList(type: .teams, extraArgs: args)
     }
 
@@ -135,22 +133,12 @@ extension WasmActor {
         pageSize: Int64? = nil
     ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
-        if let videoType, !videoType.isEmpty {
-            args["video_type"] = Google_Protobuf_Value(stringValue: videoType)
-        }
-        if let competitionID, !competitionID.isEmpty {
-            args["competition_id"] = Google_Protobuf_Value(stringValue: competitionID)
-        }
-        if let teamID, !teamID.isEmpty {
-            args["team_id"] = Google_Protobuf_Value(stringValue: teamID)
-        }
-        if let q, !q.isEmpty {
-            args["q"] = Google_Protobuf_Value(stringValue: q)
-        }
-        if let page { args["page"] = Google_Protobuf_Value(numberValue: Double(page)) }
-        if let pageSize {
-            args["page_size"] = Google_Protobuf_Value(numberValue: Double(pageSize))
-        }
+        args.set("video_type", ifPresent: videoType)
+        args.set("competition_id", ifPresent: competitionID)
+        args.set("team_id", ifPresent: teamID)
+        args.set("q", ifPresent: q)
+        args.set("page", ifPresent: page)
+        args.set("page_size", ifPresent: pageSize)
         return try await webpageList(type: .videos, extraArgs: args)
     }
 
@@ -164,15 +152,11 @@ extension WasmActor {
         teamID: String? = nil
     ) async throws -> [WasmClient.LiveScore.Entry] {
         var args: [String: Google_Protobuf_Value] = [:]
-        if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
-        if let offset { args["offset"] = Google_Protobuf_Value(numberValue: Double(offset)) }
-        if let q, !q.isEmpty { args["q"] = Google_Protobuf_Value(stringValue: q) }
-        if let competitionID, !competitionID.isEmpty {
-            args["competition_id"] = Google_Protobuf_Value(stringValue: competitionID)
-        }
-        if let teamID, !teamID.isEmpty {
-            args["team_id"] = Google_Protobuf_Value(stringValue: teamID)
-        }
+        args.set("limit", ifPresent: limit)
+        args.set("offset", ifPresent: offset)
+        args.set("q", ifPresent: q)
+        args.set("competition_id", ifPresent: competitionID)
+        args.set("team_id", ifPresent: teamID)
         return try await webpageList(type: .news, extraArgs: args)
     }
 
@@ -305,7 +289,7 @@ extension WasmActor {
 
     func scoresByDate(date: String?) async throws -> [WasmClient.LiveScore.MatchSummary] {
         var args: [String: Google_Protobuf_Value] = [:]
-        if let date { args["date"] = Google_Protobuf_Value(stringValue: date) }
+        args.set("date", ifGiven: date)
         let value = try await runLivescoreAction(WasmClient.ActionID.lsScores.rawValue, args: args)
         let list = try unpack(
             LivescoreMatchSummaryList.self,
@@ -318,19 +302,27 @@ extension WasmActor {
     private func mapMatchSummary(_ m: LivescoreMatchSummary) -> WasmClient.LiveScore.MatchSummary {
         WasmClient.LiveScore.MatchSummary(
             id: String(m.id),
-            homeTeam: m.home.name,
-            awayTeam: m.away.name,
-            homeLogoURL: m.home.image,
-            awayLogoURL: m.away.image,
+            home: mapMatchSummarySide(m.home, score: m.score1),
+            away: mapMatchSummarySide(m.away, score: m.score2),
             kickoff: Date(timeIntervalSince1970: TimeInterval(m.datetime)),
             competitionID: String(m.competition.id),
-            homeScore: Int(m.score1),
-            awayScore: Int(m.score2),
             status: WasmClient.LiveScore.MatchStatus(rawValue: m.status.rawValue) ?? .unspecified,
             embedURL: m.url,
             competitionImage: m.competition.image,
             competitionName: m.competition.name,
             competitionRegion: m.competition.region
+        )
+    }
+
+    private func mapMatchSummarySide(
+        _ t: LivescoreTeam,
+        score: Int64
+    ) -> WasmClient.LiveScore.MatchSummarySide {
+        WasmClient.LiveScore.MatchSummarySide(
+            teamID: t.id,
+            teamName: t.name,
+            teamLogoURL: t.image,
+            score: Int(score)
         )
     }
 

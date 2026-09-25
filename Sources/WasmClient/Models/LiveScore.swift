@@ -46,16 +46,33 @@ extension WasmClient.LiveScore {
 // MARK: - Livescore MatchSummary
 
 extension WasmClient.LiveScore {
+    public struct MatchSummarySide: Sendable, Equatable, Identifiable {
+        public let teamID: String
+        public let teamName: String
+        public let teamLogoURL: String
+        public let score: Int
+
+        public var id: String { teamID }
+
+        public init(
+            teamID: String = "",
+            teamName: String = "",
+            teamLogoURL: String = "",
+            score: Int = 0
+        ) {
+            self.teamID = teamID
+            self.teamName = teamName
+            self.teamLogoURL = teamLogoURL
+            self.score = score
+        }
+    }
+
     public struct MatchSummary: Sendable, Equatable, Identifiable {
         public let id: String
-        public let homeTeam: String
-        public let awayTeam: String
-        public let homeLogoURL: String
-        public let awayLogoURL: String
+        public let home: MatchSummarySide
+        public let away: MatchSummarySide
         public let kickoff: Date
         public let competitionID: String
-        public let homeScore: Int
-        public let awayScore: Int
         public let status: MatchStatus
         public let embedURL: String
         public let competitionImage: String
@@ -64,14 +81,10 @@ extension WasmClient.LiveScore {
 
         public init(
             id: String,
-            homeTeam: String,
-            awayTeam: String,
-            homeLogoURL: String,
-            awayLogoURL: String,
+            home: MatchSummarySide,
+            away: MatchSummarySide,
             kickoff: Date,
             competitionID: String,
-            homeScore: Int,
-            awayScore: Int,
             status: MatchStatus = .unspecified,
             embedURL: String,
             competitionImage: String = "",
@@ -79,14 +92,10 @@ extension WasmClient.LiveScore {
             competitionRegion: String = ""
         ) {
             self.id = id
-            self.homeTeam = homeTeam
-            self.awayTeam = awayTeam
-            self.homeLogoURL = homeLogoURL
-            self.awayLogoURL = awayLogoURL
+            self.home = home
+            self.away = away
             self.kickoff = kickoff
             self.competitionID = competitionID
-            self.homeScore = homeScore
-            self.awayScore = awayScore
             self.status = status
             self.embedURL = embedURL
             self.competitionImage = competitionImage

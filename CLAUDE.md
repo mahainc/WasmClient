@@ -63,6 +63,17 @@ that workaround.
 - AIArt is the only session that catalogue-ranks providers + fails over (to dodge an
   unprovisioned `runware`); read `docs/aiart-provider-failover.md` **only** when touching
   `Sessions/AIArt.swift` provider resolution or debugging a `missing runware data entry`.
+- `teamID`/`teamName`/`teamLogoURL` is declared six times over in
+  `Models/LiveScore.swift`; `docs/team-identity-duplication.md` has the six sites, why the
+  sixth was added rather than the triple collapsed, and what a `TeamRef` would cost (93 call
+  sites). Read it **only** before adding a seventh copy or starting that refactor — a
+  `clean-code` G5 on one of those structs is already answered there.
+- Livescore args are assembled through `Dictionary.set(_:ifPresent:)` / `set(_:ifGiven:)` in
+  `Sessions/LivescoreArgs.swift` — never `args["key"] = Google_Protobuf_Value(...)` by hand.
+  `ifPresent` drops an empty string, `ifGiven` keeps it, and that difference is what goes on the
+  wire. `docs/optional-arg-assembly-duplication.md` has the per-key table, why two names beat one
+  boolean flag, and the `G25` on the bare wire keys that is still open. Read it **only** when
+  adding a key or an endpoint.
 
 ## Code Quality (clean-code)
 
