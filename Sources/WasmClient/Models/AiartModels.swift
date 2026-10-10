@@ -92,6 +92,11 @@ extension WasmClient {
         public let ownedBy: String
         public let vision: Bool
         public let isPro: Bool
+        /// The provider this model belongs to, read from the entry's
+        /// `metadata.provider_id`. Pass verbatim as the `providerID` arg on
+        /// `aiartGenerate` so the engine routes to the matching provider —
+        /// empty means fall back to the persisted provider_strategy picker.
+        public let providerID: String
         /// Aspect-ratio strings this model accepts (e.g. "1:1", "16:9"), read
         /// from the entry's `metadata.aspect_ratios`. Empty when the plugin
         /// doesn't constrain per model — callers fall back to the action-level
@@ -104,6 +109,7 @@ extension WasmClient {
             ownedBy: String = "",
             vision: Bool = false,
             isPro: Bool = false,
+            providerID: String = "",
             aspectRatios: [String] = []
         ) {
             self.modelID = modelID
@@ -111,6 +117,7 @@ extension WasmClient {
             self.ownedBy = ownedBy
             self.vision = vision
             self.isPro = isPro
+            self.providerID = providerID
             self.aspectRatios = aspectRatios
         }
     }

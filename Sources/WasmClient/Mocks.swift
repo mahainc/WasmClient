@@ -70,7 +70,7 @@ extension WasmClient {
         suggest: { _, _ in [] },
         readOutLoud: { _, _, _ in .data(Data(), mime: "") },
         ttsVoices: { _, _ in [] },
-        aiartGenerate: { _, _ in AiartResult() },
+        aiartGenerate: { _, _, _ in AiartResult() },
         aiartStyles: { _ in [] },
         aiartModels: { _ in AiartModelCatalog() },
         aiartModelList: { _ in AiartModelCatalog() },
@@ -338,7 +338,7 @@ extension WasmClient {
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
             return ["alloy", "echo", "shimmer"]
         },
-        aiartGenerate: { _, _ in
+        aiartGenerate: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
             return AiartResult(
                 images: [AiartImage(url: "https://example.com/aiart.png")],

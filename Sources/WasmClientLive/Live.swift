@@ -114,8 +114,8 @@ extension WasmClient: DependencyKey {
             ttsVoices: { providerId, modelId in
                 try await actor.ttsVoices(providerId: providerId, modelId: modelId)
             },
-            aiartGenerate: { actionID, args in
-                try await actor.aiartGenerate(actionID: actionID, args: args)
+            aiartGenerate: { actionID, providerID, args in
+                try await actor.aiartGenerate(actionID: actionID, providerID: providerID, args: args)
             },
             aiartStyles: { actionID in
                 try await actor.aiartStyles(actionID: actionID)

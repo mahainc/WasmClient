@@ -10,10 +10,15 @@ extension WasmActor {
     /// Generate AI art using the specified action and flat string args.
     func aiartGenerate(
         actionID: String,
+        providerID: String,
         args: [String: String]
     ) async throws -> WasmClient.AiartResult {
         let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(actionID: actionID, logger: logger)
+        let action = try await delegate.resolveAction(
+            actionID: actionID,
+            preferredProvider: providerID.isEmpty ? nil : providerID,
+            logger: logger
+        )
 
         var protoArgs: [String: Google_Protobuf_Value] = [:]
         for (key, value) in args where !value.isEmpty {
@@ -180,12 +185,17 @@ extension WasmActor {
                     return nil
                 }
             }()
+            let providerID: String = {
+                if case .stringValue(let p)? = meta["provider_id"]?.kind { return p }
+                return ""
+            }()
             return WasmClient.AiartModelInfo(
                 modelID: info.id,
                 name: info.name,
                 ownedBy: info.ownedBy,
                 vision: vision,
                 isPro: isPro,
+                providerID: providerID,
                 aspectRatios: aspectRatios
             )
         }

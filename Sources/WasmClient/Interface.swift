@@ -274,10 +274,11 @@ public struct WasmClient: Sendable {
     // MARK: - AI Art
 
     /// Generate AI art using the specified action (stamp or normal).
-    /// Pass the action ID (e.g. `ActionID.aiartStamp.rawValue`) and flat string args
-    /// (prompt, style, image_url, aspect_ratio, etc.).
+    /// Pass the action ID (e.g. `ActionID.aiartStamp.rawValue`), the selected
+    /// model's `providerID` (empty falls back to the persisted provider_strategy
+    /// picker), and flat string args (prompt, style, image_url, aspect_ratio, etc.).
     public var aiartGenerate: @Sendable (
-        _ actionID: String, _ args: [String: String]
+        _ actionID: String, _ providerID: String, _ args: [String: String]
     ) async throws -> WasmClient.AiartResult
 
     /// Available style values for an aiart action, parsed from the action
