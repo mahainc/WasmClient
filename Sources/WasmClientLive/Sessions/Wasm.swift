@@ -9,13 +9,22 @@ import WasmClient
 // MARK: - Delegate
 
 internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Sendable {
-    private(set) var engine: TaskWasmProtocol?
-    private(set) var isStarted = false
+    // `engine`/`isStarted`/`isStarting` guard the start-or-join decision in
+    // `ensureStarted` — unprotected, two near-simultaneous callers could both
+    // read `isStarting == false` and both start a second engine instance.
+    // `actionCache`/`providerRotationIndex` are mutated from whichever of
+    // `performActionsLoad`/`refreshActions`/`ensureActionAvailable` happens to
+    // be in flight, which is exactly what two overlapping detect calls (one
+    // "cancelled" but still cooperatively running) produce.
+    private var engine: TaskWasmProtocol?
+    private var isStarted = false
     private var isStarting = false
+    private let engineLock = NSLock()
     private var actionCache: [String: [WaTAction]] = [:]
+    private var providerRotationIndex: [String: Int] = [:]
+    private let actionCacheLock = NSLock()
     private var actionsLoadTask: Task<Void, Error>?
     private let actionsLoadLock = NSLock()
-    private var providerRotationIndex: [String: Int] = [:]
     private var logger: (@Sendable (String) -> Void)?
     private var stateContinuations: [UUID: AsyncStream<WasmClient.EngineState>.Continuation] = [:]
     private var lastState: WasmClient.EngineState = .stopped
@@ -67,6 +76,10 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
 
     private func clearRunning() {
         runningLock.withLock { engineDidReachRunning = false }
+    }
+
+    func engineIsStarted() -> Bool {
+        engineLock.withLock { isStarted }
     }
 
     func addStateContinuation(
@@ -133,20 +146,41 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             signal(SIGPIPE, SIG_IGN)
         #endif
 
-        // Fast path — already started.
-        if let engine, isStarted { return engine }
-
-        // Another call is already starting — poll-wait for it to finish.
-        if isStarting {
-            logger("Engine start in progress — waiting...")
-            while isStarting {
-                try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
-            }
-            if let engine, isStarted { return engine }
-            throw WasmClient.Error.engineInitFailed
+        enum StartDecision {
+            case alreadyStarted(TaskWasmProtocol)
+            case shouldWait
+            case shouldStart
         }
 
-        isStarting = true
+        // Single locked read-and-claim: whichever caller gets here first is
+        // the only one that sees `.shouldStart` and flips `isStarting`: two
+        // callers can no longer both observe `isStarting == false` and both
+        // launch a second engine.
+        let decision: StartDecision = engineLock.withLock {
+            if let engine, isStarted { return .alreadyStarted(engine) }
+            if isStarting { return .shouldWait }
+            isStarting = true
+            return .shouldStart
+        }
+
+        switch decision {
+        case .alreadyStarted(let engine):
+            return engine
+
+        case .shouldWait:
+            logger("Engine start in progress — waiting...")
+            while engineLock.withLock({ isStarting }) {
+                try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
+            }
+            if let engine = engineLock.withLock({ isStarted ? engine : nil }) {
+                return engine
+            }
+            throw WasmClient.Error.engineInitFailed
+
+        case .shouldStart:
+            break
+        }
+
         self.logger = logger
 
         do {
@@ -215,9 +249,11 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             }
             logger("Engine reached .running via delegate callback")
 
-            self.engine = instance
-            self.isStarted = true
-            self.isStarting = false
+            engineLock.withLock {
+                self.engine = instance
+                self.isStarted = true
+                self.isStarting = false
+            }
             yieldState(.running)
 
             // Eagerly discover actions as part of start flow
@@ -226,7 +262,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             logger("Engine ready")
             return instance
         } catch {
-            self.isStarting = false
+            engineLock.withLock { self.isStarting = false }
             yieldState(.failed(error.localizedDescription))
             logger("Engine start failed: \(error.localizedDescription)")
             throw error
@@ -234,7 +270,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     }
 
     func ensureActionsLoaded(logger: @escaping @Sendable (String) -> Void) async throws {
-        if !actionCache.isEmpty { return }
+        if actionCacheLock.withLock({ !actionCache.isEmpty }) { return }
 
         let task: Task<Void, Error> = actionsLoadLock.withLock {
             if let existing = actionsLoadTask { return existing }
@@ -251,7 +287,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     }
 
     private func performActionsLoad(logger: @escaping @Sendable (String) -> Void) async throws {
-        guard let engine else { throw WasmClient.Error.engineNotStarted }
+        guard let engine = engineLock.withLock({ engine }) else { throw WasmClient.Error.engineNotStarted }
 
         logger("Discovering action providers...")
         var cache: [String: [WaTAction]] = [:]
@@ -268,7 +304,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         }
 
         if !cache.isEmpty {
-            actionCache = cache
+            actionCacheLock.withLock { actionCache = cache }
             for (id, actions) in cache {
                 logger("  \(id): \(actions.map(\.provider).joined(separator: ", "))")
             }
@@ -279,14 +315,14 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     }
 
     func refreshActions(logger: @escaping @Sendable (String) -> Void) async throws {
-        guard let engine else { throw WasmClient.Error.engineNotStarted }
+        guard let engine = engineLock.withLock({ engine }) else { throw WasmClient.Error.engineNotStarted }
         var previousCount = 0
         for attempt in 1...15 {  // 15 × 2s = 30s max
             let allActions = try await engine.actions()
             let currentCount = allActions.actions.count
             let cache = Dictionary(grouping: allActions.actions, by: \.id)
             if !cache.isEmpty {
-                actionCache = cache
+                actionCacheLock.withLock { actionCache = cache }
             }
             logger("Refresh poll \(attempt): \(cache.count) types, \(currentCount) providers")
             // Stable when count matches previous poll and is non-zero
@@ -303,19 +339,22 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         actionID: String,
         logger: @escaping @Sendable (String) -> Void
     ) async throws {
-        if actionCache[actionID]?.isEmpty == false { return }
+        if actionCacheLock.withLock({ actionCache[actionID]?.isEmpty == false }) { return }
         // First call on an empty cache — run the normal discovery poll.
-        if actionCache.isEmpty {
+        if actionCacheLock.withLock({ actionCache.isEmpty }) {
             try await ensureActionsLoaded(logger: logger)
-            if actionCache[actionID]?.isEmpty == false { return }
+            if actionCacheLock.withLock({ actionCache[actionID]?.isEmpty == false }) { return }
         }
         for attempt in 1...10 {  // 10 × 500ms = up to 5s
-            guard let engine else { throw WasmClient.Error.engineNotStarted }
+            guard let engine = engineLock.withLock({ engine }) else { throw WasmClient.Error.engineNotStarted }
             let all = try await engine.actions()
             if !all.actions.isEmpty {
                 let cache = Dictionary(grouping: all.actions, by: \.id)
-                actionCache = cache
-                if cache[actionID]?.isEmpty == false {
+                let found: Bool = actionCacheLock.withLock {
+                    actionCache = cache
+                    return cache[actionID]?.isEmpty == false
+                }
+                if found {
                     logger("action '\(actionID)' available after refresh poll \(attempt)")
                     return
                 }
@@ -333,7 +372,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         logger: @escaping @Sendable (String) -> Void
     ) async throws -> [WaTAction] {
         try await ensureActionAvailable(actionID: actionID, logger: logger)
-        guard let actions = actionCache[actionID], !actions.isEmpty else {
+        guard let actions = actionCacheLock.withLock({ actionCache[actionID] }), !actions.isEmpty else {
             throw WasmClient.Error.noProviderFound(action: actionID)
         }
         return actions
@@ -365,21 +404,27 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         logger: @escaping @Sendable (String) -> Void
     ) async throws -> WaTAction {
         let actions = try await availableActions(actionID: actionID, logger: logger)
-        let current = providerRotationIndex[actionID] ?? 0
-        let index = current % actions.count
-        let picked = actions[index]
-        providerRotationIndex[actionID] = (index + 1) % actions.count
+        let (picked, index): (WaTAction, Int) = actionCacheLock.withLock {
+            let current = providerRotationIndex[actionID] ?? 0
+            let index = current % actions.count
+            providerRotationIndex[actionID] = (index + 1) % actions.count
+            return (actions[index], index)
+        }
         logger("\(actionID) → provider: \(picked.provider) (\(index + 1)/\(actions.count))")
         return picked
     }
 
     func resetEngine() {
-        engine = nil
-        isStarted = false
-        isStarting = false
+        engineLock.withLock {
+            engine = nil
+            isStarted = false
+            isStarting = false
+        }
         clearRunning()
-        actionCache = [:]
-        providerRotationIndex = [:]
+        actionCacheLock.withLock {
+            actionCache = [:]
+            providerRotationIndex = [:]
+        }
         initLock.withLock { initializedProviders.removeAll() }
         let (pending, timeout) = runningLock.withLock {
             let continuation = startContinuation
@@ -394,7 +439,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
     }
 
     func allActions() -> [WaTAction] {
-        actionCache.values.flatMap { $0 }
+        actionCacheLock.withLock { actionCache.values.flatMap { $0 } }
     }
 }
 
@@ -482,7 +527,7 @@ actor WasmActor {
     }
 
     func availableActions() async throws -> [WasmClient.ActionInfo] {
-        if !delegate.isStarted {
+        if !delegate.engineIsStarted() {
             _ = try await readyEngine()
         }
         if delegate.allActions().isEmpty {
