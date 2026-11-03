@@ -32,6 +32,9 @@ extension WasmClient: DependencyKey {
             setUserName: { name in
                 actor.setUserName(name)
             },
+            setOptions: { options in
+                await actor.setOptions(options)
+            },
             warmUp: {
                 await actor.warmUp()
             },

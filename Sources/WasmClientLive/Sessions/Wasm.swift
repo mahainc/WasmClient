@@ -57,6 +57,36 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         userNameLock.withLock { _userName }
     }
 
+    private var engineOptions: [String: String] = [:]
+    private let optionsLock = NSLock()
+
+    /// Stores the options and pushes them to the engine when it is already running.
+    func updateOptions(_ options: [String: String]) async {
+        let changed = optionsLock.withLock { () -> Bool in
+            let merged = engineOptions.merging(options) { _, new in new }
+            guard merged != engineOptions else { return false }
+            engineOptions = merged
+            return true
+        }
+        guard changed, isStarted, let engine else { return }
+        await applyOptions(to: engine)
+    }
+
+    func applyOptions(to engine: TaskWasmProtocol) async {
+        let options = optionsLock.withLock { engineOptions }
+        guard !options.isEmpty else { return }
+        guard let configurable = engine as? AsyncWasmEngine else {
+            logger?("Engine does not support set(copts:) — options skipped")
+            return
+        }
+        do {
+            try await configurable.set(copts: options.mapValues { Data($0.utf8) })
+            logger?("Engine options set: \(options)")
+        } catch {
+            logger?("Engine set(copts:) failed: \(error.localizedDescription)")
+        }
+    }
+
     private func markRunning() {
         runningLock.withLock { engineDidReachRunning = true }
     }
@@ -215,6 +245,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             }
             logger("Engine reached .running via delegate callback")
 
+            await applyOptions(to: instance)
             self.engine = instance
             self.isStarted = true
             self.isStarting = false
@@ -467,6 +498,10 @@ actor WasmActor {
 
     nonisolated func setUserName(_ name: String) {
         delegate.setUserName(name)
+    }
+
+    func setOptions(_ options: [String: String]) async {
+        await delegate.updateOptions(options)
     }
 
     func warmUp() async {

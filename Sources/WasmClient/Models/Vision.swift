@@ -14,6 +14,12 @@ extension WasmClient.Vision {
         public var imageURL: String
         public var provider: String
         public var characteristics: [String: String]
+        /// Server-curated key/value facts (display label → joined values). Rock/
+        /// gemstone results carry their rich data here (Hardness, Density,
+        /// Composition, Crystal System, Luster, …) rather than in `physical`.
+        public var facts: [String: String]
+        /// Category-level metadata fields (e.g. family, classification).
+        public var categoryInfo: [String: String]
         public var suggestedQuestions: [String]
         public var nutrition: NutritionInfo?
         public var physical: PhysicalFeatures?
@@ -23,6 +29,10 @@ extension WasmClient.Vision {
         public var buyNow: [Link]
         public var sources: [Link]
         public var raw: String?
+        /// Confidence of this result (0...1); nil when the source did not rank candidates.
+        public var probability: Double?
+        /// Ranked candidates below the top result, each with its own `probability`.
+        public var alternatives: [ScanResult]
 
         public init(
             title: String = "",
@@ -31,6 +41,8 @@ extension WasmClient.Vision {
             imageURL: String = "",
             provider: String = "",
             characteristics: [String: String] = [:],
+            facts: [String: String] = [:],
+            categoryInfo: [String: String] = [:],
             suggestedQuestions: [String] = [],
             nutrition: NutritionInfo? = nil,
             physical: PhysicalFeatures? = nil,
@@ -39,14 +51,20 @@ extension WasmClient.Vision {
             discoverMore: [ShoppingProduct] = [],
             buyNow: [Link] = [],
             sources: [Link] = [],
-            raw: String? = nil
+            raw: String? = nil,
+            probability: Double? = nil,
+            alternatives: [ScanResult] = []
         ) {
+            self.probability = probability
+            self.alternatives = alternatives
             self.title = title
             self.description = description
             self.categoryType = categoryType
             self.imageURL = imageURL
             self.provider = provider
             self.characteristics = characteristics
+            self.facts = facts
+            self.categoryInfo = categoryInfo
             self.suggestedQuestions = suggestedQuestions
             self.nutrition = nutrition
             self.physical = physical

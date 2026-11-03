@@ -38,6 +38,7 @@ extension WasmClient {
         resetDownloads: {},
         setExpectedVersionProvider: { _ in },
         setUserName: { _ in },
+        setOptions: { _ in },
         warmUp: {},
         availableActions: { [] },
         refreshActions: {},
@@ -193,6 +194,7 @@ extension WasmClient {
         resetDownloads: {},
         setExpectedVersionProvider: { _ in },
         setUserName: { _ in },
+        setOptions: { _ in },
         warmUp: {
             try? await Task.sleep(nanoseconds: MockConstants.warmUpDelay)
         },

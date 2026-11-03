@@ -26,6 +26,9 @@ public struct WasmClient: Sendable {
 
     public var setUserName: @Sendable (_ name: String) -> Void = { _ in }
 
+    /// Engine-level options (`language_code`, `region_code`, ...). Applied once the engine runs, and immediately if it already does.
+    public var setOptions: @Sendable (_ options: [String: String]) async -> Void = { _ in }
+
     public var warmUp: @Sendable () async -> Void = {}
 
     public var availableActions: @Sendable () async throws -> [WasmClient.ActionInfo]

@@ -18,15 +18,19 @@ extension WasmActor {
         let imageURL = try await uploadImage(imageData: imageData)
         logger("Scan: uploaded image → \(imageURL)")
 
-        // Step 2: run scan action
-        let scanAction = try await delegate.resolveAction(actionID: WasmClient.ActionID.scan.rawValue, logger: logger)
+        // Step 2: run scan via the generic method dispatch so the engine
+        // routes by `category` (provider_strategy) instead of pinning a single
+        // provider. Pinning actions[0] ignored the category and always hit the
+        // first registered provider (e.g. coin) regardless of the subject.
         let args = Self.scanArgs(fileURL: imageURL, category: category, language: language)
-        let task = try await instance.create(action: scanAction, args: args)
-        let visionResult = try Self.parseScanResult(task: task)
+        logger("Scan: dispatch method=\(WasmClient.VisionMethod.scan.rawValue) category=\(category)")
+        let visionResult: VisionScanResult = try await instance.run(
+            method: WasmClient.VisionMethod.scan.rawValue,
+            args: args
+        )
         var result = Self.mapScanResult(visionResult)
-        // Attach the uploaded URL and provider for enrichment calls
+        // Attach the uploaded URL for enrichment calls
         result.imageURL = imageURL
-        result.provider = scanAction.provider
         return result
     }
 
@@ -133,6 +137,8 @@ extension WasmActor {
             categoryType: v.hasCategoryType ? v.categoryType : "",
             imageURL: v.hasImageURL ? v.imageURL : "",
             characteristics: v.hasCharacteristics ? v.characteristics.fields : [:],
+            facts: v.facts,
+            categoryInfo: v.hasCategoryInfo ? v.categoryInfo.fields : [:],
             suggestedQuestions: v.suggestedQuestions,
             nutrition: v.hasNutrition ? mapNutrition(v.nutrition) : nil,
             physical: v.hasPhysical ? mapPhysical(v.physical) : nil,
@@ -141,7 +147,9 @@ extension WasmActor {
             discoverMore: v.discoverMore.map(mapShoppingProduct),
             buyNow: v.buyNow.map(mapLink),
             sources: v.sources.map(mapLink),
-            raw: v.hasRaw ? v.raw : nil
+            raw: v.hasRaw ? v.raw : nil,
+            probability: v.hasProbability ? v.probability : nil,
+            alternatives: v.alternatives.map(mapScanResult)
         )
     }
 
