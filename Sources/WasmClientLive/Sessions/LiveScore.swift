@@ -11,8 +11,10 @@ extension WasmActor {
         _ actionID: String,
         args: [String: Google_Protobuf_Value] = [:]
     ) async throws -> Google_Protobuf_Any {
+        let maxAttempts = 20
+        let retryInterval: UInt64 = 500_000_000  // 500ms; 20 attempts ≈ 10s of provider-registration slack
         var lastError: Error?
-        for attempt in 1...10 {  // 10 × 500ms = up to 5s
+        for attempt in 1...maxAttempts {
             do {
                 let instance = try await readyEngine()
                 let action = try await instance.action(for: actionID, strategy: .roundRobin)
@@ -27,8 +29,10 @@ extension WasmActor {
                 return task.value
             } catch {
                 lastError = error
-                logger("livescore '\(actionID)' attempt \(attempt)/10 failed: \(error)")
-                try await Task.sleep(nanoseconds: 500_000_000)
+                logger("livescore '\(actionID)' attempt \(attempt)/\(maxAttempts) failed: \(error)")
+                if attempt < maxAttempts {
+                    try await Task.sleep(nanoseconds: retryInterval)
+                }
             }
         }
         throw lastError ?? WasmClient.Error.taskFailed(status: "unknown")

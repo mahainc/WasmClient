@@ -3,7 +3,7 @@ import Foundation
 import WasmClient
 
 #if canImport(Darwin)
-    import Darwin
+import Darwin
 #endif
 
 // MARK: - Delegate
@@ -69,6 +69,21 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         runningLock.withLock { engineDidReachRunning = false }
     }
 
+    /// Takes and clears the pending start waiter (continuation + timeout) under
+    /// `runningLock`; the caller settles it. Shared by `.running` and reset.
+    private func takePendingStart() -> (
+        continuation: CheckedContinuation<Void, Swift.Error>?,
+        timeout: Task<Void, Never>?
+    ) {
+        runningLock.withLock {
+            let continuation = startContinuation
+            startContinuation = nil
+            let timeout = startTimeoutTask
+            startTimeoutTask = nil
+            return (continuation, timeout)
+        }
+    }
+
     func addStateContinuation(
         id: UUID,
         _ continuation: AsyncStream<WasmClient.EngineState>.Continuation
@@ -104,15 +119,16 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         let mapped: WasmClient.EngineState
         switch state {
             case .running:
-                mapped = .running
+                // FlowKit's engine process is up, but the action providers a
+                // request needs register afterwards (ensureStarted →
+                // ensureActionsLoaded). Unblock the waiting start, yet keep
+                // observers in `.starting` until providers can serve a request;
+                // ensureStarted broadcasts `.running` once they can. A later
+                // re-emit (e.g. post-reload) finds the engine already started,
+                // so it passes `.running` straight through.
+                mapped = isStarted ? .running : .starting
                 markRunning()
-                let (continuation, timeout) = runningLock.withLock {
-                    let continuation = startContinuation
-                    startContinuation = nil
-                    let timeoutTask = startTimeoutTask
-                    startTimeoutTask = nil
-                    return (continuation, timeoutTask)
-                }
+                let (continuation, timeout) = takePendingStart()
                 timeout?.cancel()
                 continuation?.resume()
             case .reload:
@@ -130,7 +146,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
 
     func ensureStarted(logger: @escaping @Sendable (String) -> Void) async throws -> TaskWasmProtocol {
         #if canImport(Darwin)
-            signal(SIGPIPE, SIG_IGN)
+        signal(SIGPIPE, SIG_IGN)
         #endif
 
         // Fast path — already started.
@@ -162,16 +178,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
                 }
             }
 
-            switch (cachedID, expectedID) {
-                case (nil, _):
-                    logger("No cached wasm version — resetting downloads to force fresh download")
-                    AsyncifyWasmCompat.resetDownloads(wasmDir: nil, provider: nil)
-                case let (.some(cached), .some(expected)) where cached != expected:
-                    logger("Wasm version mismatch (cached=\(cached), expected=\(expected)) — resetting downloads")
-                    AsyncifyWasmCompat.resetDownloads(wasmDir: nil, provider: nil)
-                case let (.some(cached), _):
-                    logger("Using cached wasm version: \(cached)")
-            }
+            reconcileWasmVersion(cachedID: cachedID, expectedID: expectedID, logger: logger)
 
             // Direct async calls — exactly like flow-kit-example's WasmEngine.load()
             logger("Building engine via FlowKit.default()...")
@@ -184,44 +191,24 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             try await instance.start()
             logger("Engine start() returned, waiting for .running state...")
 
-            // Wait for the delegate's .running callback via CheckedContinuation
-            // instead of polling. Timeout after 30s.
-            if !isRunning() {
-                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Swift.Error>) in
-                    let alreadyRunning = runningLock.withLock {
-                        engineDidReachRunning
-                    }
-                    if alreadyRunning {
-                        continuation.resume()
-                        return
-                    }
-                    // L4: [weak self] so a cancelled start doesn't pin the delegate for 30s.
-                    let timeoutTask = Task { [weak self] in
-                        try? await Task.sleep(nanoseconds: 30_000_000_000)
-                        guard let self else { return }
-                        let pending = self.runningLock.withLock { () -> CheckedContinuation<Void, Swift.Error>? in
-                            let continuation = self.startContinuation
-                            self.startContinuation = nil
-                            return continuation
-                        }
-                        pending?.resume(throwing: WasmClient.Error.engineInitFailed)
-                    }
-                    // L2: set both fields under one lock so they clear together atomically.
-                    runningLock.withLock {
-                        self.startContinuation = continuation
-                        self.startTimeoutTask = timeoutTask
-                    }
-                }
-            }
+            try await awaitRunning()
             logger("Engine reached .running via delegate callback")
 
             self.engine = instance
+
+            // Discover action providers BEFORE declaring the engine ready to
+            // the app. Reaching FlowKit's `.running` does not mean a content
+            // request can be served — the providers for `lsWebpage` etc.
+            // register afterwards. Broadcasting `.running` here (rather than
+            // from the delegate callback) gates the launch handoff on real
+            // readiness, so a tab's first fetch no longer races ahead of its
+            // providers and fails. ensureActionsLoaded returns as soon as they
+            // register, so this adds only the real registration latency.
+            try? await ensureActionsLoaded(logger: logger)
+
             self.isStarted = true
             self.isStarting = false
             yieldState(.running)
-
-            // Eagerly discover actions as part of start flow
-            try? await ensureActionsLoaded(logger: logger)
 
             logger("Engine ready")
             return instance
@@ -230,6 +217,56 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
             yieldState(.failed(error.localizedDescription))
             logger("Engine start failed: \(error.localizedDescription)")
             throw error
+        }
+    }
+
+    /// Resets the on-disk wasm downloads when the cached build is absent or
+    /// does not match the host's expected version, so the next start fetches a
+    /// fresh guest. A matching cache is reused untouched.
+    private func reconcileWasmVersion(
+        cachedID: String?,
+        expectedID: String?,
+        logger: @escaping @Sendable (String) -> Void
+    ) {
+        switch (cachedID, expectedID) {
+            case (nil, _):
+                logger("No cached wasm version — resetting downloads to force fresh download")
+                AsyncifyWasmCompat.resetDownloads(wasmDir: nil, provider: nil)
+            case let (.some(cached), .some(expected)) where cached != expected:
+                logger("Wasm version mismatch (cached=\(cached), expected=\(expected)) — resetting downloads")
+                AsyncifyWasmCompat.resetDownloads(wasmDir: nil, provider: nil)
+            case let (.some(cached), _):
+                logger("Using cached wasm version: \(cached)")
+        }
+    }
+
+    /// Suspends until the delegate reports `.running`, or fails after 30s.
+    /// Returns immediately when the engine already reached running. The waiter
+    /// and its timeout are stored so the `.running` callback can settle them.
+    private func awaitRunning() async throws {
+        if isRunning() { return }
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Swift.Error>) in
+            let alreadyRunning = runningLock.withLock { engineDidReachRunning }
+            if alreadyRunning {
+                continuation.resume()
+                return
+            }
+            // [weak self] so a cancelled start doesn't pin the delegate for 30s.
+            let timeoutTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                guard let self else { return }
+                let pending = self.runningLock.withLock { () -> CheckedContinuation<Void, Swift.Error>? in
+                    let continuation = self.startContinuation
+                    self.startContinuation = nil
+                    return continuation
+                }
+                pending?.resume(throwing: WasmClient.Error.engineInitFailed)
+            }
+            // Set both fields under one lock so they clear together atomically.
+            runningLock.withLock {
+                self.startContinuation = continuation
+                self.startTimeoutTask = timeoutTask
+            }
         }
     }
 
@@ -381,13 +418,7 @@ internal final class WasmDelegate: NSObject, WasmInstanceDelegate, @unchecked Se
         actionCache = [:]
         providerRotationIndex = [:]
         initLock.withLock { initializedProviders.removeAll() }
-        let (pending, timeout) = runningLock.withLock {
-            let continuation = startContinuation
-            startContinuation = nil
-            let timeoutTask = startTimeoutTask
-            startTimeoutTask = nil
-            return (continuation, timeoutTask)
-        }
+        let (pending, timeout) = takePendingStart()
         timeout?.cancel()
         pending?.resume(throwing: CancellationError())
         yieldState(.stopped)
@@ -412,7 +443,7 @@ actor WasmActor {
     init(
         logger: @escaping @Sendable (String) -> Void = { message in
             #if DEBUG
-                print("[WasmClient]: \(message)")
+            print("[WasmClient]: \(message)")
             #endif
         }
     ) {
