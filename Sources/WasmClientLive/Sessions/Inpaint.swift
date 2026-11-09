@@ -158,6 +158,7 @@ extension WasmActor {
             bbox = .zero
         }
         return WasmClient.Inpaint.Segment(
+            objectID: proto.hasMask && proto.mask.hasID ? proto.mask.id : "",
             bbox: bbox,
             maskURL: proto.hasMask ? proto.mask.url : "",
             metadata: mapMetadata(proto.metadata)
