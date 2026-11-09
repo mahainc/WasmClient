@@ -4,8 +4,11 @@ swift_test(
     name = "WasmClientLiveTests",
     srcs = [
         "AIArtProviderFailoverTests.swift",
+        "CaloriesMapperTests.swift",
         "ChatRunTests.swift",
         "ChatStreamTests.swift",
+        "NewsMapperTests.swift",
+        "PlantMapperTests.swift",
     ],
     module_name = "WasmClientLiveTests",
     deps = [

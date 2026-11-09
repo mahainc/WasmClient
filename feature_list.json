@@ -1,0 +1,102 @@
+{
+  "project": "WasmClient",
+  "description": "Port the new flow-kit-example domains into WasmClient to restore parity with the latest prototype. Ordered lightest-first so the port pipeline is proven on a small domain before the heavy ones. Each feature follows the house pattern (namespace, struct-static-let wire values, proto mirror, interface + session + mocks + Live wiring + tests) and is verified via bazel-checker.",
+  "source_of_truth": "~/Documents/flow-kit-example (Example/Protos + Example/Views/Sessions)",
+  "features": [
+    {
+      "id": 1,
+      "name": "news",
+      "title": "News domain (feed, multi-vertical)",
+      "status": "done",
+      "weight": "light",
+      "service_methods": [
+        "asyncify.news.NewsService/List"
+      ],
+      "proto_types": ["NewsNewsItem", "NewsNewsRequest", "NewsNewsResponse"],
+      "notes": "Single List RPC, method-name dispatch. Categories: soccer, health, plantCare. Sort: recent, trending. Request supports category/limit/offset/q/tags/sort/params. App surface: NewsView.swift.",
+      "example_protos": ["Example/Protos/news.pb.swift", "Example/Protos/news.fk.pb.swift"]
+    },
+    {
+      "id": 2,
+      "name": "calories",
+      "title": "Calories / nutrition domain",
+      "status": "done",
+      "weight": "light-medium",
+      "service_methods": [
+        "asyncify.calories.CaloriesService/Analyze",
+        "asyncify.calories.CaloriesService/Barcode",
+        "asyncify.calories.CaloriesService/HealthScore",
+        "asyncify.calories.CaloriesService/Ingredient",
+        "asyncify.calories.CaloriesService/Search",
+        "asyncify.calories.CaloriesService/Suggestions"
+      ],
+      "notes": "6 methods, method-name dispatch.",
+      "example_protos": ["Example/Protos/calories.pb.swift", "Example/Protos/calories.fk.pb.swift"]
+    },
+    {
+      "id": 3,
+      "name": "plant",
+      "title": "Plant care domain",
+      "status": "done",
+      "weight": "medium",
+      "service_methods": [
+        "asyncify.plant.PlantService/Complete",
+        "asyncify.plant.PlantService/Diagnose",
+        "asyncify.plant.PlantService/LightMeter",
+        "asyncify.plant.PlantService/List",
+        "asyncify.plant.PlantService/PlantDetail",
+        "asyncify.plant.PlantService/RepottingChecker",
+        "asyncify.plant.PlantService/Search",
+        "asyncify.plant.PlantService/WaterCalc",
+        "asyncify.plant.PlantService/Weather"
+      ],
+      "notes": "9 methods, method-name dispatch.",
+      "example_protos": ["Example/Protos/plant.pb.swift", "Example/Protos/plant.fk.pb.swift"]
+    },
+    {
+      "id": 4,
+      "name": "tcg",
+      "title": "TCG (trading card game) portfolio domain",
+      "status": "todo",
+      "weight": "heavy",
+      "service_methods": [
+        "asyncify.tcg.TcgService/AccountInfo",
+        "asyncify.tcg.TcgService/AddCards",
+        "asyncify.tcg.TcgService/CatalogBrowse",
+        "asyncify.tcg.TcgService/CatalogDetail",
+        "asyncify.tcg.TcgService/CollectionItems",
+        "asyncify.tcg.TcgService/CollectionSummary",
+        "asyncify.tcg.TcgService/CreateCollection",
+        "asyncify.tcg.TcgService/DeleteCollection",
+        "asyncify.tcg.TcgService/HoldingDetail",
+        "asyncify.tcg.TcgService/ListCollections",
+        "asyncify.tcg.TcgService/ListSets",
+        "asyncify.tcg.TcgService/PerformanceBreakdown",
+        "asyncify.tcg.TcgService/PortfolioPerformance",
+        "asyncify.tcg.TcgService/ProfitLoss",
+        "asyncify.tcg.TcgService/RemoveHolding",
+        "asyncify.tcg.TcgService/Scan",
+        "asyncify.tcg.TcgService/SearchFilters",
+        "asyncify.tcg.TcgService/SoldListings",
+        "asyncify.tcg.TcgService/TopMovers",
+        "asyncify.tcg.TcgService/Trending",
+        "asyncify.tcg.TcgService/UpdateCollection",
+        "asyncify.tcg.TcgService/UpdateHolding",
+        "asyncify.tcg.TcgService/ValueOverTime"
+      ],
+      "notes": "23 methods, method-name dispatch. Heaviest port; may split models/sessions by responsibility (Catalog, Collection, Portfolio, Holdings).",
+      "example_protos": ["Example/Protos/tcg.pb.swift", "Example/Protos/tcg.fk.pb.swift"]
+    },
+    {
+      "id": 5,
+      "name": "user-delete",
+      "title": "Add DeleteUser to the user/notification surface",
+      "status": "todo",
+      "weight": "trivial",
+      "service_methods": [
+        "asyncify.user.UserService/DeleteUser"
+      ],
+      "notes": "WasmClient already covers the rest of UserService (notification settings/subscribe, live-activity token, submit survey) via UUID-action dispatch. Only DeleteUser is missing."
+    }
+  ]
+}

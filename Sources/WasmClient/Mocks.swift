@@ -123,6 +123,22 @@ extension WasmClient {
         musicLyrics: { _ in [] },
         musicRelated: { _, _ in WasmClient.Music.TrackList() },
         musicSuggestions: { _ in [] },
+        newsList: { _ in WasmClient.News.Feed() },
+        caloriesAnalyze: { _, _, _ in WasmClient.Calories.FoodResult() },
+        caloriesSearch: { _, _ in WasmClient.Calories.SearchResult() },
+        caloriesHealthScore: { _, _, _, _, _, _ in WasmClient.Calories.HealthScore() },
+        caloriesBarcode: { _, _ in WasmClient.Calories.FoodResult() },
+        caloriesSuggestions: { _ in WasmClient.Calories.SearchResult() },
+        caloriesIngredient: { _, _ in WasmClient.Calories.FoodResult() },
+        plantList: { _, _, _, _, _, _, _, _ in WasmClient.Plant.ListResult() },
+        plantSearch: { _, _, _ in [] },
+        plantComplete: { _, _, _ in [] },
+        plantDetail: { _, _, _ in WasmClient.Plant.Detail() },
+        plantWaterCalc: { _, _, _, _, _, _ in WasmClient.Plant.WaterCalc() },
+        plantRepottingChecker: { _, _, _ in WasmClient.Plant.RepottingResult() },
+        plantLightMeter: { _, _ in WasmClient.Plant.LightMeter() },
+        plantDiagnose: { _, _, _, _, _, _ in WasmClient.Plant.DiagnoseResult() },
+        plantWeather: { _, _, _, _ in WasmClient.Plant.WeatherResult() },
         suggest: { _, _ in [] },
         readOutLoud: { _, _, _ in .data(Data(), mime: "") },
         ttsVoices: { _, _ in [] },
@@ -515,6 +531,155 @@ extension WasmClient {
         musicSuggestions: { _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
             return ["pop music", "rock classics", "jazz vibes"]
+        },
+        newsList: { request in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.News.Feed(
+                items: [
+                    WasmClient.News.Item(
+                        id: "article-1",
+                        title: "Mock Headline",
+                        url: "https://example.com/s/mock",
+                        imageURL: "https://example.com/mock.jpg",
+                        source: "mock-source",
+                        author: "Mock Author",
+                        publishedAt: "2026-06-25T07:40:40Z",
+                        category: request.category.rawValue,
+                        hits: 42,
+                        metadata: ["summary": "A plausible mock article."]
+                    )
+                ],
+                nextOffset: 1,
+                tagsVocabulary: []
+            )
+        },
+        caloriesAnalyze: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Calories.FoodResult(
+                name: "Grilled Chicken Salad",
+                calories: 420,
+                protein: 38,
+                carbs: 12,
+                fats: 24,
+                healthScore: 8,
+                ingredients: [
+                    WasmClient.Calories.Ingredient(
+                        name: "grilled chicken", calories: 230, protein: 32, amount: 150, unit: "g"
+                    )
+                ]
+            )
+        },
+        caloriesSearch: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Calories.SearchResult(
+                items: [
+                    WasmClient.Calories.FoodItem(
+                        id: "food-1", name: "Banana", calories: 105, protein: 1.3, carbs: 27, fats: 0.4
+                    )
+                ]
+            )
+        },
+        caloriesHealthScore: { _, _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Calories.HealthScore(
+                rating: 7,
+                balance: "Well-balanced",
+                fullness: "Very filling",
+                goalFit: "Good for weight loss",
+                message: "A solid, nutrient-dense choice.",
+                tips: ["Add more vegetables"]
+            )
+        },
+        caloriesBarcode: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Calories.FoodResult(name: "Coca-Cola Classic 330ml", calories: 139)
+        },
+        caloriesSuggestions: { _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Calories.SearchResult(
+                items: [
+                    WasmClient.Calories.FoodItem(id: "food-2", name: "Oatmeal", calories: 150)
+                ]
+            )
+        },
+        caloriesIngredient: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Calories.FoodResult(name: "Romaine Lettuce", calories: 17)
+        },
+        plantList: { _, _, _, _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Plant.ListResult(
+                plants: [
+                    WasmClient.Plant.Species(
+                        id: "sp-1", latinName: "Dianthus caryophyllus", commonNames: ["Carnation"]
+                    )
+                ],
+                total: 1
+            )
+        },
+        plantSearch: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return [WasmClient.Plant.Species(id: "sp-2", latinName: "Rosa", commonNames: ["Rose"])]
+        },
+        plantComplete: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return [WasmClient.Plant.Species(id: "sp-3", commonNames: ["Rosemary"])]
+        },
+        plantDetail: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Plant.Detail(
+                uid: "sp-1",
+                preferredName: "Carnation",
+                latinName: "Dianthus caryophyllus",
+                commonNames: ["Carnation"]
+            )
+        },
+        plantWaterCalc: { _, _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Plant.WaterCalc(
+                waterAmountMl: 250, frequencyDays: 7, careType: "moderate", plantName: "Carnation"
+            )
+        },
+        plantRepottingChecker: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Plant.RepottingResult(
+                isPlant: true,
+                isRepottable: true,
+                topics: [
+                    WasmClient.Plant.RepotTopic(
+                        name: "Preparation",
+                        sections: [
+                            WasmClient.Plant.RepotSection(title: "How to repot", content: "Loosen the roots…")
+                        ]
+                    )
+                ]
+            )
+        },
+        plantLightMeter: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Plant.LightMeter(level: "medium_light", lux: 850)
+        },
+        plantDiagnose: { _, _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Plant.DiagnoseResult(
+                plantName: "Carnation",
+                diseases: [
+                    WasmClient.Plant.DiseaseInfo(
+                        name: "Brown Spot", summary: "Fungal leaf spot", confidence: 0.82
+                    )
+                ],
+                tips: [WasmClient.Plant.Tip(id: "t1", title: "Pruning time?", content: "Trim damaged leaves.")]
+            )
+        },
+        plantWeather: { _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Plant.WeatherResult(
+                forecast: [
+                    WasmClient.Plant.WeatherDay(day: "2026-06-25", conditions: "Partially cloudy", temperature: 24)
+                ],
+                hardinessZone: "7b",
+                climateClassification: "Aw"
+            )
         },
         suggest: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)

@@ -5,6 +5,9 @@ swift_test(
     srcs = [
         "AIArtRequestTests.swift",
         "AuditCleanupTests.swift",
+        "CaloriesRequestTests.swift",
+        "NewsRequestTests.swift",
+        "PlantRequestTests.swift",
         "SmartcarTests.swift",
     ],
     module_name = "WasmClientTests",

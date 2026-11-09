@@ -179,6 +179,90 @@ extension WasmClient: DependencyKey {
             musicSuggestions: { query in
                 try await actor.musicSuggestions(query: query)
             },
+            newsList: { request in
+                try await actor.newsList(request: request)
+            },
+            caloriesAnalyze: { providerID, text, image in
+                try await actor.caloriesAnalyze(providerID: providerID, text: text, image: image)
+            },
+            caloriesSearch: { providerID, query in
+                try await actor.caloriesSearch(providerID: providerID, query: query)
+            },
+            caloriesHealthScore: { providerID, name, calories, protein, carbs, fats in
+                try await actor.caloriesHealthScore(
+                    providerID: providerID,
+                    name: name,
+                    calories: calories,
+                    protein: protein,
+                    carbs: carbs,
+                    fats: fats
+                )
+            },
+            caloriesBarcode: { providerID, barcode in
+                try await actor.caloriesBarcode(providerID: providerID, barcode: barcode)
+            },
+            caloriesSuggestions: { providerID in
+                try await actor.caloriesSuggestions(providerID: providerID)
+            },
+            caloriesIngredient: { providerID, name in
+                try await actor.caloriesIngredient(providerID: providerID, name: name)
+            },
+            plantList: { query, listType, latitude, longitude, season, month, limit, offset in
+                try await actor.plantList(
+                    query: query,
+                    listType: listType,
+                    latitude: latitude,
+                    longitude: longitude,
+                    season: season,
+                    month: month,
+                    limit: limit,
+                    offset: offset
+                )
+            },
+            plantSearch: { searchText, languageCode, countryCode in
+                try await actor.plantSearch(
+                    searchText: searchText, languageCode: languageCode, countryCode: countryCode
+                )
+            },
+            plantComplete: { searchText, languageCode, countryCode in
+                try await actor.plantComplete(
+                    searchText: searchText, languageCode: languageCode, countryCode: countryCode
+                )
+            },
+            plantDetail: { uid, languageCode, countryCode in
+                try await actor.plantDetail(uid: uid, languageCode: languageCode, countryCode: countryCode)
+            },
+            plantWaterCalc: { file, plantID, settings, countryCode, latitude, longitude in
+                try await actor.plantWaterCalc(
+                    file: file,
+                    plantID: plantID,
+                    settings: settings,
+                    countryCode: countryCode,
+                    latitude: latitude,
+                    longitude: longitude
+                )
+            },
+            plantRepottingChecker: { file, plantID, plantName in
+                try await actor.plantRepottingChecker(file: file, plantID: plantID, plantName: plantName)
+            },
+            plantLightMeter: { brightness, file in
+                try await actor.plantLightMeter(brightness: brightness, file: file)
+            },
+            plantDiagnose: { file, plantID, countryCode, latitude, longitude, additionalFiles in
+                try await actor.plantDiagnose(
+                    file: file,
+                    plantID: plantID,
+                    countryCode: countryCode,
+                    latitude: latitude,
+                    longitude: longitude,
+                    additionalFiles: additionalFiles
+                )
+            },
+            plantWeather: { latitude, longitude, countryCode, day in
+                try await actor.plantWeather(
+                    latitude: latitude, longitude: longitude, countryCode: countryCode, day: day
+                )
+            },
             suggest: { systemPrompt, imageURL in
                 try await actor.suggest(systemPrompt: systemPrompt, imageURL: imageURL)
             },

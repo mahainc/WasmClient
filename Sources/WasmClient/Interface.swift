@@ -225,6 +225,114 @@ public struct WasmClient: Sendable {
             _ query: String
         ) async throws -> [String]
 
+    // MARK: - News
+
+    public var newsList:
+        @Sendable (
+            _ request: WasmClient.News.Request
+        ) async throws -> WasmClient.News.Feed
+
+    // MARK: - Calories
+
+    public var caloriesAnalyze:
+        @Sendable (
+            _ providerID: String?, _ text: String?, _ image: String?
+        ) async throws -> WasmClient.Calories.FoodResult
+
+    public var caloriesSearch:
+        @Sendable (
+            _ providerID: String?, _ query: String
+        ) async throws -> WasmClient.Calories.SearchResult
+
+    public var caloriesHealthScore:
+        @Sendable (
+            _ providerID: String?,
+            _ name: String,
+            _ calories: Double?,
+            _ protein: Double?,
+            _ carbs: Double?,
+            _ fats: Double?
+        ) async throws -> WasmClient.Calories.HealthScore
+
+    public var caloriesBarcode:
+        @Sendable (
+            _ providerID: String?, _ barcode: String
+        ) async throws -> WasmClient.Calories.FoodResult
+
+    public var caloriesSuggestions:
+        @Sendable (
+            _ providerID: String?
+        ) async throws -> WasmClient.Calories.SearchResult
+
+    public var caloriesIngredient:
+        @Sendable (
+            _ providerID: String?, _ name: String
+        ) async throws -> WasmClient.Calories.FoodResult
+
+    // MARK: - Plant
+
+    public var plantList:
+        @Sendable (
+            _ query: String?,
+            _ listType: WasmClient.Plant.ListType?,
+            _ latitude: Double?,
+            _ longitude: Double?,
+            _ season: WasmClient.Plant.Season?,
+            _ month: Int?,
+            _ limit: Int?,
+            _ offset: Int?
+        ) async throws -> WasmClient.Plant.ListResult
+
+    public var plantSearch:
+        @Sendable (
+            _ searchText: String, _ languageCode: String?, _ countryCode: String?
+        ) async throws -> [WasmClient.Plant.Species]
+
+    public var plantComplete:
+        @Sendable (
+            _ searchText: String, _ languageCode: String?, _ countryCode: String?
+        ) async throws -> [WasmClient.Plant.Species]
+
+    public var plantDetail:
+        @Sendable (
+            _ uid: String, _ languageCode: String?, _ countryCode: String?
+        ) async throws -> WasmClient.Plant.Detail
+
+    public var plantWaterCalc:
+        @Sendable (
+            _ file: String?,
+            _ plantID: String?,
+            _ settings: String?,
+            _ countryCode: String?,
+            _ latitude: Double?,
+            _ longitude: Double?
+        ) async throws -> WasmClient.Plant.WaterCalc
+
+    public var plantRepottingChecker:
+        @Sendable (
+            _ file: String, _ plantID: String?, _ plantName: String?
+        ) async throws -> WasmClient.Plant.RepottingResult
+
+    public var plantLightMeter:
+        @Sendable (
+            _ brightness: Double?, _ file: String?
+        ) async throws -> WasmClient.Plant.LightMeter
+
+    public var plantDiagnose:
+        @Sendable (
+            _ file: String,
+            _ plantID: String?,
+            _ countryCode: String?,
+            _ latitude: Double?,
+            _ longitude: Double?,
+            _ additionalFiles: [String]
+        ) async throws -> WasmClient.Plant.DiagnoseResult
+
+    public var plantWeather:
+        @Sendable (
+            _ latitude: Double, _ longitude: Double, _ countryCode: String?, _ day: String?
+        ) async throws -> WasmClient.Plant.WeatherResult
+
     // MARK: - Suggest
 
     public var suggest:
