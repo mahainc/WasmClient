@@ -222,7 +222,10 @@ extension WasmClient {
         tcgDeleteCollection: { _ in [] },
         tcgCollectionSummary: { WasmClient.TCG.CollectionSummary() },
         tcgCollectionItems: { _, _, _ in WasmClient.TCG.CollectionItems() },
-        tcgAddCards: { _, _ in WasmClient.TCG.AddCardsResult() }
+        tcgAddCards: { _, _ in WasmClient.TCG.AddCardsResult() },
+        tcgHoldingDetail: { _ in WasmClient.TCG.HoldingDetail() },
+        tcgUpdateHolding: { _, _, _, _, _ in WasmClient.TCG.UpdateHoldingResult() },
+        tcgRemoveHolding: { _, _, _, _ in WasmClient.TCG.RemoveHoldingResult() }
     )
 
     public static let happy = Self(
@@ -1242,6 +1245,23 @@ extension WasmClient {
                 ]
             )
         },
-        tcgAddCards: { _, _ in WasmClient.TCG.AddCardsResult(ok: true) }
+        tcgAddCards: { _, _ in WasmClient.TCG.AddCardsResult(ok: true) },
+        tcgHoldingDetail: { holdingID in
+            WasmClient.TCG.HoldingDetail(
+                item: WasmClient.TCG.CollectionItem(
+                    id: holdingID,
+                    card: WasmClient.TCG.Card(id: "c1", name: "Charizard", game: .pokemon),
+                    quantity: 2,
+                    condition: .nearMint
+                )
+            )
+        },
+        tcgUpdateHolding: { holdingID, _, _, _, quantity in
+            WasmClient.TCG.UpdateHoldingResult(
+                ok: true,
+                item: WasmClient.TCG.CollectionItem(id: holdingID, quantity: quantity ?? 1)
+            )
+        },
+        tcgRemoveHolding: { _, _, _, _ in WasmClient.TCG.RemoveHoldingResult(ok: true) }
     )
 }

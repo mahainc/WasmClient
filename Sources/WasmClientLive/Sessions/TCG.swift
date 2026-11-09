@@ -259,6 +259,67 @@ extension WasmActor {
         return WasmClient.TCG.AddCardsResult(ok: resp.ok)
     }
 
+    // MARK: - TCG Holdings
+
+    func tcgHoldingDetail(
+        holdingID: String
+    ) async throws -> WasmClient.TCG.HoldingDetail {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !holdingID.isEmpty { args["holding_id"] = Google_Protobuf_Value(stringValue: holdingID) }
+
+        let resp: TcgHoldingDetailResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.holdingDetail.rawValue,
+            args: args
+        )
+        return Self.mapHoldingDetail(resp)
+    }
+
+    func tcgUpdateHolding(
+        holdingID: String,
+        paidPrice: String?,
+        acquiredAt: String?,
+        note: String?,
+        quantity: Int?
+    ) async throws -> WasmClient.TCG.UpdateHoldingResult {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !holdingID.isEmpty { args["holding_id"] = Google_Protobuf_Value(stringValue: holdingID) }
+        if let paidPrice { args["paid_price"] = Google_Protobuf_Value(stringValue: paidPrice) }
+        if let acquiredAt { args["acquired_at"] = Google_Protobuf_Value(stringValue: acquiredAt) }
+        if let note { args["note"] = Google_Protobuf_Value(stringValue: note) }
+        if let quantity { args["quantity"] = Google_Protobuf_Value(numberValue: Double(quantity)) }
+
+        let resp: TcgUpdateHoldingResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.updateHolding.rawValue,
+            args: args
+        )
+        return Self.mapUpdateHolding(resp)
+    }
+
+    func tcgRemoveHolding(
+        holdingID: String,
+        cardID: String,
+        variant: WasmClient.TCG.Variant,
+        quantity: Int
+    ) async throws -> WasmClient.TCG.RemoveHoldingResult {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !holdingID.isEmpty { args["holding_id"] = Google_Protobuf_Value(stringValue: holdingID) }
+        if !cardID.isEmpty { args["card_id"] = Google_Protobuf_Value(stringValue: cardID) }
+        if let data = try? Self.variantProto(variant).jsonUTF8Data(),
+           let json = String(data: data, encoding: .utf8) {
+            args["variant"] = Google_Protobuf_Value(stringValue: json)
+        }
+        args["quantity"] = Google_Protobuf_Value(numberValue: Double(quantity))
+
+        let resp: TcgRemoveHoldingResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.removeHolding.rawValue,
+            args: args
+        )
+        return WasmClient.TCG.RemoveHoldingResult(ok: resp.ok)
+    }
+
     // MARK: - Enum mapping (wire argString; empty = unspecified)
 
     static func mapGame(_ proto: TcgGame) -> WasmClient.TCG.Game {
@@ -581,6 +642,24 @@ extension WasmActor {
         proto.finish = finishProto(item.finish)
         if !item.paidPrice.isEmpty { proto.paidPrice = item.paidPrice }
         return proto
+    }
+
+    // MARK: - Holdings mapping
+
+    static func variantProto(_ variant: WasmClient.TCG.Variant) -> TcgVariant {
+        var proto = TcgVariant()
+        proto.id = variant.id
+        proto.finish = finishProto(variant.finish)
+        proto.grade = variant.grade
+        return proto
+    }
+
+    static func mapHoldingDetail(_ proto: TcgHoldingDetailResponse) -> WasmClient.TCG.HoldingDetail {
+        WasmClient.TCG.HoldingDetail(item: mapCollectionItem(proto.item))
+    }
+
+    static func mapUpdateHolding(_ proto: TcgUpdateHoldingResponse) -> WasmClient.TCG.UpdateHoldingResult {
+        WasmClient.TCG.UpdateHoldingResult(ok: proto.ok, item: mapCollectionItem(proto.item))
     }
 
     static func mapStruct(_ metadata: Google_Protobuf_Struct) -> [String: String] {

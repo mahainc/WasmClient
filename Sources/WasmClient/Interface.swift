@@ -701,4 +701,26 @@ public struct WasmClient: Sendable {
         @Sendable (
             _ collectionID: String, _ items: [WasmClient.TCG.AddCardItem]
         ) async throws -> WasmClient.TCG.AddCardsResult
+
+    public var tcgHoldingDetail:
+        @Sendable (
+            _ holdingID: String
+        ) async throws -> WasmClient.TCG.HoldingDetail
+
+    public var tcgUpdateHolding:
+        @Sendable (
+            _ holdingID: String,
+            _ paidPrice: String?,
+            _ acquiredAt: String?,
+            _ note: String?,
+            _ quantity: Int?
+        ) async throws -> WasmClient.TCG.UpdateHoldingResult
+
+    public var tcgRemoveHolding:
+        @Sendable (
+            _ holdingID: String,
+            _ cardID: String,
+            _ variant: WasmClient.TCG.Variant,
+            _ quantity: Int
+        ) async throws -> WasmClient.TCG.RemoveHoldingResult
 }

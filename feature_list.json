@@ -105,7 +105,7 @@
           "id": "4c",
           "name": "tcg-holdings",
           "title": "TCG holdings group",
-          "status": "todo",
+          "status": "done",
           "service_methods": ["HoldingDetail", "UpdateHolding", "RemoveHolding"]
         },
         {

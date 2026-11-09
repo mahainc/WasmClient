@@ -30,6 +30,10 @@ extension WasmClient.TCG {
         public static let collectionSummary = ServiceMethod(rawValue: "asyncify.tcg.TcgService/CollectionSummary")
         public static let collectionItems = ServiceMethod(rawValue: "asyncify.tcg.TcgService/CollectionItems")
         public static let addCards = ServiceMethod(rawValue: "asyncify.tcg.TcgService/AddCards")
+
+        public static let holdingDetail = ServiceMethod(rawValue: "asyncify.tcg.TcgService/HoldingDetail")
+        public static let updateHolding = ServiceMethod(rawValue: "asyncify.tcg.TcgService/UpdateHolding")
+        public static let removeHolding = ServiceMethod(rawValue: "asyncify.tcg.TcgService/RemoveHolding")
     }
 }
 
@@ -760,6 +764,36 @@ extension WasmClient.TCG {
     }
 
     public struct AddCardsResult: Sendable, Equatable {
+        public let ok: Bool
+
+        public init(ok: Bool = false) {
+            self.ok = ok
+        }
+    }
+}
+
+// MARK: - Holdings
+
+extension WasmClient.TCG {
+    public struct HoldingDetail: Sendable, Equatable {
+        public let item: CollectionItem
+
+        public init(item: CollectionItem = CollectionItem()) {
+            self.item = item
+        }
+    }
+
+    public struct UpdateHoldingResult: Sendable, Equatable {
+        public let ok: Bool
+        public let item: CollectionItem
+
+        public init(ok: Bool = false, item: CollectionItem = CollectionItem()) {
+            self.ok = ok
+            self.item = item
+        }
+    }
+
+    public struct RemoveHoldingResult: Sendable, Equatable {
         public let ok: Bool
 
         public init(ok: Bool = false) {

@@ -527,6 +527,23 @@ extension WasmClient: DependencyKey {
             },
             tcgAddCards: { collectionID, items in
                 try await actor.tcgAddCards(collectionID: collectionID, items: items)
+            },
+            tcgHoldingDetail: { holdingID in
+                try await actor.tcgHoldingDetail(holdingID: holdingID)
+            },
+            tcgUpdateHolding: { holdingID, paidPrice, acquiredAt, note, quantity in
+                try await actor.tcgUpdateHolding(
+                    holdingID: holdingID,
+                    paidPrice: paidPrice,
+                    acquiredAt: acquiredAt,
+                    note: note,
+                    quantity: quantity
+                )
+            },
+            tcgRemoveHolding: { holdingID, cardID, variant, quantity in
+                try await actor.tcgRemoveHolding(
+                    holdingID: holdingID, cardID: cardID, variant: variant, quantity: quantity
+                )
             }
         )
     }()
