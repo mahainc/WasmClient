@@ -9,6 +9,7 @@ swift_test(
         "ChatStreamTests.swift",
         "NewsMapperTests.swift",
         "PlantMapperTests.swift",
+        "TCGCatalogMapperTests.swift",
     ],
     module_name = "WasmClientLiveTests",
     deps = [

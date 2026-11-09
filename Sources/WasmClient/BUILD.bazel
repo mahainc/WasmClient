@@ -20,6 +20,7 @@ swift_library(
         "Models/Plant.swift",
         "Models/Smartcar.swift",
         "Models/Survey.swift",
+        "Models/TCG.swift",
         "Models/TTS.swift",
         "Models/Vision.swift",
         "Models/Visual.swift",

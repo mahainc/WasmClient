@@ -617,4 +617,54 @@ public struct WasmClient: Sendable {
         @Sendable (
             _ firebaseUID: String
         ) async throws -> Void
+
+    // MARK: - TCG
+
+    public var tcgScan:
+        @Sendable (
+            _ imageBase64: String, _ game: WasmClient.TCG.Game
+        ) async throws -> WasmClient.TCG.ScanResult
+
+    public var tcgCatalogDetail:
+        @Sendable (
+            _ cardID: String, _ currency: String?
+        ) async throws -> WasmClient.TCG.CatalogDetail
+
+    public var tcgSoldListings:
+        @Sendable (
+            _ cardID: String,
+            _ grade: String?,
+            _ subType: String?,
+            _ offset: Int?,
+            _ limit: Int?
+        ) async throws -> WasmClient.TCG.SoldListings
+
+    public var tcgCatalogBrowse:
+        @Sendable (
+            _ page: Int?,
+            _ limit: Int?,
+            _ game: WasmClient.TCG.Game,
+            _ query: String?,
+            _ sortID: String?,
+            _ sortAscending: Bool?,
+            _ filterIds: [String],
+            _ setID: String?
+        ) async throws -> WasmClient.TCG.CatalogBrowse
+
+    public var tcgTrending:
+        @Sendable (
+            _ game: WasmClient.TCG.Game
+        ) async throws -> WasmClient.TCG.Trending
+
+    public var tcgSearchFilters:
+        @Sendable () async throws -> WasmClient.TCG.SearchFilters
+
+    public var tcgListSets:
+        @Sendable (
+            _ collectionID: String?,
+            _ game: WasmClient.TCG.Game,
+            _ language: String?,
+            _ currency: String?,
+            _ allCollections: Bool?
+        ) async throws -> WasmClient.TCG.ListSets
 }

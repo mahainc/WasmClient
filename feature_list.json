@@ -84,8 +84,38 @@
         "asyncify.tcg.TcgService/UpdateHolding",
         "asyncify.tcg.TcgService/ValueOverTime"
       ],
-      "notes": "23 methods, method-name dispatch. Heaviest port; may split models/sessions by responsibility (Catalog, Collection, Portfolio, Holdings).",
-      "example_protos": ["Example/Protos/tcg.pb.swift", "Example/Protos/tcg.fk.pb.swift"]
+      "notes": "23 methods, method-name dispatch. Heaviest port; split models/sessions by responsibility. Done incrementally via the subtasks below (verify+commit per group).",
+      "example_protos": ["Example/Protos/tcg.pb.swift", "Example/Protos/tcg.fk.pb.swift"],
+      "subtasks": [
+        {
+          "id": "4a",
+          "name": "tcg-catalog",
+          "title": "TCG catalog / lookup group",
+          "status": "done",
+          "service_methods": ["Scan", "CatalogDetail", "SoldListings", "CatalogBrowse", "Trending", "SearchFilters", "ListSets"]
+        },
+        {
+          "id": "4b",
+          "name": "tcg-collections",
+          "title": "TCG collections group",
+          "status": "todo",
+          "service_methods": ["AccountInfo", "ListCollections", "CreateCollection", "UpdateCollection", "DeleteCollection", "CollectionSummary", "CollectionItems", "AddCards"]
+        },
+        {
+          "id": "4c",
+          "name": "tcg-holdings",
+          "title": "TCG holdings group",
+          "status": "todo",
+          "service_methods": ["HoldingDetail", "UpdateHolding", "RemoveHolding"]
+        },
+        {
+          "id": "4d",
+          "name": "tcg-portfolio",
+          "title": "TCG portfolio / analytics group",
+          "status": "todo",
+          "service_methods": ["PortfolioPerformance", "ValueOverTime", "TopMovers", "PerformanceBreakdown", "ProfitLoss"]
+        }
+      ]
     },
     {
       "id": 5,

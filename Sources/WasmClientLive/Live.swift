@@ -461,6 +461,44 @@ extension WasmClient: DependencyKey {
             },
             deleteUser: { firebaseUID in
                 try await actor.deleteUser(firebaseUID: firebaseUID)
+            },
+            tcgScan: { imageBase64, game in
+                try await actor.tcgScan(imageBase64: imageBase64, game: game)
+            },
+            tcgCatalogDetail: { cardID, currency in
+                try await actor.tcgCatalogDetail(cardID: cardID, currency: currency)
+            },
+            tcgSoldListings: { cardID, grade, subType, offset, limit in
+                try await actor.tcgSoldListings(
+                    cardID: cardID, grade: grade, subType: subType, offset: offset, limit: limit
+                )
+            },
+            tcgCatalogBrowse: { page, limit, game, query, sortID, sortAscending, filterIds, setID in
+                try await actor.tcgCatalogBrowse(
+                    page: page,
+                    limit: limit,
+                    game: game,
+                    query: query,
+                    sortID: sortID,
+                    sortAscending: sortAscending,
+                    filterIds: filterIds,
+                    setID: setID
+                )
+            },
+            tcgTrending: { game in
+                try await actor.tcgTrending(game: game)
+            },
+            tcgSearchFilters: {
+                try await actor.tcgSearchFilters()
+            },
+            tcgListSets: { collectionID, game, language, currency, allCollections in
+                try await actor.tcgListSets(
+                    collectionID: collectionID,
+                    game: game,
+                    language: language,
+                    currency: currency,
+                    allCollections: allCollections
+                )
             }
         )
     }()

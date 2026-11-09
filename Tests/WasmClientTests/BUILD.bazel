@@ -9,6 +9,7 @@ swift_test(
         "NewsRequestTests.swift",
         "PlantRequestTests.swift",
         "SmartcarTests.swift",
+        "TCGCatalogRequestTests.swift",
         "UserDeleteTests.swift",
     ],
     module_name = "WasmClientTests",

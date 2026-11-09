@@ -207,7 +207,14 @@ extension WasmClient {
         getNotificationSettings: { WasmClient.Notification.Settings(enabled: false, topics: []) },
         notificationSubscribe: { _, _, _ in },
         reportLiveActivityToken: { _, _, _ in },
-        deleteUser: { _ in }
+        deleteUser: { _ in },
+        tcgScan: { _, _ in WasmClient.TCG.ScanResult() },
+        tcgCatalogDetail: { _, _ in WasmClient.TCG.CatalogDetail() },
+        tcgSoldListings: { _, _, _, _, _ in WasmClient.TCG.SoldListings() },
+        tcgCatalogBrowse: { _, _, _, _, _, _, _, _ in WasmClient.TCG.CatalogBrowse() },
+        tcgTrending: { _ in WasmClient.TCG.Trending() },
+        tcgSearchFilters: { WasmClient.TCG.SearchFilters() },
+        tcgListSets: { _, _, _, _, _ in WasmClient.TCG.ListSets() }
     )
 
     public static let happy = Self(
@@ -1132,6 +1139,63 @@ extension WasmClient {
         },
         deleteUser: { _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+        },
+        tcgScan: { _, _ in
+            WasmClient.TCG.ScanResult(
+                scansRemaining: 3,
+                matches: [
+                    WasmClient.TCG.CardMatch(
+                        card: WasmClient.TCG.Card(id: "c1", name: "Charizard", game: .pokemon),
+                        confidence: 0.92
+                    )
+                ]
+            )
+        },
+        tcgCatalogDetail: { cardID, _ in
+            WasmClient.TCG.CatalogDetail(
+                card: WasmClient.TCG.Card(id: cardID, name: "Charizard", game: .pokemon),
+                ownedCount: 2
+            )
+        },
+        tcgSoldListings: { _, _, _, _, _ in
+            WasmClient.TCG.SoldListings(
+                searchURL: "https://ebay.com/sold",
+                listings: [
+                    WasmClient.TCG.SoldListing(
+                        id: "l1",
+                        marketplace: "eBay",
+                        title: "Auction",
+                        price: WasmClient.TCG.Money(amount: "120.00", currency: "USD")
+                    )
+                ],
+                hasMore: true
+            )
+        },
+        tcgCatalogBrowse: { _, _, game, _, _, _, _, _ in
+            WasmClient.TCG.CatalogBrowse(
+                cards: [WasmClient.TCG.Card(id: "c1", name: "Charizard", game: game)],
+                page: 1,
+                total: 1
+            )
+        },
+        tcgTrending: { _ in
+            WasmClient.TCG.Trending(
+                entries: [WasmClient.TCG.TrendingEntry(cardID: "c1", score: "0.9", rank: 1)]
+            )
+        },
+        tcgSearchFilters: {
+            WasmClient.TCG.SearchFilters(
+                filters: [WasmClient.TCG.SearchFilter(id: "f1", name: "Pokemon", game: .pokemon)],
+                sortOptions: [WasmClient.TCG.SortOption(id: "price", displayName: "Price")]
+            )
+        },
+        tcgListSets: { _, _, _, currency, _ in
+            WasmClient.TCG.ListSets(
+                sets: [WasmClient.TCG.CardSet(id: "s1", name: "Base Set", cardCount: 102)],
+                languages: [WasmClient.TCG.SetLanguage(code: "en", description: "English")],
+                category: WasmClient.TCG.CategoryDetails(name: "Pokemon"),
+                currency: currency ?? "USD"
+            )
         }
     )
 }
