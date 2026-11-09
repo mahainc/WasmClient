@@ -111,4 +111,16 @@ extension WasmActor {
             .listValue.values.compactMap { $0.stringValue } ?? []
         return WasmClient.Notification.Settings(enabled: enabled, topics: topics)
     }
+
+    func deleteUser(firebaseUID: String) async throws {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !firebaseUID.isEmpty {
+            args["firebase_uid"] = Google_Protobuf_Value(stringValue: firebaseUID)
+        }
+        let _: TypesVoid = try await instance.run(
+            method: WasmClient.Notification.ServiceMethod.deleteUser.rawValue,
+            args: args
+        )
+    }
 }

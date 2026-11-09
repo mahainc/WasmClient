@@ -612,4 +612,9 @@ public struct WasmClient: Sendable {
         @Sendable (
             _ entity: String, _ entityID: String, _ laToken: String
         ) async throws -> Void
+
+    public var deleteUser:
+        @Sendable (
+            _ firebaseUID: String
+        ) async throws -> Void
 }

@@ -206,7 +206,8 @@ extension WasmClient {
         setNotification: { _, _, _, _, _ in },
         getNotificationSettings: { WasmClient.Notification.Settings(enabled: false, topics: []) },
         notificationSubscribe: { _, _, _ in },
-        reportLiveActivityToken: { _, _, _ in }
+        reportLiveActivityToken: { _, _, _ in },
+        deleteUser: { _ in }
     )
 
     public static let happy = Self(
@@ -1127,6 +1128,9 @@ extension WasmClient {
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
         },
         reportLiveActivityToken: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+        },
+        deleteUser: { _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
         }
     )

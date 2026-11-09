@@ -9,6 +9,7 @@ swift_test(
         "NewsRequestTests.swift",
         "PlantRequestTests.swift",
         "SmartcarTests.swift",
+        "UserDeleteTests.swift",
     ],
     module_name = "WasmClientTests",
     deps = ["//Sources/WasmClient"],

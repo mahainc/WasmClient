@@ -458,6 +458,9 @@ extension WasmClient: DependencyKey {
                     entityID: entityID,
                     laToken: laToken
                 )
+            },
+            deleteUser: { firebaseUID in
+                try await actor.deleteUser(firebaseUID: firebaseUID)
             }
         )
     }()

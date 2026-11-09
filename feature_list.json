@@ -91,7 +91,7 @@
       "id": 5,
       "name": "user-delete",
       "title": "Add DeleteUser to the user/notification surface",
-      "status": "todo",
+      "status": "done",
       "weight": "trivial",
       "service_methods": [
         "asyncify.user.UserService/DeleteUser"
