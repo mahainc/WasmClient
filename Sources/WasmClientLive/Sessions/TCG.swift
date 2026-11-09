@@ -320,6 +320,116 @@ extension WasmActor {
         return WasmClient.TCG.RemoveHoldingResult(ok: resp.ok)
     }
 
+    // MARK: - TCG Analytics
+
+    func tcgPortfolioPerformance(
+        collectionID: String,
+        currency: String?,
+        allCollections: Bool?,
+        window: WasmClient.TCG.AnalyticsWindow
+    ) async throws -> WasmClient.TCG.PortfolioPerformance {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !collectionID.isEmpty { args["collection_id"] = Google_Protobuf_Value(stringValue: collectionID) }
+        if let currency { args["currency"] = Google_Protobuf_Value(stringValue: currency) }
+        if let allCollections {
+            args["all_collections"] = Google_Protobuf_Value(stringValue: allCollections ? "true" : "false")
+        }
+        if !window.rawValue.isEmpty { args["window"] = Google_Protobuf_Value(stringValue: window.rawValue) }
+
+        let resp: TcgPortfolioPerformanceResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.portfolioPerformance.rawValue,
+            args: args
+        )
+        return Self.mapPortfolioPerformance(resp)
+    }
+
+    func tcgValueOverTime(
+        collectionID: String,
+        window: WasmClient.TCG.AnalyticsWindow,
+        currency: String?,
+        allCollections: Bool?
+    ) async throws -> WasmClient.TCG.ValueOverTime {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !collectionID.isEmpty { args["collection_id"] = Google_Protobuf_Value(stringValue: collectionID) }
+        if !window.rawValue.isEmpty { args["window"] = Google_Protobuf_Value(stringValue: window.rawValue) }
+        if let currency { args["currency"] = Google_Protobuf_Value(stringValue: currency) }
+        if let allCollections {
+            args["all_collections"] = Google_Protobuf_Value(stringValue: allCollections ? "true" : "false")
+        }
+
+        let resp: TcgValueOverTimeResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.valueOverTime.rawValue,
+            args: args
+        )
+        return Self.mapValueOverTime(resp)
+    }
+
+    func tcgTopMovers(
+        collectionID: String,
+        window: WasmClient.TCG.AnalyticsWindow,
+        limit: Int?,
+        currency: String?,
+        allCollections: Bool?
+    ) async throws -> WasmClient.TCG.TopMovers {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !collectionID.isEmpty { args["collection_id"] = Google_Protobuf_Value(stringValue: collectionID) }
+        if !window.rawValue.isEmpty { args["window"] = Google_Protobuf_Value(stringValue: window.rawValue) }
+        if let limit { args["limit"] = Google_Protobuf_Value(numberValue: Double(limit)) }
+        if let currency { args["currency"] = Google_Protobuf_Value(stringValue: currency) }
+        if let allCollections {
+            args["all_collections"] = Google_Protobuf_Value(stringValue: allCollections ? "true" : "false")
+        }
+
+        let resp: TcgTopMoversResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.topMovers.rawValue,
+            args: args
+        )
+        return Self.mapTopMovers(resp)
+    }
+
+    func tcgPerformanceBreakdown(
+        collectionID: String,
+        facet: WasmClient.TCG.BreakdownFacet,
+        window: WasmClient.TCG.AnalyticsWindow,
+        currency: String?,
+        allCollections: Bool?
+    ) async throws -> WasmClient.TCG.PerformanceBreakdown {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !collectionID.isEmpty { args["collection_id"] = Google_Protobuf_Value(stringValue: collectionID) }
+        if !facet.rawValue.isEmpty { args["facet"] = Google_Protobuf_Value(stringValue: facet.rawValue) }
+        if !window.rawValue.isEmpty { args["window"] = Google_Protobuf_Value(stringValue: window.rawValue) }
+        if let currency { args["currency"] = Google_Protobuf_Value(stringValue: currency) }
+        if let allCollections {
+            args["all_collections"] = Google_Protobuf_Value(stringValue: allCollections ? "true" : "false")
+        }
+
+        let resp: TcgPerformanceBreakdownResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.performanceBreakdown.rawValue,
+            args: args
+        )
+        return Self.mapPerformanceBreakdown(resp)
+    }
+
+    func tcgProfitLoss(
+        collectionID: String,
+        currency: String?
+    ) async throws -> WasmClient.TCG.ProfitLoss {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !collectionID.isEmpty { args["collection_id"] = Google_Protobuf_Value(stringValue: collectionID) }
+        if let currency { args["currency"] = Google_Protobuf_Value(stringValue: currency) }
+
+        let resp: TcgProfitLossResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.profitLoss.rawValue,
+            args: args
+        )
+        return Self.mapProfitLoss(resp)
+    }
+
     // MARK: - Enum mapping (wire argString; empty = unspecified)
 
     static func mapGame(_ proto: TcgGame) -> WasmClient.TCG.Game {
@@ -668,5 +778,159 @@ extension WasmActor {
             result[key] = value.stringValue
         }
         return result
+    }
+
+    // MARK: - Analytics mapping (wire argString; mirrors tcg.fk.pb.swift)
+
+    static func mapWindow(_ proto: TcgAnalyticsWindow) -> WasmClient.TCG.AnalyticsWindow {
+        switch proto {
+        case .unspecified: return .allTime
+        case .oneDay: return .oneDay
+        case .oneWeek: return .oneWeek
+        case .oneMonth: return .oneMonth
+        case .threeMonths: return .threeMonths
+        case .sixMonths: return .sixMonths
+        case .oneYear: return .oneYear
+        case .max: return .max
+        default: return .threeMonths
+        }
+    }
+
+    static func mapFacet(_ proto: TcgBreakdownFacet) -> WasmClient.TCG.BreakdownFacet {
+        switch proto {
+        case .unspecified: return .bySet
+        case .bySet: return .bySet
+        case .byRarity: return .byRarity
+        case .byGame: return .byGame
+        case .byFinish: return .byFinish
+        default: return .bySet
+        }
+    }
+
+    static func mapMoverDirection(_ proto: TcgMoverDirection) -> WasmClient.TCG.MoverDirection {
+        switch proto {
+        case .up: return .up
+        case .down: return .down
+        case .flat: return .flat
+        default: return WasmClient.TCG.MoverDirection(rawValue: "")
+        }
+    }
+
+    static func mapPortfolioPerformance(_ proto: TcgPortfolioPerformanceResponse) -> WasmClient.TCG.PortfolioPerformance {
+        WasmClient.TCG.PortfolioPerformance(
+            costBasis: mapMoney(proto.costBasis),
+            marketValue: mapMoney(proto.marketValue),
+            gain: mapMoney(proto.gain),
+            roiPercentage: proto.roiPercentage,
+            cardCount: Int(proto.cardCount),
+            window: mapWindow(proto.window)
+        )
+    }
+
+    static func mapValuePoint(_ proto: TcgValuePoint) -> WasmClient.TCG.ValuePoint {
+        WasmClient.TCG.ValuePoint(at: proto.at, value: mapMoney(proto.value))
+    }
+
+    static func mapValueOverTime(_ proto: TcgValueOverTimeResponse) -> WasmClient.TCG.ValueOverTime {
+        WasmClient.TCG.ValueOverTime(
+            marketSeries: proto.marketSeries.map(mapValuePoint),
+            costBasisSeries: proto.costBasisSeries.map(mapValuePoint),
+            peakValue: mapMoney(proto.peakValue),
+            peakAt: proto.peakAt,
+            peakIsCurrent: proto.peakIsCurrent,
+            window: mapWindow(proto.window),
+            unrealizedPnlSeries: proto.unrealizedPnlSeries.map(mapValuePoint),
+            pnlSeriesIsDerived: proto.pnlSeriesIsDerived,
+            carousel: proto.carousel.map(mapCarouselSection)
+        )
+    }
+
+    static func mapSortKind(_ proto: TcgSortKind) -> WasmClient.TCG.SortKind {
+        switch proto {
+        case .price: return .price
+        case .name: return .name
+        case .trending: return .trending
+        case .dateAdded: return .dateAdded
+        case .releaseDate: return .releaseDate
+        case .quantity: return .quantity
+        case .other: return .other
+        default: return WasmClient.TCG.SortKind(rawValue: "")
+        }
+    }
+
+    static func mapCarouselSection(_ proto: TcgCarouselSection) -> WasmClient.TCG.CarouselSection {
+        WasmClient.TCG.CarouselSection(
+            title: proto.title,
+            sortID: proto.sortID,
+            sortAscending: proto.sortAscending,
+            cards: proto.cards.map(mapCard),
+            kind: mapSortKind(proto.kind)
+        )
+    }
+
+    static func mapMover(_ proto: TcgMover) -> WasmClient.TCG.Mover {
+        WasmClient.TCG.Mover(
+            card: mapCard(proto.card),
+            variant: mapVariant(proto.variant),
+            currentPrice: mapMoney(proto.currentPrice),
+            windowOpenPrice: mapMoney(proto.windowOpenPrice),
+            priceChange: mapMoney(proto.priceChange),
+            changePercentage: proto.changePercentage
+        )
+    }
+
+    static func mapTopMovers(_ proto: TcgTopMoversResponse) -> WasmClient.TCG.TopMovers {
+        WasmClient.TCG.TopMovers(
+            movers: proto.movers.map(mapMover),
+            window: mapWindow(proto.window)
+        )
+    }
+
+    static func mapBreakdownGroup(_ proto: TcgBreakdownGroup) -> WasmClient.TCG.BreakdownGroup {
+        WasmClient.TCG.BreakdownGroup(
+            label: proto.label,
+            cardCount: Int(proto.cardCount),
+            marketValue: mapMoney(proto.marketValue),
+            changePercentage: proto.changePercentage,
+            direction: mapMoverDirection(proto.direction),
+            barFill: proto.barFill
+        )
+    }
+
+    static func mapPerformanceBreakdown(_ proto: TcgPerformanceBreakdownResponse) -> WasmClient.TCG.PerformanceBreakdown {
+        WasmClient.TCG.PerformanceBreakdown(
+            groups: proto.groups.map(mapBreakdownGroup),
+            facet: mapFacet(proto.facet),
+            window: mapWindow(proto.window)
+        )
+    }
+
+    static func mapProfitLossSummary(_ proto: TcgProfitLossSummary) -> WasmClient.TCG.ProfitLossSummary {
+        WasmClient.TCG.ProfitLossSummary(
+            costBasis: mapMoney(proto.costBasis),
+            marketValue: mapMoney(proto.marketValue),
+            gain: mapMoney(proto.gain),
+            roiPercentage: proto.roiPercentage
+        )
+    }
+
+    static func mapProfitLossRow(_ proto: TcgProfitLossRow) -> WasmClient.TCG.ProfitLossRow {
+        WasmClient.TCG.ProfitLossRow(
+            game: mapGame(proto.game),
+            categoryID: proto.categoryID,
+            categoryName: proto.categoryName,
+            costBasis: mapMoney(proto.costBasis),
+            marketValue: mapMoney(proto.marketValue),
+            gain: mapMoney(proto.gain),
+            roiPercentage: proto.roiPercentage
+        )
+    }
+
+    static func mapProfitLoss(_ proto: TcgProfitLossResponse) -> WasmClient.TCG.ProfitLoss {
+        WasmClient.TCG.ProfitLoss(
+            currency: proto.currency,
+            summary: mapProfitLossSummary(proto.summary),
+            rows: proto.rows.map(mapProfitLossRow)
+        )
     }
 }

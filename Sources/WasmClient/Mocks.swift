@@ -225,7 +225,12 @@ extension WasmClient {
         tcgAddCards: { _, _ in WasmClient.TCG.AddCardsResult() },
         tcgHoldingDetail: { _ in WasmClient.TCG.HoldingDetail() },
         tcgUpdateHolding: { _, _, _, _, _ in WasmClient.TCG.UpdateHoldingResult() },
-        tcgRemoveHolding: { _, _, _, _ in WasmClient.TCG.RemoveHoldingResult() }
+        tcgRemoveHolding: { _, _, _, _ in WasmClient.TCG.RemoveHoldingResult() },
+        tcgPortfolioPerformance: { _, _, _, _ in WasmClient.TCG.PortfolioPerformance() },
+        tcgValueOverTime: { _, _, _, _ in WasmClient.TCG.ValueOverTime() },
+        tcgTopMovers: { _, _, _, _, _ in WasmClient.TCG.TopMovers() },
+        tcgPerformanceBreakdown: { _, _, _, _, _ in WasmClient.TCG.PerformanceBreakdown() },
+        tcgProfitLoss: { _, _ in WasmClient.TCG.ProfitLoss() }
     )
 
     public static let happy = Self(
@@ -1262,6 +1267,84 @@ extension WasmClient {
                 item: WasmClient.TCG.CollectionItem(id: holdingID, quantity: quantity ?? 1)
             )
         },
-        tcgRemoveHolding: { _, _, _, _ in WasmClient.TCG.RemoveHoldingResult(ok: true) }
+        tcgRemoveHolding: { _, _, _, _ in WasmClient.TCG.RemoveHoldingResult(ok: true) },
+        tcgPortfolioPerformance: { _, _, _, window in
+            WasmClient.TCG.PortfolioPerformance(
+                costBasis: WasmClient.TCG.Money(amount: "100.00", currency: "USD"),
+                marketValue: WasmClient.TCG.Money(amount: "471.47", currency: "USD"),
+                gain: WasmClient.TCG.Money(amount: "371.47", currency: "USD"),
+                roiPercentage: "371.475",
+                cardCount: 12,
+                window: window == WasmClient.TCG.AnalyticsWindow(rawValue: "") ? .allTime : window
+            )
+        },
+        tcgValueOverTime: { _, window, _, _ in
+            WasmClient.TCG.ValueOverTime(
+                marketSeries: [
+                    WasmClient.TCG.ValuePoint(
+                        at: "2026-01-01", value: WasmClient.TCG.Money(amount: "400.00", currency: "USD")
+                    ),
+                    WasmClient.TCG.ValuePoint(
+                        at: "2026-02-01", value: WasmClient.TCG.Money(amount: "471.47", currency: "USD")
+                    ),
+                ],
+                peakValue: WasmClient.TCG.Money(amount: "471.47", currency: "USD"),
+                peakAt: "2026-02-01",
+                peakIsCurrent: true,
+                window: window == WasmClient.TCG.AnalyticsWindow(rawValue: "") ? .allTime : window
+            )
+        },
+        tcgTopMovers: { _, window, limit, _, _ in
+            WasmClient.TCG.TopMovers(
+                movers: [
+                    WasmClient.TCG.Mover(
+                        card: WasmClient.TCG.Card(id: "c1", name: "Charizard", game: .pokemon),
+                        currentPrice: WasmClient.TCG.Money(amount: "471.47", currency: "USD"),
+                        windowOpenPrice: WasmClient.TCG.Money(amount: "400.00", currency: "USD"),
+                        priceChange: WasmClient.TCG.Money(amount: "71.47", currency: "USD"),
+                        changePercentage: "17.868"
+                    )
+                ],
+                window: window == WasmClient.TCG.AnalyticsWindow(rawValue: "") ? .allTime : window
+            )
+        },
+        tcgPerformanceBreakdown: { _, facet, window, _, _ in
+            WasmClient.TCG.PerformanceBreakdown(
+                groups: [
+                    WasmClient.TCG.BreakdownGroup(
+                        label: "Base Set",
+                        cardCount: 5,
+                        marketValue: WasmClient.TCG.Money(amount: "300.00", currency: "USD"),
+                        changePercentage: "12.5",
+                        direction: .up,
+                        barFill: 1.0
+                    )
+                ],
+                facet: facet == WasmClient.TCG.BreakdownFacet(rawValue: "") ? .bySet : facet,
+                window: window == WasmClient.TCG.AnalyticsWindow(rawValue: "") ? .allTime : window
+            )
+        },
+        tcgProfitLoss: { _, _ in
+            WasmClient.TCG.ProfitLoss(
+                currency: "USD",
+                summary: WasmClient.TCG.ProfitLossSummary(
+                    costBasis: WasmClient.TCG.Money(amount: "100.00", currency: "USD"),
+                    marketValue: WasmClient.TCG.Money(amount: "471.47", currency: "USD"),
+                    gain: WasmClient.TCG.Money(amount: "371.47", currency: "USD"),
+                    roiPercentage: "371.475"
+                ),
+                rows: [
+                    WasmClient.TCG.ProfitLossRow(
+                        game: .pokemon,
+                        categoryID: "pokemon",
+                        categoryName: "Pokémon",
+                        costBasis: WasmClient.TCG.Money(amount: "100.00", currency: "USD"),
+                        marketValue: WasmClient.TCG.Money(amount: "471.47", currency: "USD"),
+                        gain: WasmClient.TCG.Money(amount: "371.47", currency: "USD"),
+                        roiPercentage: "371.475"
+                    )
+                ]
+            )
+        }
     )
 }

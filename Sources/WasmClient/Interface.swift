@@ -723,4 +723,44 @@ public struct WasmClient: Sendable {
             _ variant: WasmClient.TCG.Variant,
             _ quantity: Int
         ) async throws -> WasmClient.TCG.RemoveHoldingResult
+
+    public var tcgPortfolioPerformance:
+        @Sendable (
+            _ collectionID: String,
+            _ currency: String?,
+            _ allCollections: Bool?,
+            _ window: WasmClient.TCG.AnalyticsWindow
+        ) async throws -> WasmClient.TCG.PortfolioPerformance
+
+    public var tcgValueOverTime:
+        @Sendable (
+            _ collectionID: String,
+            _ window: WasmClient.TCG.AnalyticsWindow,
+            _ currency: String?,
+            _ allCollections: Bool?
+        ) async throws -> WasmClient.TCG.ValueOverTime
+
+    public var tcgTopMovers:
+        @Sendable (
+            _ collectionID: String,
+            _ window: WasmClient.TCG.AnalyticsWindow,
+            _ limit: Int?,
+            _ currency: String?,
+            _ allCollections: Bool?
+        ) async throws -> WasmClient.TCG.TopMovers
+
+    public var tcgPerformanceBreakdown:
+        @Sendable (
+            _ collectionID: String,
+            _ facet: WasmClient.TCG.BreakdownFacet,
+            _ window: WasmClient.TCG.AnalyticsWindow,
+            _ currency: String?,
+            _ allCollections: Bool?
+        ) async throws -> WasmClient.TCG.PerformanceBreakdown
+
+    public var tcgProfitLoss:
+        @Sendable (
+            _ collectionID: String,
+            _ currency: String?
+        ) async throws -> WasmClient.TCG.ProfitLoss
 }

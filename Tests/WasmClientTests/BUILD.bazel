@@ -12,6 +12,7 @@ swift_test(
         "TCGCatalogRequestTests.swift",
         "TCGCollectionsRequestTests.swift",
         "TCGHoldingsRequestTests.swift",
+        "TCGPortfolioRequestTests.swift",
         "UserDeleteTests.swift",
     ],
     module_name = "WasmClientTests",

@@ -34,6 +34,63 @@ extension WasmClient.TCG {
         public static let holdingDetail = ServiceMethod(rawValue: "asyncify.tcg.TcgService/HoldingDetail")
         public static let updateHolding = ServiceMethod(rawValue: "asyncify.tcg.TcgService/UpdateHolding")
         public static let removeHolding = ServiceMethod(rawValue: "asyncify.tcg.TcgService/RemoveHolding")
+
+        public static let portfolioPerformance = ServiceMethod(rawValue: "asyncify.tcg.TcgService/PortfolioPerformance")
+        public static let valueOverTime = ServiceMethod(rawValue: "asyncify.tcg.TcgService/ValueOverTime")
+        public static let topMovers = ServiceMethod(rawValue: "asyncify.tcg.TcgService/TopMovers")
+        public static let performanceBreakdown = ServiceMethod(rawValue: "asyncify.tcg.TcgService/PerformanceBreakdown")
+        public static let profitLoss = ServiceMethod(rawValue: "asyncify.tcg.TcgService/ProfitLoss")
+    }
+}
+
+// MARK: - Analytics enums (wire = argString)
+
+extension WasmClient.TCG {
+    public struct AnalyticsWindow: RawRepresentable, Sendable, Equatable, Hashable {
+        public let rawValue: String
+        public init(rawValue: String) { self.rawValue = rawValue }
+
+        public static let allTime = AnalyticsWindow(rawValue: "ALL_TIME")
+        public static let oneDay = AnalyticsWindow(rawValue: "1D")
+        public static let oneWeek = AnalyticsWindow(rawValue: "1W")
+        public static let oneMonth = AnalyticsWindow(rawValue: "1M")
+        public static let threeMonths = AnalyticsWindow(rawValue: "3M")
+        public static let sixMonths = AnalyticsWindow(rawValue: "6M")
+        public static let oneYear = AnalyticsWindow(rawValue: "1Y")
+        public static let max = AnalyticsWindow(rawValue: "MAX")
+    }
+
+    public struct BreakdownFacet: RawRepresentable, Sendable, Equatable, Hashable {
+        public let rawValue: String
+        public init(rawValue: String) { self.rawValue = rawValue }
+
+        public static let bySet = BreakdownFacet(rawValue: "BY_SET")
+        public static let byRarity = BreakdownFacet(rawValue: "BY_RARITY")
+        public static let byGame = BreakdownFacet(rawValue: "BY_GAME")
+        public static let byFinish = BreakdownFacet(rawValue: "BY_FINISH")
+    }
+
+    public struct MoverDirection: RawRepresentable, Sendable, Equatable, Hashable {
+        public let rawValue: String
+        public init(rawValue: String) { self.rawValue = rawValue }
+
+        public static let up = MoverDirection(rawValue: "UP")
+        public static let down = MoverDirection(rawValue: "DOWN")
+        public static let flat = MoverDirection(rawValue: "FLAT")
+    }
+
+    // Carousel sort kind (response-only; rawValue is the proto SCREAMING_SNAKE name).
+    public struct SortKind: RawRepresentable, Sendable, Equatable, Hashable {
+        public let rawValue: String
+        public init(rawValue: String) { self.rawValue = rawValue }
+
+        public static let price = SortKind(rawValue: "SORT_KIND_PRICE")
+        public static let name = SortKind(rawValue: "SORT_KIND_NAME")
+        public static let trending = SortKind(rawValue: "SORT_KIND_TRENDING")
+        public static let dateAdded = SortKind(rawValue: "SORT_KIND_DATE_ADDED")
+        public static let releaseDate = SortKind(rawValue: "SORT_KIND_RELEASE_DATE")
+        public static let quantity = SortKind(rawValue: "SORT_KIND_QUANTITY")
+        public static let other = SortKind(rawValue: "SORT_KIND_OTHER")
     }
 }
 
@@ -798,6 +855,264 @@ extension WasmClient.TCG {
 
         public init(ok: Bool = false) {
             self.ok = ok
+        }
+    }
+}
+
+// MARK: - PortfolioPerformance
+
+extension WasmClient.TCG {
+    public struct PortfolioPerformance: Sendable, Equatable {
+        public let costBasis: Money
+        public let marketValue: Money
+        public let gain: Money
+        public let roiPercentage: String
+        public let cardCount: Int
+        public let window: AnalyticsWindow
+
+        public init(
+            costBasis: Money = Money(),
+            marketValue: Money = Money(),
+            gain: Money = Money(),
+            roiPercentage: String = "",
+            cardCount: Int = 0,
+            window: AnalyticsWindow = AnalyticsWindow(rawValue: "")
+        ) {
+            self.costBasis = costBasis
+            self.marketValue = marketValue
+            self.gain = gain
+            self.roiPercentage = roiPercentage
+            self.cardCount = cardCount
+            self.window = window
+        }
+    }
+}
+
+// MARK: - ValueOverTime
+
+extension WasmClient.TCG {
+    public struct ValuePoint: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let at: String
+        public let value: Money
+
+        public init(at: String = "", value: Money = Money()) {
+            self.id = at
+            self.at = at
+            self.value = value
+        }
+    }
+
+    public struct CarouselSection: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let title: String
+        public let sortID: String
+        public let sortAscending: Bool
+        public let cards: [Card]
+        public let kind: SortKind
+
+        public init(
+            title: String = "",
+            sortID: String = "",
+            sortAscending: Bool = false,
+            cards: [Card] = [],
+            kind: SortKind = SortKind(rawValue: "")
+        ) {
+            self.id = title
+            self.title = title
+            self.sortID = sortID
+            self.sortAscending = sortAscending
+            self.cards = cards
+            self.kind = kind
+        }
+    }
+
+    public struct ValueOverTime: Sendable, Equatable {
+        public let marketSeries: [ValuePoint]
+        public let costBasisSeries: [ValuePoint]
+        public let peakValue: Money
+        public let peakAt: String
+        public let peakIsCurrent: Bool
+        public let window: AnalyticsWindow
+        public let unrealizedPnlSeries: [ValuePoint]
+        public let pnlSeriesIsDerived: Bool
+        public let carousel: [CarouselSection]
+
+        public init(
+            marketSeries: [ValuePoint] = [],
+            costBasisSeries: [ValuePoint] = [],
+            peakValue: Money = Money(),
+            peakAt: String = "",
+            peakIsCurrent: Bool = false,
+            window: AnalyticsWindow = AnalyticsWindow(rawValue: ""),
+            unrealizedPnlSeries: [ValuePoint] = [],
+            pnlSeriesIsDerived: Bool = false,
+            carousel: [CarouselSection] = []
+        ) {
+            self.marketSeries = marketSeries
+            self.costBasisSeries = costBasisSeries
+            self.peakValue = peakValue
+            self.peakAt = peakAt
+            self.peakIsCurrent = peakIsCurrent
+            self.window = window
+            self.unrealizedPnlSeries = unrealizedPnlSeries
+            self.pnlSeriesIsDerived = pnlSeriesIsDerived
+            self.carousel = carousel
+        }
+    }
+}
+
+// MARK: - TopMovers
+
+extension WasmClient.TCG {
+    public struct Mover: Sendable, Equatable {
+        public let card: Card
+        public let variant: Variant
+        public let currentPrice: Money
+        public let windowOpenPrice: Money
+        public let priceChange: Money
+        public let changePercentage: String
+
+        public init(
+            card: Card = Card(),
+            variant: Variant = Variant(),
+            currentPrice: Money = Money(),
+            windowOpenPrice: Money = Money(),
+            priceChange: Money = Money(),
+            changePercentage: String = ""
+        ) {
+            self.card = card
+            self.variant = variant
+            self.currentPrice = currentPrice
+            self.windowOpenPrice = windowOpenPrice
+            self.priceChange = priceChange
+            self.changePercentage = changePercentage
+        }
+    }
+
+    public struct TopMovers: Sendable, Equatable {
+        public let movers: [Mover]
+        public let window: AnalyticsWindow
+
+        public init(movers: [Mover] = [], window: AnalyticsWindow = AnalyticsWindow(rawValue: "")) {
+            self.movers = movers
+            self.window = window
+        }
+    }
+}
+
+// MARK: - PerformanceBreakdown
+
+extension WasmClient.TCG {
+    public struct BreakdownGroup: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let label: String
+        public let cardCount: Int
+        public let marketValue: Money
+        public let changePercentage: String
+        public let direction: MoverDirection
+        public let barFill: Double
+
+        public init(
+            label: String = "",
+            cardCount: Int = 0,
+            marketValue: Money = Money(),
+            changePercentage: String = "",
+            direction: MoverDirection = MoverDirection(rawValue: ""),
+            barFill: Double = 0
+        ) {
+            self.id = label
+            self.label = label
+            self.cardCount = cardCount
+            self.marketValue = marketValue
+            self.changePercentage = changePercentage
+            self.direction = direction
+            self.barFill = barFill
+        }
+    }
+
+    public struct PerformanceBreakdown: Sendable, Equatable {
+        public let groups: [BreakdownGroup]
+        public let facet: BreakdownFacet
+        public let window: AnalyticsWindow
+
+        public init(
+            groups: [BreakdownGroup] = [],
+            facet: BreakdownFacet = BreakdownFacet(rawValue: ""),
+            window: AnalyticsWindow = AnalyticsWindow(rawValue: "")
+        ) {
+            self.groups = groups
+            self.facet = facet
+            self.window = window
+        }
+    }
+}
+
+// MARK: - ProfitLoss
+
+extension WasmClient.TCG {
+    public struct ProfitLossSummary: Sendable, Equatable {
+        public let costBasis: Money
+        public let marketValue: Money
+        public let gain: Money
+        public let roiPercentage: String
+
+        public init(
+            costBasis: Money = Money(),
+            marketValue: Money = Money(),
+            gain: Money = Money(),
+            roiPercentage: String = ""
+        ) {
+            self.costBasis = costBasis
+            self.marketValue = marketValue
+            self.gain = gain
+            self.roiPercentage = roiPercentage
+        }
+    }
+
+    public struct ProfitLossRow: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let game: Game
+        public let categoryID: String
+        public let categoryName: String
+        public let costBasis: Money
+        public let marketValue: Money
+        public let gain: Money
+        public let roiPercentage: String
+
+        public init(
+            game: Game = Game(rawValue: ""),
+            categoryID: String = "",
+            categoryName: String = "",
+            costBasis: Money = Money(),
+            marketValue: Money = Money(),
+            gain: Money = Money(),
+            roiPercentage: String = ""
+        ) {
+            self.id = categoryID
+            self.game = game
+            self.categoryID = categoryID
+            self.categoryName = categoryName
+            self.costBasis = costBasis
+            self.marketValue = marketValue
+            self.gain = gain
+            self.roiPercentage = roiPercentage
+        }
+    }
+
+    public struct ProfitLoss: Sendable, Equatable {
+        public let currency: String
+        public let summary: ProfitLossSummary
+        public let rows: [ProfitLossRow]
+
+        public init(
+            currency: String = "",
+            summary: ProfitLossSummary = ProfitLossSummary(),
+            rows: [ProfitLossRow] = []
+        ) {
+            self.currency = currency
+            self.summary = summary
+            self.rows = rows
         }
     }
 }

@@ -57,7 +57,7 @@
       "id": 4,
       "name": "tcg",
       "title": "TCG (trading card game) portfolio domain",
-      "status": "todo",
+      "status": "done",
       "weight": "heavy",
       "service_methods": [
         "asyncify.tcg.TcgService/AccountInfo",
@@ -112,7 +112,7 @@
           "id": "4d",
           "name": "tcg-portfolio",
           "title": "TCG portfolio / analytics group",
-          "status": "todo",
+          "status": "done",
           "service_methods": ["PortfolioPerformance", "ValueOverTime", "TopMovers", "PerformanceBreakdown", "ProfitLoss"]
         }
       ]

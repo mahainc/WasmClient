@@ -12,6 +12,7 @@ swift_test(
         "TCGCatalogMapperTests.swift",
         "TCGCollectionsMapperTests.swift",
         "TCGHoldingsMapperTests.swift",
+        "TCGPortfolioMapperTests.swift",
     ],
     module_name = "WasmClientLiveTests",
     deps = [

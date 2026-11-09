@@ -544,6 +544,33 @@ extension WasmClient: DependencyKey {
                 try await actor.tcgRemoveHolding(
                     holdingID: holdingID, cardID: cardID, variant: variant, quantity: quantity
                 )
+            },
+            tcgPortfolioPerformance: { collectionID, currency, allCollections, window in
+                try await actor.tcgPortfolioPerformance(
+                    collectionID: collectionID, currency: currency,
+                    allCollections: allCollections, window: window
+                )
+            },
+            tcgValueOverTime: { collectionID, window, currency, allCollections in
+                try await actor.tcgValueOverTime(
+                    collectionID: collectionID, window: window,
+                    currency: currency, allCollections: allCollections
+                )
+            },
+            tcgTopMovers: { collectionID, window, limit, currency, allCollections in
+                try await actor.tcgTopMovers(
+                    collectionID: collectionID, window: window, limit: limit,
+                    currency: currency, allCollections: allCollections
+                )
+            },
+            tcgPerformanceBreakdown: { collectionID, facet, window, currency, allCollections in
+                try await actor.tcgPerformanceBreakdown(
+                    collectionID: collectionID, facet: facet, window: window,
+                    currency: currency, allCollections: allCollections
+                )
+            },
+            tcgProfitLoss: { collectionID, currency in
+                try await actor.tcgProfitLoss(collectionID: collectionID, currency: currency)
             }
         )
     }()
