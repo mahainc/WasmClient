@@ -106,3 +106,24 @@ must defer to the gates that own the rest:
 5. Wire in `Live.swift`
 6. Run `clean-code --apply` on the new session, then `clean-code --review` the diff,
    before build-verifying via `bazel-builder`.
+
+## Releasing
+
+WasmClient uses independent SemVer — do NOT derive the version from the FlowKit
+engine. New additive domains/closures are a minor bump; breaking public-surface
+changes are a major bump (ask before choosing major). Release work runs on `dev`
+with the `haikt-vtn` GitHub account.
+
+Every release follows this sequence, and **every release/tag is merged into `main`
+so the two branches stay in sync**:
+
+1. Commit the work on `dev` and push `dev`.
+2. Create an annotated tag `X.Y.Z` at the release commit and push the tag.
+3. Create the GitHub Release (`gh release create X.Y.Z --target dev …`); it is not
+   done until `gh release view X.Y.Z` succeeds.
+4. **Merge `dev` → `main` and push `main`.** Prefer a fast-forward
+   (`git checkout main && git merge --ff-only dev && git push origin main`); only
+   use a merge commit if the branches have diverged. Then switch back to `dev`.
+
+The tag must end up reachable from BOTH `dev` and `main` (the 4.1.0 release is the
+reference for this flow).
