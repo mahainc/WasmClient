@@ -667,4 +667,38 @@ public struct WasmClient: Sendable {
             _ currency: String?,
             _ allCollections: Bool?
         ) async throws -> WasmClient.TCG.ListSets
+
+    public var tcgAccountInfo:
+        @Sendable () async throws -> WasmClient.TCG.AccountInfo
+
+    public var tcgListCollections:
+        @Sendable () async throws -> [WasmClient.TCG.Collection]
+
+    public var tcgCreateCollection:
+        @Sendable (
+            _ name: String, _ isPublic: Bool
+        ) async throws -> [WasmClient.TCG.Collection]
+
+    public var tcgUpdateCollection:
+        @Sendable (
+            _ collectionID: String, _ name: String?, _ isPublic: Bool?
+        ) async throws -> [WasmClient.TCG.Collection]
+
+    public var tcgDeleteCollection:
+        @Sendable (
+            _ collectionID: String
+        ) async throws -> [WasmClient.TCG.Collection]
+
+    public var tcgCollectionSummary:
+        @Sendable () async throws -> WasmClient.TCG.CollectionSummary
+
+    public var tcgCollectionItems:
+        @Sendable (
+            _ collectionID: String, _ currency: String?, _ allCollections: Bool?
+        ) async throws -> WasmClient.TCG.CollectionItems
+
+    public var tcgAddCards:
+        @Sendable (
+            _ collectionID: String, _ items: [WasmClient.TCG.AddCardItem]
+        ) async throws -> WasmClient.TCG.AddCardsResult
 }

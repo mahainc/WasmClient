@@ -214,7 +214,15 @@ extension WasmClient {
         tcgCatalogBrowse: { _, _, _, _, _, _, _, _ in WasmClient.TCG.CatalogBrowse() },
         tcgTrending: { _ in WasmClient.TCG.Trending() },
         tcgSearchFilters: { WasmClient.TCG.SearchFilters() },
-        tcgListSets: { _, _, _, _, _ in WasmClient.TCG.ListSets() }
+        tcgListSets: { _, _, _, _, _ in WasmClient.TCG.ListSets() },
+        tcgAccountInfo: { WasmClient.TCG.AccountInfo() },
+        tcgListCollections: { [] },
+        tcgCreateCollection: { _, _ in [] },
+        tcgUpdateCollection: { _, _, _ in [] },
+        tcgDeleteCollection: { _ in [] },
+        tcgCollectionSummary: { WasmClient.TCG.CollectionSummary() },
+        tcgCollectionItems: { _, _, _ in WasmClient.TCG.CollectionItems() },
+        tcgAddCards: { _, _ in WasmClient.TCG.AddCardsResult() }
     )
 
     public static let happy = Self(
@@ -1196,6 +1204,44 @@ extension WasmClient {
                 category: WasmClient.TCG.CategoryDetails(name: "Pokemon"),
                 currency: currency ?? "USD"
             )
-        }
+        },
+        tcgAccountInfo: {
+            WasmClient.TCG.AccountInfo(
+                account: WasmClient.TCG.Account(
+                    id: "a1", handle: "trainer", nickname: "Ash", tier: "pro", totalCards: "250"
+                )
+            )
+        },
+        tcgListCollections: {
+            [WasmClient.TCG.Collection(id: "col1", name: "Binder", isDefault: true)]
+        },
+        tcgCreateCollection: { name, isPublic in
+            [WasmClient.TCG.Collection(id: "col2", name: name, isPublic: isPublic)]
+        },
+        tcgUpdateCollection: { collectionID, name, _ in
+            [WasmClient.TCG.Collection(id: collectionID, name: name ?? "Binder")]
+        },
+        tcgDeleteCollection: { _ in [] },
+        tcgCollectionSummary: {
+            WasmClient.TCG.CollectionSummary(
+                totalCards: "250",
+                totalSealed: "4",
+                totalGraded: "12",
+                totalValue: WasmClient.TCG.Money(amount: "9999.00", currency: "USD")
+            )
+        },
+        tcgCollectionItems: { _, _, _ in
+            WasmClient.TCG.CollectionItems(
+                items: [
+                    WasmClient.TCG.CollectionItem(
+                        id: "h1",
+                        card: WasmClient.TCG.Card(id: "c1", name: "Charizard", game: .pokemon),
+                        quantity: 2,
+                        condition: .nearMint
+                    )
+                ]
+            )
+        },
+        tcgAddCards: { _, _ in WasmClient.TCG.AddCardsResult(ok: true) }
     )
 }

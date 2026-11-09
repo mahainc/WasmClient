@@ -139,6 +139,126 @@ extension WasmActor {
         return Self.mapListSets(resp)
     }
 
+    // MARK: - TCG Collections
+
+    func tcgAccountInfo() async throws -> WasmClient.TCG.AccountInfo {
+        let instance = try await readyEngine()
+        let resp: TcgAccountInfoResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.accountInfo.rawValue,
+            args: [:]
+        )
+        return Self.mapAccountInfo(resp)
+    }
+
+    func tcgListCollections() async throws -> [WasmClient.TCG.Collection] {
+        let instance = try await readyEngine()
+        let resp: TcgListCollectionsResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.listCollections.rawValue,
+            args: [:]
+        )
+        return resp.collections.map(Self.mapCollection)
+    }
+
+    func tcgCreateCollection(
+        name: String,
+        isPublic: Bool
+    ) async throws -> [WasmClient.TCG.Collection] {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !name.isEmpty { args["name"] = Google_Protobuf_Value(stringValue: name) }
+        args["is_public"] = Google_Protobuf_Value(stringValue: isPublic ? "true" : "false")
+
+        let resp: TcgListCollectionsResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.createCollection.rawValue,
+            args: args
+        )
+        return resp.collections.map(Self.mapCollection)
+    }
+
+    func tcgUpdateCollection(
+        collectionID: String,
+        name: String?,
+        isPublic: Bool?
+    ) async throws -> [WasmClient.TCG.Collection] {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !collectionID.isEmpty { args["collection_id"] = Google_Protobuf_Value(stringValue: collectionID) }
+        if let name { args["name"] = Google_Protobuf_Value(stringValue: name) }
+        if let isPublic {
+            args["is_public"] = Google_Protobuf_Value(stringValue: isPublic ? "true" : "false")
+        }
+
+        let resp: TcgListCollectionsResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.updateCollection.rawValue,
+            args: args
+        )
+        return resp.collections.map(Self.mapCollection)
+    }
+
+    func tcgDeleteCollection(
+        collectionID: String
+    ) async throws -> [WasmClient.TCG.Collection] {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !collectionID.isEmpty { args["collection_id"] = Google_Protobuf_Value(stringValue: collectionID) }
+
+        let resp: TcgListCollectionsResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.deleteCollection.rawValue,
+            args: args
+        )
+        return resp.collections.map(Self.mapCollection)
+    }
+
+    func tcgCollectionSummary() async throws -> WasmClient.TCG.CollectionSummary {
+        let instance = try await readyEngine()
+        let resp: TcgCollectionSummaryResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.collectionSummary.rawValue,
+            args: [:]
+        )
+        return Self.mapCollectionSummary(resp)
+    }
+
+    func tcgCollectionItems(
+        collectionID: String,
+        currency: String?,
+        allCollections: Bool?
+    ) async throws -> WasmClient.TCG.CollectionItems {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !collectionID.isEmpty { args["collection_id"] = Google_Protobuf_Value(stringValue: collectionID) }
+        if let currency { args["currency"] = Google_Protobuf_Value(stringValue: currency) }
+        if let allCollections {
+            args["all_collections"] = Google_Protobuf_Value(stringValue: allCollections ? "true" : "false")
+        }
+
+        let resp: TcgCollectionItemsResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.collectionItems.rawValue,
+            args: args
+        )
+        return WasmClient.TCG.CollectionItems(items: resp.items.map(Self.mapCollectionItem))
+    }
+
+    func tcgAddCards(
+        collectionID: String,
+        items: [WasmClient.TCG.AddCardItem]
+    ) async throws -> WasmClient.TCG.AddCardsResult {
+        let instance = try await readyEngine()
+        var args: [String: Google_Protobuf_Value] = [:]
+        if !collectionID.isEmpty { args["collection_id"] = Google_Protobuf_Value(stringValue: collectionID) }
+        if !items.isEmpty {
+            let encoded = items
+                .compactMap { try? Self.mapAddCardItem($0).jsonUTF8Data() }
+                .compactMap { String(data: $0, encoding: .utf8) }
+            args["items"] = Google_Protobuf_Value(stringValue: "[" + encoded.joined(separator: ",") + "]")
+        }
+
+        let resp: TcgAddCardsResponse = try await instance.run(
+            method: WasmClient.TCG.ServiceMethod.addCards.rawValue,
+            args: args
+        )
+        return WasmClient.TCG.AddCardsResult(ok: resp.ok)
+    }
+
     // MARK: - Enum mapping (wire argString; empty = unspecified)
 
     static func mapGame(_ proto: TcgGame) -> WasmClient.TCG.Game {
@@ -361,6 +481,106 @@ extension WasmActor {
             ),
             currency: proto.currency
         )
+    }
+
+    // MARK: - Collections mapping
+
+    static func mapCondition(_ proto: TcgCondition) -> WasmClient.TCG.Condition {
+        switch proto {
+        case .nearMint: return .nearMint
+        case .lightlyPlayed: return .lightlyPlayed
+        case .moderatelyPlayed: return .moderatelyPlayed
+        case .heavilyPlayed: return .heavilyPlayed
+        case .damaged: return .damaged
+        default: return WasmClient.TCG.Condition(rawValue: "")
+        }
+    }
+
+    static func conditionProto(_ condition: WasmClient.TCG.Condition) -> TcgCondition {
+        switch condition {
+        case .nearMint: return .nearMint
+        case .lightlyPlayed: return .lightlyPlayed
+        case .moderatelyPlayed: return .moderatelyPlayed
+        case .heavilyPlayed: return .heavilyPlayed
+        case .damaged: return .damaged
+        default: return .unspecified
+        }
+    }
+
+    static func finishProto(_ finish: WasmClient.TCG.Finish) -> TcgFinish {
+        switch finish {
+        case .normal: return .normal
+        case .foil: return .foil
+        case .reverseHolo: return .reverseHolo
+        case .holo: return .holo
+        case .etched: return .etched
+        case .parallel: return .parallel
+        default: return .unspecified
+        }
+    }
+
+    static func mapAccount(_ proto: TcgAccount) -> WasmClient.TCG.Account {
+        WasmClient.TCG.Account(
+            id: proto.id,
+            handle: proto.handle,
+            nickname: proto.nickname,
+            email: proto.email,
+            tier: proto.tier,
+            defaultCurrency: proto.defaultCurrency,
+            totalCards: proto.totalCards,
+            totalFollowers: proto.totalFollowers,
+            totalFollowing: proto.totalFollowing,
+            metadata: mapStruct(proto.metadata)
+        )
+    }
+
+    static func mapAccountInfo(_ proto: TcgAccountInfoResponse) -> WasmClient.TCG.AccountInfo {
+        WasmClient.TCG.AccountInfo(account: mapAccount(proto.account))
+    }
+
+    static func mapCollection(_ proto: TcgCollection) -> WasmClient.TCG.Collection {
+        WasmClient.TCG.Collection(
+            id: proto.id,
+            name: proto.name,
+            isDefault: proto.isDefault,
+            color: proto.color,
+            isPublic: proto.isPublic,
+            ordering: Int(proto.ordering)
+        )
+    }
+
+    static func mapCollectionSummary(_ proto: TcgCollectionSummaryResponse) -> WasmClient.TCG.CollectionSummary {
+        WasmClient.TCG.CollectionSummary(
+            totalCards: proto.totalCards,
+            totalSealed: proto.totalSealed,
+            totalGraded: proto.totalGraded,
+            totalValue: mapMoney(proto.totalValue)
+        )
+    }
+
+    static func mapCollectionItem(_ proto: TcgCollectionItem) -> WasmClient.TCG.CollectionItem {
+        WasmClient.TCG.CollectionItem(
+            id: proto.id,
+            card: mapCard(proto.card),
+            variant: mapVariant(proto.variant),
+            quantity: Int(proto.quantity),
+            condition: mapCondition(proto.condition),
+            paidPrice: mapMoney(proto.paidPrice),
+            marketPrice: mapMoney(proto.marketPrice),
+            acquiredAt: proto.acquiredAt,
+            note: proto.note
+        )
+    }
+
+    static func mapAddCardItem(_ item: WasmClient.TCG.AddCardItem) -> TcgAddCardItem {
+        var proto = TcgAddCardItem()
+        proto.cardID = item.cardID
+        if !item.variantID.isEmpty { proto.variantID = item.variantID }
+        proto.quantity = Int32(item.quantity)
+        proto.condition = conditionProto(item.condition)
+        proto.finish = finishProto(item.finish)
+        if !item.paidPrice.isEmpty { proto.paidPrice = item.paidPrice }
+        return proto
     }
 
     static func mapStruct(_ metadata: Google_Protobuf_Struct) -> [String: String] {

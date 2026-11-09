@@ -21,6 +21,15 @@ extension WasmClient.TCG {
         public static let trending = ServiceMethod(rawValue: "asyncify.tcg.TcgService/Trending")
         public static let searchFilters = ServiceMethod(rawValue: "asyncify.tcg.TcgService/SearchFilters")
         public static let listSets = ServiceMethod(rawValue: "asyncify.tcg.TcgService/ListSets")
+
+        public static let accountInfo = ServiceMethod(rawValue: "asyncify.tcg.TcgService/AccountInfo")
+        public static let listCollections = ServiceMethod(rawValue: "asyncify.tcg.TcgService/ListCollections")
+        public static let createCollection = ServiceMethod(rawValue: "asyncify.tcg.TcgService/CreateCollection")
+        public static let updateCollection = ServiceMethod(rawValue: "asyncify.tcg.TcgService/UpdateCollection")
+        public static let deleteCollection = ServiceMethod(rawValue: "asyncify.tcg.TcgService/DeleteCollection")
+        public static let collectionSummary = ServiceMethod(rawValue: "asyncify.tcg.TcgService/CollectionSummary")
+        public static let collectionItems = ServiceMethod(rawValue: "asyncify.tcg.TcgService/CollectionItems")
+        public static let addCards = ServiceMethod(rawValue: "asyncify.tcg.TcgService/AddCards")
     }
 }
 
@@ -50,6 +59,17 @@ extension WasmClient.TCG {
         public static let holo = Finish(rawValue: "HOLO")
         public static let etched = Finish(rawValue: "ETCHED")
         public static let parallel = Finish(rawValue: "PARALLEL")
+    }
+
+    public struct Condition: RawRepresentable, Sendable, Equatable, Hashable {
+        public let rawValue: String
+        public init(rawValue: String) { self.rawValue = rawValue }
+
+        public static let nearMint = Condition(rawValue: "NEAR_MINT")
+        public static let lightlyPlayed = Condition(rawValue: "LIGHTLY_PLAYED")
+        public static let moderatelyPlayed = Condition(rawValue: "MODERATELY_PLAYED")
+        public static let heavilyPlayed = Condition(rawValue: "HEAVILY_PLAYED")
+        public static let damaged = Condition(rawValue: "DAMAGED")
     }
 }
 
@@ -560,6 +580,190 @@ extension WasmClient.TCG {
             self.languages = languages
             self.category = category
             self.currency = currency
+        }
+    }
+}
+
+// MARK: - AccountInfo
+
+extension WasmClient.TCG {
+    public struct Account: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let handle: String
+        public let nickname: String
+        public let email: String
+        public let tier: String
+        public let defaultCurrency: String
+        public let totalCards: String
+        public let totalFollowers: String
+        public let totalFollowing: String
+        public let metadata: [String: String]
+
+        public init(
+            id: String = "",
+            handle: String = "",
+            nickname: String = "",
+            email: String = "",
+            tier: String = "",
+            defaultCurrency: String = "",
+            totalCards: String = "",
+            totalFollowers: String = "",
+            totalFollowing: String = "",
+            metadata: [String: String] = [:]
+        ) {
+            self.id = id
+            self.handle = handle
+            self.nickname = nickname
+            self.email = email
+            self.tier = tier
+            self.defaultCurrency = defaultCurrency
+            self.totalCards = totalCards
+            self.totalFollowers = totalFollowers
+            self.totalFollowing = totalFollowing
+            self.metadata = metadata
+        }
+    }
+
+    public struct AccountInfo: Sendable, Equatable {
+        public let account: Account
+
+        public init(account: Account = Account()) {
+            self.account = account
+        }
+    }
+}
+
+// MARK: - Collection
+
+extension WasmClient.TCG {
+    public struct Collection: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let name: String
+        public let isDefault: Bool
+        public let color: String
+        public let isPublic: Bool
+        public let ordering: Int
+
+        public init(
+            id: String = "",
+            name: String = "",
+            isDefault: Bool = false,
+            color: String = "",
+            isPublic: Bool = false,
+            ordering: Int = 0
+        ) {
+            self.id = id
+            self.name = name
+            self.isDefault = isDefault
+            self.color = color
+            self.isPublic = isPublic
+            self.ordering = ordering
+        }
+    }
+}
+
+// MARK: - CollectionSummary
+
+extension WasmClient.TCG {
+    public struct CollectionSummary: Sendable, Equatable {
+        public let totalCards: String
+        public let totalSealed: String
+        public let totalGraded: String
+        public let totalValue: Money
+
+        public init(
+            totalCards: String = "",
+            totalSealed: String = "",
+            totalGraded: String = "",
+            totalValue: Money = Money()
+        ) {
+            self.totalCards = totalCards
+            self.totalSealed = totalSealed
+            self.totalGraded = totalGraded
+            self.totalValue = totalValue
+        }
+    }
+}
+
+// MARK: - CollectionItems
+
+extension WasmClient.TCG {
+    public struct CollectionItem: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let card: Card
+        public let variant: Variant
+        public let quantity: Int
+        public let condition: Condition
+        public let paidPrice: Money
+        public let marketPrice: Money
+        public let acquiredAt: String
+        public let note: String
+
+        public init(
+            id: String = "",
+            card: Card = Card(),
+            variant: Variant = Variant(),
+            quantity: Int = 0,
+            condition: Condition = Condition(rawValue: ""),
+            paidPrice: Money = Money(),
+            marketPrice: Money = Money(),
+            acquiredAt: String = "",
+            note: String = ""
+        ) {
+            self.id = id
+            self.card = card
+            self.variant = variant
+            self.quantity = quantity
+            self.condition = condition
+            self.paidPrice = paidPrice
+            self.marketPrice = marketPrice
+            self.acquiredAt = acquiredAt
+            self.note = note
+        }
+    }
+
+    public struct CollectionItems: Sendable, Equatable {
+        public let items: [CollectionItem]
+
+        public init(items: [CollectionItem] = []) {
+            self.items = items
+        }
+    }
+}
+
+// MARK: - AddCards
+
+extension WasmClient.TCG {
+    public struct AddCardItem: Sendable, Equatable {
+        public let cardID: String
+        public let variantID: String
+        public let quantity: Int
+        public let condition: Condition
+        public let finish: Finish
+        public let paidPrice: String
+
+        public init(
+            cardID: String = "",
+            variantID: String = "",
+            quantity: Int = 0,
+            condition: Condition = Condition(rawValue: ""),
+            finish: Finish = Finish(rawValue: ""),
+            paidPrice: String = ""
+        ) {
+            self.cardID = cardID
+            self.variantID = variantID
+            self.quantity = quantity
+            self.condition = condition
+            self.finish = finish
+            self.paidPrice = paidPrice
+        }
+    }
+
+    public struct AddCardsResult: Sendable, Equatable {
+        public let ok: Bool
+
+        public init(ok: Bool = false) {
+            self.ok = ok
         }
     }
 }

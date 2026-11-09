@@ -98,7 +98,7 @@
           "id": "4b",
           "name": "tcg-collections",
           "title": "TCG collections group",
-          "status": "todo",
+          "status": "done",
           "service_methods": ["AccountInfo", "ListCollections", "CreateCollection", "UpdateCollection", "DeleteCollection", "CollectionSummary", "CollectionItems", "AddCards"]
         },
         {

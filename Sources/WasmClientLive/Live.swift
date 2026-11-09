@@ -499,6 +499,34 @@ extension WasmClient: DependencyKey {
                     currency: currency,
                     allCollections: allCollections
                 )
+            },
+            tcgAccountInfo: {
+                try await actor.tcgAccountInfo()
+            },
+            tcgListCollections: {
+                try await actor.tcgListCollections()
+            },
+            tcgCreateCollection: { name, isPublic in
+                try await actor.tcgCreateCollection(name: name, isPublic: isPublic)
+            },
+            tcgUpdateCollection: { collectionID, name, isPublic in
+                try await actor.tcgUpdateCollection(
+                    collectionID: collectionID, name: name, isPublic: isPublic
+                )
+            },
+            tcgDeleteCollection: { collectionID in
+                try await actor.tcgDeleteCollection(collectionID: collectionID)
+            },
+            tcgCollectionSummary: {
+                try await actor.tcgCollectionSummary()
+            },
+            tcgCollectionItems: { collectionID, currency, allCollections in
+                try await actor.tcgCollectionItems(
+                    collectionID: collectionID, currency: currency, allCollections: allCollections
+                )
+            },
+            tcgAddCards: { collectionID, items in
+                try await actor.tcgAddCards(collectionID: collectionID, items: items)
             }
         )
     }()
