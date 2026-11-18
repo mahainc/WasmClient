@@ -29,7 +29,7 @@ build --disk_cache=~/.cache/bazel/disk
 # It is bound to the tailnet address and reachable by tailnet peers (no auth).
 # The address is a MagicDNS name so clients on every Mac resolve it. Opt-in via
 # --config=remote, so an offline/unreachable cache never breaks a build.
-build:remote --remote_cache=grpc://thanhhaikhongs-mac-mini-1:9092
+build:remote --remote_cache=grpc://thk-mac-mini:9092
 build:remote --remote_download_minimal
 # An unreachable cache is treated as a cache-miss with a warning and the build
 # continues — this is the default for --remote_cache, no extra flag required.
