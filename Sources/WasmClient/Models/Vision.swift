@@ -23,6 +23,10 @@ extension WasmClient.Vision {
         public var buyNow: [Link]
         public var sources: [Link]
         public var raw: String?
+        /// Thông tin nhanh do server chọn lọc (nhãn → giá trị), vd. Category, Condition, Materials, Origin, Time Period, Rarity.
+        public var facts: [String: String]
+        /// Trường riêng theo danh mục (`category_info.fields`).
+        public var categoryInfo: [String: String]
 
         public init(
             title: String = "",
@@ -39,7 +43,9 @@ extension WasmClient.Vision {
             discoverMore: [ShoppingProduct] = [],
             buyNow: [Link] = [],
             sources: [Link] = [],
-            raw: String? = nil
+            raw: String? = nil,
+            facts: [String: String] = [:],
+            categoryInfo: [String: String] = [:]
         ) {
             self.title = title
             self.description = description
@@ -56,6 +62,8 @@ extension WasmClient.Vision {
             self.buyNow = buyNow
             self.sources = sources
             self.raw = raw
+            self.facts = facts
+            self.categoryInfo = categoryInfo
         }
     }
 

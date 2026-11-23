@@ -47,6 +47,9 @@ extension WasmClient: DependencyKey {
             scan: { imageData, category, language in
                 try await actor.scan(imageData: imageData, category: category, language: language)
             },
+            scanImages: { images, category, language in
+                try await actor.scanImages(images: images, category: category, language: language)
+            },
             describe: { imageURL, category, language, provider in
                 try await actor.describe(imageURL: imageURL, category: category, language: language, provider: provider)
             },

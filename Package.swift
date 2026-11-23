@@ -23,9 +23,12 @@ let package = Package(
             exact: "1.2.65-26.1.1-ffi"
         ),
         // FlowKit-linking targets must provide SwiftProtobuf explicitly.
+        // EXACT pin: FlowKit's binary xcframework was built against SwiftProtobuf 1.39.x.
+        // 1.40.0 đổi layout nội bộ của Google_Protobuf_Any._storage, khiến unpackTo() nổ
+        // EXC_BAD_ACCESS khi giải mã task.value qua ranh giới binary (app923 chạy đúng ở 1.39.0).
         .package(
             url: "https://github.com/apple/swift-protobuf.git",
-            from: "1.22.0"
+            exact: "1.39.0"
         ),
     ],
     targets: [

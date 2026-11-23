@@ -84,6 +84,7 @@ extension WasmClient {
         refreshActions: {},
         funnelEngine: { nil },
         scan: { _, _, _ in Vision.ScanResult() },
+        scanImages: { _, _, _ in Vision.ScanResult() },
         describe: { _, _, _, _ in Vision.ScanResult() },
         visualSearch: { _, _ in [] },
         shopping: { _, _ in [] },
@@ -267,6 +268,17 @@ extension WasmClient {
         refreshActions: {},
         funnelEngine: { nil },
         scan: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return Vision.ScanResult(
+                title: "Mock Object",
+                description: "A mock scan result for preview purposes.",
+                categoryType: "object",
+                characteristics: ["Color": "Blue", "Material": "Metal"],
+                suggestedQuestions: ["What is this?", "Where can I buy it?"],
+                price: Vision.PriceInfo(averageFairMarketPrice: "$29.99")
+            )
+        },
+        scanImages: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
             return Vision.ScanResult(
                 title: "Mock Object",

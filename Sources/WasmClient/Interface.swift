@@ -5,6 +5,9 @@ import Foundation
 @DependencyClient
 public struct WasmClient: Sendable {
 
+    /// Số ảnh tối đa backend nhận cho một lần scan.
+    public static let maxScanImages = 3
+
     // MARK: - Engine Lifecycle
 
     public var start: @Sendable () async throws -> Void
@@ -39,6 +42,13 @@ public struct WasmClient: Sendable {
     public var scan:
         @Sendable (
             _ imageData: Data, _ category: String, _ language: String
+        ) async throws -> WasmClient.Vision.ScanResult
+
+    /// Multi-image scan (tối đa `maxScanImages` ảnh): ảnh đầu là ảnh chính, các ảnh còn lại gửi qua
+    /// `additional_files` (khớp `vision.scan(additionalFiles:)` của app flow-kit-example).
+    public var scanImages:
+        @Sendable (
+            _ images: [Data], _ category: String, _ language: String
         ) async throws -> WasmClient.Vision.ScanResult
 
     public var describe:

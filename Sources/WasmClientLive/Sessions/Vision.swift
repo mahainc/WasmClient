@@ -12,15 +12,45 @@ extension WasmActor {
         category: String,
         language: String
     ) async throws -> WasmClient.Vision.ScanResult {
+        try await scanImages(images: [imageData], category: category, language: language)
+    }
+
+    /// Upload từng ảnh (tối đa `WasmClient.maxScanImages`), ảnh đầu là `file`, các ảnh sau là `additional_files`.
+    func scanImages(
+        images: [Data],
+        category: String,
+        language: String
+    ) async throws -> WasmClient.Vision.ScanResult {
+        guard let first = images.first else { throw WasmClient.Error.missingValue }
         let instance = try await readyEngine()
 
         // Step 1: upload to blobstore
-        let imageURL = try await uploadImage(imageData: imageData)
+        let imageURL = try await uploadImage(imageData: first)
         logger("Scan: uploaded image → \(imageURL)")
+        var extraURLs: [String] = []
+        for extra in images.dropFirst().prefix(WasmClient.maxScanImages - 1) {
+            extraURLs.append(try await uploadImage(imageData: extra))
+        }
 
         // Step 2: run scan action
-        let scanAction = try await delegate.resolveAction(actionID: WasmClient.ActionID.scan.rawValue, logger: logger)
-        let args = Self.scanArgs(fileURL: imageURL, category: category, language: language)
+        // `scan` có nhiều nhà cung cấp (Coin Scanner, PictureThis, EveryScan, Rock Identifier, AntiqSnap…).
+        // App mẫu (FunnelWasm) để engine tự chọn theo `category`, nhưng `run(method:)` / `create(providerId: "")`
+        // trong bản FlowKit này báo `missing field provider_id`; chọn `actions[0]` thì mọi danh mục rơi vào
+        // Coin Scanner (vd. trống đồng → "Vatican 2 euro"). Tạm chọn nhà cung cấp theo danh mục;
+        // không khớp thì giữ hành vi cũ.
+        let scanActions = try await delegate.resolveAllActions(
+            actionID: WasmClient.ActionID.scan.rawValue, logger: logger)
+        let wantedName = Self.scanProviderName(for: category)
+        let scanAction =
+            scanActions.first {
+                guard let wantedName else { return false }
+                return $0.metadata.fields["provider_name"]?.stringValue.caseInsensitiveCompare(wantedName) == .orderedSame
+            } ?? scanActions[0]
+        logger("Scan: category=\(category) → provider=\(scanAction.metadata.fields["provider_name"]?.stringValue ?? scanAction.provider)")
+        var args = Self.scanArgs(fileURL: imageURL, category: category, language: language)
+        if !extraURLs.isEmpty {
+            args["additional_files"] = Google_Protobuf_Value(stringValue: extraURLs.joined(separator: ","))
+        }
         let task = try await instance.create(action: scanAction, args: args)
         let visionResult = try Self.parseScanResult(task: task)
         var result = Self.mapScanResult(visionResult)
@@ -28,6 +58,17 @@ extension WasmActor {
         result.imageURL = imageURL
         result.provider = scanAction.provider
         return result
+    }
+
+    /// Tên nhà cung cấp (`provider_name`) phù hợp với danh mục quét; `nil` = dùng mặc định.
+    private static func scanProviderName(for category: String) -> String? {
+        switch category.lowercased() {
+        case "antiq": "AntiqSnap"
+        case "coin", "coingrading": "Coin Scanner"
+        case "rock": "Rock Identifier"
+        case "plant", "weed", "toxic", "tree", "bird", "insect": "PictureThis"
+        default: nil
+        }
     }
 
     func describe(
@@ -141,7 +182,9 @@ extension WasmActor {
             discoverMore: v.discoverMore.map(mapShoppingProduct),
             buyNow: v.buyNow.map(mapLink),
             sources: v.sources.map(mapLink),
-            raw: v.hasRaw ? v.raw : nil
+            raw: v.hasRaw ? v.raw : nil,
+            facts: v.facts,
+            categoryInfo: v.hasCategoryInfo ? v.categoryInfo.fields : [:]
         )
     }
 
