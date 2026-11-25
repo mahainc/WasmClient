@@ -45,7 +45,10 @@ extension WasmClient: DependencyKey {
                 try await actor.funnelEngine()
             },
             scan: { imageData, category, language in
-                try await actor.scan(imageData: imageData, category: category, language: language)
+                try await actor.scan(images: [imageData], category: category, language: language)
+            },
+            scanViews: { images, category, language in
+                try await actor.scan(images: images, category: category, language: language)
             },
             describe: { imageURL, category, language, provider in
                 try await actor.describe(imageURL: imageURL, category: category, language: language, provider: provider)
@@ -221,12 +224,16 @@ extension WasmClient: DependencyKey {
             },
             plantSearch: { searchText, languageCode, countryCode in
                 try await actor.plantSearch(
-                    searchText: searchText, languageCode: languageCode, countryCode: countryCode
+                    searchText: searchText,
+                    languageCode: languageCode,
+                    countryCode: countryCode
                 )
             },
             plantComplete: { searchText, languageCode, countryCode in
                 try await actor.plantComplete(
-                    searchText: searchText, languageCode: languageCode, countryCode: countryCode
+                    searchText: searchText,
+                    languageCode: languageCode,
+                    countryCode: countryCode
                 )
             },
             plantDetail: { uid, languageCode, countryCode in
@@ -260,7 +267,10 @@ extension WasmClient: DependencyKey {
             },
             plantWeather: { latitude, longitude, countryCode, day in
                 try await actor.plantWeather(
-                    latitude: latitude, longitude: longitude, countryCode: countryCode, day: day
+                    latitude: latitude,
+                    longitude: longitude,
+                    countryCode: countryCode,
+                    day: day
                 )
             },
             suggest: { systemPrompt, imageURL in
@@ -470,7 +480,11 @@ extension WasmClient: DependencyKey {
             },
             tcgSoldListings: { cardID, grade, subType, offset, limit in
                 try await actor.tcgSoldListings(
-                    cardID: cardID, grade: grade, subType: subType, offset: offset, limit: limit
+                    cardID: cardID,
+                    grade: grade,
+                    subType: subType,
+                    offset: offset,
+                    limit: limit
                 )
             },
             tcgCatalogBrowse: { page, limit, game, query, sortID, sortAscending, filterIds, setID in
@@ -511,7 +525,9 @@ extension WasmClient: DependencyKey {
             },
             tcgUpdateCollection: { collectionID, name, isPublic in
                 try await actor.tcgUpdateCollection(
-                    collectionID: collectionID, name: name, isPublic: isPublic
+                    collectionID: collectionID,
+                    name: name,
+                    isPublic: isPublic
                 )
             },
             tcgDeleteCollection: { collectionID in
@@ -522,7 +538,9 @@ extension WasmClient: DependencyKey {
             },
             tcgCollectionItems: { collectionID, currency, allCollections in
                 try await actor.tcgCollectionItems(
-                    collectionID: collectionID, currency: currency, allCollections: allCollections
+                    collectionID: collectionID,
+                    currency: currency,
+                    allCollections: allCollections
                 )
             },
             tcgAddCards: { collectionID, items in
@@ -542,31 +560,44 @@ extension WasmClient: DependencyKey {
             },
             tcgRemoveHolding: { holdingID, cardID, variant, quantity in
                 try await actor.tcgRemoveHolding(
-                    holdingID: holdingID, cardID: cardID, variant: variant, quantity: quantity
+                    holdingID: holdingID,
+                    cardID: cardID,
+                    variant: variant,
+                    quantity: quantity
                 )
             },
             tcgPortfolioPerformance: { collectionID, currency, allCollections, window in
                 try await actor.tcgPortfolioPerformance(
-                    collectionID: collectionID, currency: currency,
-                    allCollections: allCollections, window: window
+                    collectionID: collectionID,
+                    currency: currency,
+                    allCollections: allCollections,
+                    window: window
                 )
             },
             tcgValueOverTime: { collectionID, window, currency, allCollections in
                 try await actor.tcgValueOverTime(
-                    collectionID: collectionID, window: window,
-                    currency: currency, allCollections: allCollections
+                    collectionID: collectionID,
+                    window: window,
+                    currency: currency,
+                    allCollections: allCollections
                 )
             },
             tcgTopMovers: { collectionID, window, limit, currency, allCollections in
                 try await actor.tcgTopMovers(
-                    collectionID: collectionID, window: window, limit: limit,
-                    currency: currency, allCollections: allCollections
+                    collectionID: collectionID,
+                    window: window,
+                    limit: limit,
+                    currency: currency,
+                    allCollections: allCollections
                 )
             },
             tcgPerformanceBreakdown: { collectionID, facet, window, currency, allCollections in
                 try await actor.tcgPerformanceBreakdown(
-                    collectionID: collectionID, facet: facet, window: window,
-                    currency: currency, allCollections: allCollections
+                    collectionID: collectionID,
+                    facet: facet,
+                    window: window,
+                    currency: currency,
+                    allCollections: allCollections
                 )
             },
             tcgProfitLoss: { collectionID, currency in

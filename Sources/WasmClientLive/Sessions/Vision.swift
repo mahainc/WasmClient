@@ -8,19 +8,23 @@ import WasmClient
 extension WasmActor {
 
     func scan(
-        imageData: Data,
+        images: [Data],
         category: String,
         language: String
     ) async throws -> WasmClient.Vision.ScanResult {
+        guard let subjectImage = images.first else { throw WasmClient.Error.missingValue }
         let instance = try await readyEngine()
 
-        // Step 1: upload to blobstore
-        let imageURL = try await uploadImage(imageData: imageData)
+        let imageURL = try await uploadImage(imageData: subjectImage)
         logger("Scan: uploaded image → \(imageURL)")
+        var extraViewURLs: [String] = []
+        for extraView in images.dropFirst() {
+            extraViewURLs.append(try await uploadImage(imageData: extraView))
+        }
 
-        // Step 2: run scan action
         let scanAction = try await delegate.resolveAction(actionID: WasmClient.ActionID.scan.rawValue, logger: logger)
-        let args = Self.scanArgs(fileURL: imageURL, category: category, language: language)
+        var args = Self.scanArgs(fileURL: imageURL, category: category, language: language)
+        Self.setAdditionalFiles(extraViewURLs, into: &args)
         let task = try await instance.create(action: scanAction, args: args)
         let visionResult = try Self.parseScanResult(task: task)
         var result = Self.mapScanResult(visionResult)
@@ -46,6 +50,17 @@ extension WasmActor {
         let task = try await instance.create(action: action, args: args)
         let visionResult = try Self.parseScanResult(task: task)
         return Self.mapScanResult(visionResult)
+    }
+
+    private static let additionalFilesArgKey = "additional_files"
+
+    /// The engine reads extra views as one comma-joined string, like `plantDiagnose`.
+    static func setAdditionalFiles(
+        _ fileURLs: [String],
+        into args: inout [String: Google_Protobuf_Value]
+    ) {
+        guard !fileURLs.isEmpty else { return }
+        args[additionalFilesArgKey] = Google_Protobuf_Value(stringValue: fileURLs.joined(separator: ","))
     }
 
     /// Wire args shared by `scan` and `describe`. `category`/`language` are
@@ -126,7 +141,7 @@ extension WasmActor {
         return try VisionScanResult(jsonUTF8Data: data, options: opts)
     }
 
-    private static func mapScanResult(_ v: VisionScanResult) -> WasmClient.Vision.ScanResult {
+    static func mapScanResult(_ v: VisionScanResult) -> WasmClient.Vision.ScanResult {
         WasmClient.Vision.ScanResult(
             title: v.hasTitle ? v.title : "",
             description: v.description_p,
@@ -138,6 +153,9 @@ extension WasmActor {
             physical: v.hasPhysical ? mapPhysical(v.physical) : nil,
             price: v.hasPrice ? mapPrice(v.price) : nil,
             aiCommentary: v.hasAiCommentary ? mapAICommentary(v.aiCommentary) : nil,
+            categoryInfo: v.hasCategoryInfo ? mapCategoryInfo(v.categoryInfo) : nil,
+            facts: v.facts,
+            alternatives: v.alternatives.map(mapScanResult),
             discoverMore: v.discoverMore.map(mapShoppingProduct),
             buyNow: v.buyNow.map(mapLink),
             sources: v.sources.map(mapLink),
@@ -171,6 +189,10 @@ extension WasmActor {
         if p.hasFormula { fields["formula"] = p.formula }
         if p.hasLuster { fields["luster"] = p.luster }
         return WasmClient.Vision.PhysicalFeatures(fields: fields)
+    }
+
+    private static func mapCategoryInfo(_ c: VisionCategoryInfo) -> WasmClient.Vision.CategoryInfo {
+        WasmClient.Vision.CategoryInfo(type: c.type, fields: c.fields)
     }
 
     private static func mapPrice(_ p: VisionPriceInfo) -> WasmClient.Vision.PriceInfo {

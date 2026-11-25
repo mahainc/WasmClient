@@ -84,6 +84,7 @@ extension WasmClient {
         refreshActions: {},
         funnelEngine: { nil },
         scan: { _, _, _ in Vision.ScanResult() },
+        scanViews: { _, _, _ in Vision.ScanResult() },
         describe: { _, _, _, _ in Vision.ScanResult() },
         visualSearch: { _, _ in [] },
         shopping: { _, _ in [] },
@@ -275,6 +276,17 @@ extension WasmClient {
                 characteristics: ["Color": "Blue", "Material": "Metal"],
                 suggestedQuestions: ["What is this?", "Where can I buy it?"],
                 price: Vision.PriceInfo(averageFairMarketPrice: "$29.99")
+            )
+        },
+        scanViews: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return Vision.ScanResult(
+                title: "Amethyst",
+                description: "A violet variety of quartz.",
+                categoryType: "rock",
+                categoryInfo: Vision.CategoryInfo(type: "rockInfo", fields: ["Hardness": "7", "Luster": "Vitreous"]),
+                facts: ["Formula": "SiO₂"],
+                alternatives: [Vision.ScanResult(title: "Fluorite", categoryType: "rock")]
             )
         },
         describe: { _, _, _, _ in
@@ -588,7 +600,11 @@ extension WasmClient {
                 healthScore: 8,
                 ingredients: [
                     WasmClient.Calories.Ingredient(
-                        name: "grilled chicken", calories: 230, protein: 32, amount: 150, unit: "g"
+                        name: "grilled chicken",
+                        calories: 230,
+                        protein: 32,
+                        amount: 150,
+                        unit: "g"
                     )
                 ]
             )
@@ -598,7 +614,12 @@ extension WasmClient {
             return WasmClient.Calories.SearchResult(
                 items: [
                     WasmClient.Calories.FoodItem(
-                        id: "food-1", name: "Banana", calories: 105, protein: 1.3, carbs: 27, fats: 0.4
+                        id: "food-1",
+                        name: "Banana",
+                        calories: 105,
+                        protein: 1.3,
+                        carbs: 27,
+                        fats: 0.4
                     )
                 ]
             )
@@ -635,7 +656,9 @@ extension WasmClient {
             return WasmClient.Plant.ListResult(
                 plants: [
                     WasmClient.Plant.Species(
-                        id: "sp-1", latinName: "Dianthus caryophyllus", commonNames: ["Carnation"]
+                        id: "sp-1",
+                        latinName: "Dianthus caryophyllus",
+                        commonNames: ["Carnation"]
                     )
                 ],
                 total: 1
@@ -661,7 +684,10 @@ extension WasmClient {
         plantWaterCalc: { _, _, _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return WasmClient.Plant.WaterCalc(
-                waterAmountMl: 250, frequencyDays: 7, careType: "moderate", plantName: "Carnation"
+                waterAmountMl: 250,
+                frequencyDays: 7,
+                careType: "moderate",
+                plantName: "Carnation"
             )
         },
         plantRepottingChecker: { _, _, _ in
@@ -689,7 +715,9 @@ extension WasmClient {
                 plantName: "Carnation",
                 diseases: [
                     WasmClient.Plant.DiseaseInfo(
-                        name: "Brown Spot", summary: "Fungal leaf spot", confidence: 0.82
+                        name: "Brown Spot",
+                        summary: "Fungal leaf spot",
+                        confidence: 0.82
                     )
                 ],
                 tips: [WasmClient.Plant.Tip(id: "t1", title: "Pruning time?", content: "Trim damaged leaves.")]
@@ -1216,7 +1244,11 @@ extension WasmClient {
         tcgAccountInfo: {
             WasmClient.TCG.AccountInfo(
                 account: WasmClient.TCG.Account(
-                    id: "a1", handle: "trainer", nickname: "Ash", tier: "pro", totalCards: "250"
+                    id: "a1",
+                    handle: "trainer",
+                    nickname: "Ash",
+                    tier: "pro",
+                    totalCards: "250"
                 )
             )
         },
@@ -1282,10 +1314,12 @@ extension WasmClient {
             WasmClient.TCG.ValueOverTime(
                 marketSeries: [
                     WasmClient.TCG.ValuePoint(
-                        at: "2026-01-01", value: WasmClient.TCG.Money(amount: "400.00", currency: "USD")
+                        at: "2026-01-01",
+                        value: WasmClient.TCG.Money(amount: "400.00", currency: "USD")
                     ),
                     WasmClient.TCG.ValuePoint(
-                        at: "2026-02-01", value: WasmClient.TCG.Money(amount: "471.47", currency: "USD")
+                        at: "2026-02-01",
+                        value: WasmClient.TCG.Money(amount: "471.47", currency: "USD")
                     ),
                 ],
                 peakValue: WasmClient.TCG.Money(amount: "471.47", currency: "USD"),
@@ -1294,7 +1328,7 @@ extension WasmClient {
                 window: window == WasmClient.TCG.AnalyticsWindow(rawValue: "") ? .allTime : window
             )
         },
-        tcgTopMovers: { _, window, limit, _, _ in
+        tcgTopMovers: { _, window, _, _, _ in
             WasmClient.TCG.TopMovers(
                 movers: [
                     WasmClient.TCG.Mover(

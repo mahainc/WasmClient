@@ -9,6 +9,7 @@ swift_test(
         "ChatStreamTests.swift",
         "NewsMapperTests.swift",
         "PlantMapperTests.swift",
+        "VisionMapperTests.swift",
         "TCGCatalogMapperTests.swift",
         "TCGCollectionsMapperTests.swift",
         "TCGHoldingsMapperTests.swift",

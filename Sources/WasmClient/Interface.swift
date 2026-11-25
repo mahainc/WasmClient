@@ -41,6 +41,12 @@ public struct WasmClient: Sendable {
             _ imageData: Data, _ category: String, _ language: String
         ) async throws -> WasmClient.Vision.ScanResult
 
+    /// Multi-photo scan: the first image is the subject, the rest extra views of it.
+    public var scanViews:
+        @Sendable (
+            _ images: [Data], _ category: String, _ language: String
+        ) async throws -> WasmClient.Vision.ScanResult
+
     public var describe:
         @Sendable (
             _ imageURL: String, _ category: String, _ language: String, _ provider: String
@@ -656,8 +662,7 @@ public struct WasmClient: Sendable {
             _ game: WasmClient.TCG.Game
         ) async throws -> WasmClient.TCG.Trending
 
-    public var tcgSearchFilters:
-        @Sendable () async throws -> WasmClient.TCG.SearchFilters
+    public var tcgSearchFilters: @Sendable () async throws -> WasmClient.TCG.SearchFilters
 
     public var tcgListSets:
         @Sendable (
@@ -668,11 +673,9 @@ public struct WasmClient: Sendable {
             _ allCollections: Bool?
         ) async throws -> WasmClient.TCG.ListSets
 
-    public var tcgAccountInfo:
-        @Sendable () async throws -> WasmClient.TCG.AccountInfo
+    public var tcgAccountInfo: @Sendable () async throws -> WasmClient.TCG.AccountInfo
 
-    public var tcgListCollections:
-        @Sendable () async throws -> [WasmClient.TCG.Collection]
+    public var tcgListCollections: @Sendable () async throws -> [WasmClient.TCG.Collection]
 
     public var tcgCreateCollection:
         @Sendable (
@@ -689,8 +692,7 @@ public struct WasmClient: Sendable {
             _ collectionID: String
         ) async throws -> [WasmClient.TCG.Collection]
 
-    public var tcgCollectionSummary:
-        @Sendable () async throws -> WasmClient.TCG.CollectionSummary
+    public var tcgCollectionSummary: @Sendable () async throws -> WasmClient.TCG.CollectionSummary
 
     public var tcgCollectionItems:
         @Sendable (
