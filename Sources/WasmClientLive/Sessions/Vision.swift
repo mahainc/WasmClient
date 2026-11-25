@@ -22,15 +22,17 @@ extension WasmActor {
             extraViewURLs.append(try await uploadImage(imageData: extraView))
         }
 
-        let scanAction = try await delegate.resolveAction(actionID: WasmClient.ActionID.scan.rawValue, logger: logger)
         var args = Self.scanArgs(fileURL: imageURL, category: category, language: language)
         Self.setAdditionalFiles(extraViewURLs, into: &args)
-        let task = try await instance.create(action: scanAction, args: args)
-        let visionResult = try Self.parseScanResult(task: task)
+        // The method-name path with no provider lets the engine route on `category`
+        // (rock, plant, coin, …); a resolved UUID action pins its first provider instead.
+        let visionResult: VisionScanResult = try await instance.run(
+            method: WasmClient.VisionMethod.scan.rawValue,
+            providerId: "",
+            args: args
+        )
         var result = Self.mapScanResult(visionResult)
-        // Attach the uploaded URL and provider for enrichment calls
         result.imageURL = imageURL
-        result.provider = scanAction.provider
         return result
     }
 
