@@ -115,6 +115,12 @@ final class AuditCleanupTests: XCTestCase {
     }
 
     func testDefaultStreamsDoNotFinishImmediately() async {
+        // A bare `WasmClient()` reports "Unimplemented" for each endpoint it calls
+        // (@DependencyClient); expect exactly those so the stream check still fails loudly.
+        let unimplemented = XCTExpectedFailure.Options()
+        unimplemented.issueMatcher = { $0.compactDescription.contains("Unimplemented") }
+        XCTExpectFailure("default endpoints report Unimplemented", options: unimplemented)
+
         let client = WasmClient()
 
         await assertDoesNotFinishImmediately(await client.observeTaskCreated())
