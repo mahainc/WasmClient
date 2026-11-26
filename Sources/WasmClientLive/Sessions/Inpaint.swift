@@ -66,19 +66,16 @@ extension WasmActor {
         if let maskObjects {
             args["mask_objects"] = Google_Protobuf_Value(stringValue: maskObjects)
         }
-        // Erase runs as an async engine task: `run(action:)` mis-decodes its event
-        // envelope ("missing field event_id"), so resolve it through `create(action:)`
-        // and unpack the completed task's value (mirrors the Blobstore upload path).
+        // Dispatch erase through the gRPC-style METHOD-NAME path (`run(method:)`), the
+        // route flow-kit-example uses. The legacy UUID action path (`run`/`create` on a
+        // resolved `WaTAction`) mis-decodes erase's large event-stream response ("missing
+        // field event_id"); the method-name path decodes it straight into `InpaintErase`.
         let instance = try await readyEngine()
-        let action = try await delegate.resolveAction(
-            actionID: WasmClient.ActionID.erase.rawValue,
-            logger: logger
+        let result: InpaintErase = try await instance.run(
+            method: WasmClient.Inpaint.Method.erase.rawValue,
+            providerId: "",
+            args: args
         )
-        let task = try await instance.create(action: action, args: args)
-        guard task.status == .completed, task.hasValue else {
-            throw WasmClient.Error.taskFailed(status: "\(task.status)")
-        }
-        let result = try InpaintErase(unpackingAny: task.value)
         return WasmClient.Inpaint.EraseResult(
             sessionID: result.sessionID,
             imageURL: result.hasImage ? result.image.url : "",
