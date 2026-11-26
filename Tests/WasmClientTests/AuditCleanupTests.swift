@@ -5,7 +5,7 @@ import XCTest
 final class AuditCleanupTests: XCTestCase {
 
     func testBundledFlowKitVersionMatchesPackagePin() {
-        XCTAssertEqual(WasmClient.bundledFlowKitVersion, "1.2.65-26.1.1-ffi")
+        XCTAssertEqual(WasmClient.bundledFlowKitVersion, "1.2.67-27.2-ffi")
     }
 
     func testOpenActionIDRoundTripsKnownAndUnknownValues() {
