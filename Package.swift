@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(
@@ -17,22 +17,12 @@ let package = Package(
             url: "https://github.com/pointfreeco/swift-dependencies.git",
             from: "1.9.0"
         ),
-        // FlowKit (binary xcframework + asyncify_wasmFFI + CModules) is consumed
-        // from the canonical mahainc/flow-kit SPM package. As of
-        // 1.2.62-26.1.1-ffi the xcframework ships a single `FlowKit.swiftmodule`
-        // (all sub-modules folded in), so `import FlowKit` alone is sufficient —
-        // no module-merge plugin and no `-I` search paths. Pinned exact to match
-        // any sibling FlowKit consumer (e.g. FunnelWasm) so the app graph
-        // resolves one shared FlowKit target.
+        // Exact pin keeps sibling FlowKit consumers on one shared engine build.
         .package(
             url: "https://github.com/mahainc/flow-kit.git",
-            exact: "1.2.65-26.1.1-ffi"
+            exact: "1.2.67-27.2-ffi"
         ),
-        // SwiftProtobuf for the generated `*.pb.swift` runtime. FlowKit's
-        // compiled `.swiftmodule` declares a module dependency on SwiftProtobuf
-        // but does NOT bundle or re-export it, so every FlowKit consumer must
-        // supply it in the package graph. SPM dedupes with any sibling
-        // swift-protobuf consumer in the app.
+        // FlowKit-linking targets must provide SwiftProtobuf explicitly.
         .package(
             url: "https://github.com/apple/swift-protobuf.git",
             from: "1.22.0"
@@ -43,6 +33,7 @@ let package = Package(
             name: "WasmClient",
             dependencies: [
                 .product(name: "Dependencies", package: "swift-dependencies"),
+                .product(name: "DependenciesMacros", package: "swift-dependencies"),
             ]
         ),
         .target(
@@ -69,6 +60,14 @@ let package = Package(
             name: "WasmClientTests",
             dependencies: [
                 "WasmClient",
+                .product(name: "Dependencies", package: "swift-dependencies"),
+            ]
+        ),
+        .testTarget(
+            name: "WasmClientLiveTests",
+            dependencies: [
+                "WasmClient",
+                "WasmClientLive",
                 .product(name: "Dependencies", package: "swift-dependencies"),
             ]
         ),

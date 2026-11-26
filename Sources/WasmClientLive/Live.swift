@@ -1,4 +1,3 @@
-@preconcurrency import FlowKit
 import Dependencies
 import Foundation
 import WasmClient
@@ -43,18 +42,13 @@ extension WasmClient: DependencyKey {
                 try await actor.refreshActions()
             },
             funnelEngine: {
-                let engine = try await actor.readyEngine()
-                // `TaskWasmProtocol` is not `Sendable`, but the interface vends
-                // the started engine as an opaque `(any Sendable)?` handle that
-                // the consumer casts back to `TaskWasmProtocol`. `any Sendable`
-                // is a marker existential with the same layout as `Any`, so
-                // bridge through `Any` (preserving the dynamic type for the
-                // consumer's `as? TaskWasmProtocol`). Sharing the one engine is
-                // safe here — the delegate that owns it is `@unchecked Sendable`.
-                return unsafeBitCast(engine as Any, to: (any Sendable).self)
+                try await actor.funnelEngine()
             },
             scan: { imageData, category, language in
-                try await actor.scan(imageData: imageData, category: category, language: language)
+                try await actor.scan(images: [imageData], category: category, language: language)
+            },
+            scanViews: { images, category, language in
+                try await actor.scan(images: images, category: category, language: language)
             },
             describe: { imageURL, category, language, provider in
                 try await actor.describe(imageURL: imageURL, category: category, language: language, provider: provider)
@@ -65,6 +59,44 @@ extension WasmClient: DependencyKey {
             shopping: { query, provider in
                 try await actor.shopping(query: query, provider: provider)
             },
+            lookupVin: { vin in
+                try await actor.lookupVin(vin: vin)
+            },
+            smartcarConnectConfig: { mode in
+                try await actor.smartcarConnectConfig(mode: mode)
+            },
+            smartcarHostedConnectEvent: { url, bodyText, vehicleID, contour in
+                try await actor.smartcarHostedConnectEvent(
+                    url: url,
+                    bodyText: bodyText,
+                    vehicleID: vehicleID,
+                    contour: contour
+                )
+            },
+            smartcarAccounts: {
+                try await actor.smartcarAccounts()
+            },
+            smartcarSwitchAccount: { userID in
+                try await actor.smartcarSwitchAccount(userID: userID)
+            },
+            smartcarDeleteAccount: { userID in
+                try await actor.smartcarDeleteAccount(userID: userID)
+            },
+            smartcarCatalog: {
+                try await actor.smartcarCatalog()
+            },
+            smartcarAllVehicles: { vehicleID, make in
+                try await actor.smartcarAllVehicles(vehicleID: vehicleID, make: make)
+            },
+            smartcarGetPermissions: { vehicleID, make in
+                try await actor.smartcarGetPermissions(vehicleID: vehicleID, make: make)
+            },
+            smartcarRead: { method, vehicleID, make in
+                try await actor.smartcarRead(method: method, vehicleID: vehicleID, make: make)
+            },
+            smartcarControl: { method, vehicleID, args in
+                try await actor.smartcarControl(method: method, vehicleID: vehicleID, args: args)
+            },
             uploadImage: { imageData in
                 try await actor.uploadImage(imageData: imageData)
             },
@@ -73,7 +105,10 @@ extension WasmClient: DependencyKey {
             },
             chatModels: { offset, limit, keyword, category in
                 try await actor.chatModels(
-                    offset: offset, limit: limit, keyword: keyword, category: category
+                    offset: offset,
+                    limit: limit,
+                    keyword: keyword,
+                    category: category
                 )
             },
             chatSend: { config, messages in
@@ -82,11 +117,58 @@ extension WasmClient: DependencyKey {
             chatStream: { config, messages in
                 try await actor.chatStream(config: config, messages: messages)
             },
-            createChatModel: { providerId, input in
-                try await actor.createChatModel(providerId: providerId, input: input)
+            createChatModel: { providerID, input in
+                try await actor.createChatModel(providerID: providerID, input: input)
             },
-            initializeChatProvider: { providerId, userName in
-                try await actor.initializeChatProvider(providerId: providerId, userName: userName)
+            initializeChatProvider: { providerID, userName in
+                try await actor.initializeChatProvider(providerID: providerID, userName: userName)
+            },
+            completion: { config, messages in
+                try await actor.completion(config: config, messages: messages)
+            },
+            chatRun: { config, messages, tools, maxRounds, onEvent in
+                try await actor.chatRun(
+                    config: config,
+                    messages: messages,
+                    tools: tools,
+                    maxRounds: maxRounds,
+                    onEvent: onEvent
+                )
+            },
+            listProviders: {
+                try await actor.listProviders()
+            },
+            authProvider: { providerID in
+                try await actor.authProvider(providerID: providerID)
+            },
+            listVoices: { providerID, keyword, offset, limit in
+                try await actor.listVoices(
+                    providerID: providerID,
+                    keyword: keyword,
+                    offset: offset,
+                    limit: limit
+                )
+            },
+            createVoice: { providerID, name, audio, gender, visibility in
+                try await actor.createVoice(
+                    providerID: providerID,
+                    name: name,
+                    audio: audio,
+                    gender: gender,
+                    visibility: visibility
+                )
+            },
+            deleteVoice: { providerID, voiceID in
+                try await actor.deleteVoice(providerID: providerID, voiceID: voiceID)
+            },
+            voiceTTS: { providerID, input, voiceID, format in
+                try await actor.voiceTTS(providerID: providerID, input: input, voiceID: voiceID, format: format)
+            },
+            listVoiceProviders: {
+                try await actor.listVoiceProviders()
+            },
+            updateVoice: { providerID, voiceID, name in
+                try await actor.updateVoice(providerID: providerID, id: voiceID, name: name)
             },
             musicDiscover: { category, continuation in
                 try await actor.musicDiscover(category: category, continuation: continuation)
@@ -109,56 +191,123 @@ extension WasmClient: DependencyKey {
             musicSuggestions: { query in
                 try await actor.musicSuggestions(query: query)
             },
+            newsList: { request in
+                try await actor.newsList(request: request)
+            },
+            caloriesAnalyze: { providerID, text, image in
+                try await actor.caloriesAnalyze(providerID: providerID, text: text, image: image)
+            },
+            caloriesSearch: { providerID, query in
+                try await actor.caloriesSearch(providerID: providerID, query: query)
+            },
+            caloriesHealthScore: { providerID, name, calories, protein, carbs, fats in
+                try await actor.caloriesHealthScore(
+                    providerID: providerID,
+                    name: name,
+                    calories: calories,
+                    protein: protein,
+                    carbs: carbs,
+                    fats: fats
+                )
+            },
+            caloriesBarcode: { providerID, barcode in
+                try await actor.caloriesBarcode(providerID: providerID, barcode: barcode)
+            },
+            caloriesSuggestions: { providerID in
+                try await actor.caloriesSuggestions(providerID: providerID)
+            },
+            caloriesIngredient: { providerID, name in
+                try await actor.caloriesIngredient(providerID: providerID, name: name)
+            },
+            plantList: { query, listType, latitude, longitude, season, month, limit, offset in
+                try await actor.plantList(
+                    query: query,
+                    listType: listType,
+                    latitude: latitude,
+                    longitude: longitude,
+                    season: season,
+                    month: month,
+                    limit: limit,
+                    offset: offset
+                )
+            },
+            plantSearch: { searchText, languageCode, countryCode in
+                try await actor.plantSearch(
+                    searchText: searchText,
+                    languageCode: languageCode,
+                    countryCode: countryCode
+                )
+            },
+            plantComplete: { searchText, languageCode, countryCode in
+                try await actor.plantComplete(
+                    searchText: searchText,
+                    languageCode: languageCode,
+                    countryCode: countryCode
+                )
+            },
+            plantDetail: { uid, languageCode, countryCode in
+                try await actor.plantDetail(uid: uid, languageCode: languageCode, countryCode: countryCode)
+            },
+            plantWaterCalc: { file, plantID, settings, countryCode, latitude, longitude in
+                try await actor.plantWaterCalc(
+                    file: file,
+                    plantID: plantID,
+                    settings: settings,
+                    countryCode: countryCode,
+                    latitude: latitude,
+                    longitude: longitude
+                )
+            },
+            plantRepottingChecker: { file, plantID, plantName in
+                try await actor.plantRepottingChecker(file: file, plantID: plantID, plantName: plantName)
+            },
+            plantLightMeter: { brightness, file in
+                try await actor.plantLightMeter(brightness: brightness, file: file)
+            },
+            plantDiagnose: { file, plantID, countryCode, latitude, longitude, additionalFiles in
+                try await actor.plantDiagnose(
+                    file: file,
+                    plantID: plantID,
+                    countryCode: countryCode,
+                    latitude: latitude,
+                    longitude: longitude,
+                    additionalFiles: additionalFiles
+                )
+            },
+            plantWeather: { latitude, longitude, countryCode, day in
+                try await actor.plantWeather(
+                    latitude: latitude,
+                    longitude: longitude,
+                    countryCode: countryCode,
+                    day: day
+                )
+            },
             suggest: { systemPrompt, imageURL in
                 try await actor.suggest(systemPrompt: systemPrompt, imageURL: imageURL)
             },
-            readOutLoud: { text, voice, providerId in
-                try await actor.readOutLoud(text: text, voice: voice, providerId: providerId)
+            readOutLoud: { text, voice, providerID in
+                try await actor.readOutLoud(text: text, voice: voice, providerID: providerID)
             },
-            ttsVoices: { providerId, modelId in
-                try await actor.ttsVoices(providerId: providerId, modelId: modelId)
+            ttsVoices: { providerID, modelID in
+                try await actor.ttsVoices(providerID: providerID, modelID: modelID)
             },
-            listVoices: { keyword, offset, limit in
-                try await actor.listVoices(keyword: keyword, offset: offset, limit: limit)
+            generateAIArt: { request in
+                try await actor.generateAIArt(request)
             },
-            voiceTTS: { providerId, input, voiceID, format in
-                try await actor.voiceTTS(providerId: providerId, input: input, voiceID: voiceID, format: format)
+            listAIArtStyles: { kind in
+                try await actor.listAIArtStyles(kind: kind)
             },
-            listVoiceProviders: {
-                try await actor.listVoiceProviders()
+            loadAIArtModelCatalog: { mode in
+                try await actor.loadAIArtModelCatalog(mode: mode)
             },
-            createVoice: { providerId, name, audio, gender, visibility in
-                try await actor.createVoice(
-                    providerId: providerId,
-                    name: name,
-                    audio: audio,
-                    gender: gender,
-                    visibility: visibility
-                )
+            submitAIArtVideo: { request in
+                try await actor.submitAIArtVideo(request)
             },
-            deleteVoice: { providerId, id in
-                try await actor.deleteVoice(providerId: providerId, id: id)
+            getAIArtVideoStatus: { videoID in
+                try await actor.getAIArtVideoStatus(videoID: videoID)
             },
-            updateVoice: { providerId, id, name in
-                try await actor.updateVoice(providerId: providerId, id: id, name: name)
-            },
-            aiartGenerate: { actionID, providerID, args in
-                try await actor.aiartGenerate(actionID: actionID, providerID: providerID, args: args)
-            },
-            aiartStyles: { actionID in
-                try await actor.aiartStyles(actionID: actionID)
-            },
-            aiartModelList: { mode in
-                try await actor.aiartModelList(mode: mode)
-            },
-            aiartVideoCreate: { args in
-                try await actor.aiartVideoCreate(args: args)
-            },
-            aiartVideoStatus: { videoID in
-                try await actor.aiartVideoStatus(videoID: videoID)
-            },
-            aiartVideoPoll: { videoID, interval, onUpdate in
-                try await actor.aiartVideoPoll(
+            pollAIArtVideo: { videoID, interval, onUpdate in
+                try await actor.pollAIArtVideo(
                     videoID: videoID,
                     interval: interval,
                     onUpdate: onUpdate
@@ -221,10 +370,12 @@ extension WasmClient: DependencyKey {
             removeBackground: { image in
                 try await actor.removeBackground(image: image)
             },
-            erase: { image, sessionId, maskBrush, maskObjects in
+            erase: { image, sessionID, maskBrush, maskObjects in
                 try await actor.erase(
-                    image: image, sessionId: sessionId,
-                    maskBrush: maskBrush, maskObjects: maskObjects
+                    image: image,
+                    sessionID: sessionID,
+                    maskBrush: maskBrush,
+                    maskObjects: maskObjects
                 )
             },
             skinBeauty: { image in
@@ -242,12 +393,15 @@ extension WasmClient: DependencyKey {
             webpageLeagues: {
                 try await actor.webpageLeagues()
             },
-            webpageCompetitions: { q, limit, offset in
-                try await actor.webpageCompetitions(q: q, limit: limit, offset: offset)
+            webpageCompetitions: { query, limit, offset in
+                try await actor.webpageCompetitions(q: query, limit: limit, offset: offset)
             },
-            webpageTeams: { q, limit, offset, competitionId in
+            webpageTeams: { query, limit, offset, competitionID in
                 try await actor.webpageTeams(
-                    q: q, limit: limit, offset: offset, competitionId: competitionId
+                    q: query,
+                    limit: limit,
+                    offset: offset,
+                    competitionID: competitionID
                 )
             },
             webpage: { url in
@@ -262,20 +416,23 @@ extension WasmClient: DependencyKey {
             webpageTeam: { id in
                 try await actor.webpageTeam(id: id)
             },
-            webpageVideos: { videoType, competitionID, teamID, q, page, pageSize in
+            webpageVideos: { videoType, competitionID, teamID, query, page, pageSize in
                 try await actor.webpageVideos(
                     videoType: videoType,
                     competitionID: competitionID,
                     teamID: teamID,
-                    q: q,
+                    q: query,
                     page: page,
                     pageSize: pageSize
                 )
             },
-            webpageNews: { limit, offset, q, competitionID, teamID in
+            webpageNews: { limit, offset, query, competitionID, teamID in
                 try await actor.webpageNews(
-                    limit: limit, offset: offset, q: q,
-                    competitionID: competitionID, teamID: teamID
+                    limit: limit,
+                    offset: offset,
+                    q: query,
+                    competitionID: competitionID,
+                    teamID: teamID
                 )
             },
             upcoming: {
@@ -299,12 +456,13 @@ extension WasmClient: DependencyKey {
             submitSurvey: { questions, answers in
                 try await actor.submitSurvey(questions: questions, answers: answers)
             },
-            setNotification: { enabled, firebaseToken, firebaseUID, liveActivityToken in
+            setNotification: { enabled, firebaseToken, firebaseUID, liveActivityToken, liveActivityAttributesType in
                 try await actor.setNotification(
                     enabled: enabled,
                     firebaseToken: firebaseToken,
                     firebaseUID: firebaseUID,
-                    liveActivityToken: liveActivityToken
+                    liveActivityToken: liveActivityToken,
+                    liveActivityAttributesType: liveActivityAttributesType
                 )
             },
             getNotificationSettings: {
@@ -313,10 +471,146 @@ extension WasmClient: DependencyKey {
             notificationSubscribe: { entity, id, enabled in
                 try await actor.notificationSubscribe(entity: entity, id: id, enabled: enabled)
             },
-            reportLiveActivityToken: { entity, entityId, laToken in
+            reportLiveActivityToken: { entity, entityID, laToken in
                 try await actor.reportLiveActivityToken(
-                    entity: entity, entityId: entityId, laToken: laToken
+                    entity: entity,
+                    entityID: entityID,
+                    laToken: laToken
                 )
+            },
+            deleteUser: { firebaseUID in
+                try await actor.deleteUser(firebaseUID: firebaseUID)
+            },
+            tcgScan: { imageBase64, game in
+                try await actor.tcgScan(imageBase64: imageBase64, game: game)
+            },
+            tcgCatalogDetail: { cardID, currency in
+                try await actor.tcgCatalogDetail(cardID: cardID, currency: currency)
+            },
+            tcgSoldListings: { cardID, grade, subType, offset, limit in
+                try await actor.tcgSoldListings(
+                    cardID: cardID,
+                    grade: grade,
+                    subType: subType,
+                    offset: offset,
+                    limit: limit
+                )
+            },
+            tcgCatalogBrowse: { page, limit, game, query, sortID, sortAscending, filterIds, setID in
+                try await actor.tcgCatalogBrowse(
+                    page: page,
+                    limit: limit,
+                    game: game,
+                    query: query,
+                    sortID: sortID,
+                    sortAscending: sortAscending,
+                    filterIds: filterIds,
+                    setID: setID
+                )
+            },
+            tcgTrending: { game in
+                try await actor.tcgTrending(game: game)
+            },
+            tcgSearchFilters: {
+                try await actor.tcgSearchFilters()
+            },
+            tcgListSets: { collectionID, game, language, currency, allCollections in
+                try await actor.tcgListSets(
+                    collectionID: collectionID,
+                    game: game,
+                    language: language,
+                    currency: currency,
+                    allCollections: allCollections
+                )
+            },
+            tcgAccountInfo: {
+                try await actor.tcgAccountInfo()
+            },
+            tcgListCollections: {
+                try await actor.tcgListCollections()
+            },
+            tcgCreateCollection: { name, isPublic in
+                try await actor.tcgCreateCollection(name: name, isPublic: isPublic)
+            },
+            tcgUpdateCollection: { collectionID, name, isPublic in
+                try await actor.tcgUpdateCollection(
+                    collectionID: collectionID,
+                    name: name,
+                    isPublic: isPublic
+                )
+            },
+            tcgDeleteCollection: { collectionID in
+                try await actor.tcgDeleteCollection(collectionID: collectionID)
+            },
+            tcgCollectionSummary: {
+                try await actor.tcgCollectionSummary()
+            },
+            tcgCollectionItems: { collectionID, currency, allCollections in
+                try await actor.tcgCollectionItems(
+                    collectionID: collectionID,
+                    currency: currency,
+                    allCollections: allCollections
+                )
+            },
+            tcgAddCards: { collectionID, items in
+                try await actor.tcgAddCards(collectionID: collectionID, items: items)
+            },
+            tcgHoldingDetail: { holdingID in
+                try await actor.tcgHoldingDetail(holdingID: holdingID)
+            },
+            tcgUpdateHolding: { holdingID, paidPrice, acquiredAt, note, quantity in
+                try await actor.tcgUpdateHolding(
+                    holdingID: holdingID,
+                    paidPrice: paidPrice,
+                    acquiredAt: acquiredAt,
+                    note: note,
+                    quantity: quantity
+                )
+            },
+            tcgRemoveHolding: { holdingID, cardID, variant, quantity in
+                try await actor.tcgRemoveHolding(
+                    holdingID: holdingID,
+                    cardID: cardID,
+                    variant: variant,
+                    quantity: quantity
+                )
+            },
+            tcgPortfolioPerformance: { collectionID, currency, allCollections, window in
+                try await actor.tcgPortfolioPerformance(
+                    collectionID: collectionID,
+                    currency: currency,
+                    allCollections: allCollections,
+                    window: window
+                )
+            },
+            tcgValueOverTime: { collectionID, window, currency, allCollections in
+                try await actor.tcgValueOverTime(
+                    collectionID: collectionID,
+                    window: window,
+                    currency: currency,
+                    allCollections: allCollections
+                )
+            },
+            tcgTopMovers: { collectionID, window, limit, currency, allCollections in
+                try await actor.tcgTopMovers(
+                    collectionID: collectionID,
+                    window: window,
+                    limit: limit,
+                    currency: currency,
+                    allCollections: allCollections
+                )
+            },
+            tcgPerformanceBreakdown: { collectionID, facet, window, currency, allCollections in
+                try await actor.tcgPerformanceBreakdown(
+                    collectionID: collectionID,
+                    facet: facet,
+                    window: window,
+                    currency: currency,
+                    allCollections: allCollections
+                )
+            },
+            tcgProfitLoss: { collectionID, currency in
+                try await actor.tcgProfitLoss(collectionID: collectionID, currency: currency)
             }
         )
     }()

@@ -1589,7 +1589,9 @@ public struct LivescoreWebPage: Sendable {
 
   /// Per-match highlight clips from backend `metadata.videos[]`.
   /// Each entry is a Scorebat video embed (title, iframe HTML,
-  /// YouTube source URL, poster image). Empty for non-video page types.
+  /// YouTube source URL, poster image). Empty when the item has
+  /// no clips or when the WebPage is used for non-video types
+  /// (leagues, teams, competitions, discovers).
   public var videos: [LivescoreVideo] = []
 
   /// Parent competition from backend `metadata.competition` (videos
@@ -1632,6 +1634,324 @@ public struct LivescoreMatchSummaryList: Sendable {
   // methods supported on all messages.
 
   public var matches: [LivescoreMatchSummary] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct LivescoreUpcomingRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct LivescoreScoresByDateRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// YYYY-MM-DD. Empty → backend uses JWT `tz` claim's today.
+  public var date: String {
+    get {_date ?? String()}
+    set {_date = newValue}
+  }
+  /// Returns true if `date` has been explicitly set.
+  public var hasDate: Bool {self._date != nil}
+  /// Clears the value of `date`. Subsequent reads from it will return its default value.
+  public mutating func clearDate() {self._date = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _date: String? = nil
+}
+
+public struct LivescoreEntityByIdRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Slug or numeric id, depending on entity.
+  public var id: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct LivescoreWebpageCompetitionsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Full-text filter on name + region.
+  public var q: String {
+    get {_q ?? String()}
+    set {_q = newValue}
+  }
+  /// Returns true if `q` has been explicitly set.
+  public var hasQ: Bool {self._q != nil}
+  /// Clears the value of `q`. Subsequent reads from it will return its default value.
+  public mutating func clearQ() {self._q = nil}
+
+  /// Server-side clamp; default 30. Track `offset + items.count`
+  /// and stop when result count < limit.
+  public var limit: Int64 {
+    get {_limit ?? 0}
+    set {_limit = newValue}
+  }
+  /// Returns true if `limit` has been explicitly set.
+  public var hasLimit: Bool {self._limit != nil}
+  /// Clears the value of `limit`. Subsequent reads from it will return its default value.
+  public mutating func clearLimit() {self._limit = nil}
+
+  /// Offset-based pagination cursor.
+  public var offset: Int64 {
+    get {_offset ?? 0}
+    set {_offset = newValue}
+  }
+  /// Returns true if `offset` has been explicitly set.
+  public var hasOffset: Bool {self._offset != nil}
+  /// Clears the value of `offset`. Subsequent reads from it will return its default value.
+  public mutating func clearOffset() {self._offset = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _q: String? = nil
+  fileprivate var _limit: Int64? = nil
+  fileprivate var _offset: Int64? = nil
+}
+
+public struct LivescoreWebpageTeamsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var q: String {
+    get {_q ?? String()}
+    set {_q = newValue}
+  }
+  /// Returns true if `q` has been explicitly set.
+  public var hasQ: Bool {self._q != nil}
+  /// Clears the value of `q`. Subsequent reads from it will return its default value.
+  public mutating func clearQ() {self._q = nil}
+
+  public var limit: Int64 {
+    get {_limit ?? 0}
+    set {_limit = newValue}
+  }
+  /// Returns true if `limit` has been explicitly set.
+  public var hasLimit: Bool {self._limit != nil}
+  /// Clears the value of `limit`. Subsequent reads from it will return its default value.
+  public mutating func clearLimit() {self._limit = nil}
+
+  public var offset: Int64 {
+    get {_offset ?? 0}
+    set {_offset = newValue}
+  }
+  /// Returns true if `offset` has been explicitly set.
+  public var hasOffset: Bool {self._offset != nil}
+  /// Clears the value of `offset`. Subsequent reads from it will return its default value.
+  public mutating func clearOffset() {self._offset = nil}
+
+  /// Narrow to teams that played in this competition.
+  public var competitionID: String {
+    get {_competitionID ?? String()}
+    set {_competitionID = newValue}
+  }
+  /// Returns true if `competitionID` has been explicitly set.
+  public var hasCompetitionID: Bool {self._competitionID != nil}
+  /// Clears the value of `competitionID`. Subsequent reads from it will return its default value.
+  public mutating func clearCompetitionID() {self._competitionID = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _q: String? = nil
+  fileprivate var _limit: Int64? = nil
+  fileprivate var _offset: Int64? = nil
+  fileprivate var _competitionID: String? = nil
+}
+
+public struct LivescoreWebpageNewsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var limit: Int64 {
+    get {_limit ?? 0}
+    set {_limit = newValue}
+  }
+  /// Returns true if `limit` has been explicitly set.
+  public var hasLimit: Bool {self._limit != nil}
+  /// Clears the value of `limit`. Subsequent reads from it will return its default value.
+  public mutating func clearLimit() {self._limit = nil}
+
+  public var offset: Int64 {
+    get {_offset ?? 0}
+    set {_offset = newValue}
+  }
+  /// Returns true if `offset` has been explicitly set.
+  public var hasOffset: Bool {self._offset != nil}
+  /// Clears the value of `offset`. Subsequent reads from it will return its default value.
+  public mutating func clearOffset() {self._offset = nil}
+
+  /// plainto_tsquery, ≤200 chars.
+  public var q: String {
+    get {_q ?? String()}
+    set {_q = newValue}
+  }
+  /// Returns true if `q` has been explicitly set.
+  public var hasQ: Bool {self._q != nil}
+  /// Clears the value of `q`. Subsequent reads from it will return its default value.
+  public mutating func clearQ() {self._q = nil}
+
+  /// Mutually exclusive with team_id (backend XOR).
+  public var competitionID: String {
+    get {_competitionID ?? String()}
+    set {_competitionID = newValue}
+  }
+  /// Returns true if `competitionID` has been explicitly set.
+  public var hasCompetitionID: Bool {self._competitionID != nil}
+  /// Clears the value of `competitionID`. Subsequent reads from it will return its default value.
+  public mutating func clearCompetitionID() {self._competitionID = nil}
+
+  public var teamID: String {
+    get {_teamID ?? String()}
+    set {_teamID = newValue}
+  }
+  /// Returns true if `teamID` has been explicitly set.
+  public var hasTeamID: Bool {self._teamID != nil}
+  /// Clears the value of `teamID`. Subsequent reads from it will return its default value.
+  public mutating func clearTeamID() {self._teamID = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _limit: Int64? = nil
+  fileprivate var _offset: Int64? = nil
+  fileprivate var _q: String? = nil
+  fileprivate var _competitionID: String? = nil
+  fileprivate var _teamID: String? = nil
+}
+
+public struct LivescoreWebpageVideosRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// "featured" (default) or "livestream".
+  public var videoType: String {
+    get {_videoType ?? String()}
+    set {_videoType = newValue}
+  }
+  /// Returns true if `videoType` has been explicitly set.
+  public var hasVideoType: Bool {self._videoType != nil}
+  /// Clears the value of `videoType`. Subsequent reads from it will return its default value.
+  public mutating func clearVideoType() {self._videoType = nil}
+
+  public var competitionID: String {
+    get {_competitionID ?? String()}
+    set {_competitionID = newValue}
+  }
+  /// Returns true if `competitionID` has been explicitly set.
+  public var hasCompetitionID: Bool {self._competitionID != nil}
+  /// Clears the value of `competitionID`. Subsequent reads from it will return its default value.
+  public mutating func clearCompetitionID() {self._competitionID = nil}
+
+  public var teamID: String {
+    get {_teamID ?? String()}
+    set {_teamID = newValue}
+  }
+  /// Returns true if `teamID` has been explicitly set.
+  public var hasTeamID: Bool {self._teamID != nil}
+  /// Clears the value of `teamID`. Subsequent reads from it will return its default value.
+  public mutating func clearTeamID() {self._teamID = nil}
+
+  public var q: String {
+    get {_q ?? String()}
+    set {_q = newValue}
+  }
+  /// Returns true if `q` has been explicitly set.
+  public var hasQ: Bool {self._q != nil}
+  /// Clears the value of `q`. Subsequent reads from it will return its default value.
+  public mutating func clearQ() {self._q = nil}
+
+  /// 1-based.
+  public var page: Int64 {
+    get {_page ?? 0}
+    set {_page = newValue}
+  }
+  /// Returns true if `page` has been explicitly set.
+  public var hasPage: Bool {self._page != nil}
+  /// Clears the value of `page`. Subsequent reads from it will return its default value.
+  public mutating func clearPage() {self._page = nil}
+
+  /// Server-clamped to [1,60]; default 20.
+  public var pageSize: Int64 {
+    get {_pageSize ?? 0}
+    set {_pageSize = newValue}
+  }
+  /// Returns true if `pageSize` has been explicitly set.
+  public var hasPageSize: Bool {self._pageSize != nil}
+  /// Clears the value of `pageSize`. Subsequent reads from it will return its default value.
+  public mutating func clearPageSize() {self._pageSize = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _videoType: String? = nil
+  fileprivate var _competitionID: String? = nil
+  fileprivate var _teamID: String? = nil
+  fileprivate var _q: String? = nil
+  fileprivate var _page: Int64? = nil
+  fileprivate var _pageSize: Int64? = nil
+}
+
+public struct LivescoreWebpageByIdRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// WebPageType numeric value (2=competitions, 3=teams).
+  public var type: Int32 = 0
+
+  /// Entity id.
+  public var id: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct LivescoreWebpageByUrlRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Full URL to resolve.
+  public var url: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct LivescoreLiveEventsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1717,7 +2037,10 @@ extension LivescoreCountry: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreCountry, rhs: LivescoreCountry) -> Bool {
+  public static func ==(
+lhs: LivescoreCountry, 
+rhs: LivescoreCountry
+) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.iso2 != rhs.iso2 {return false}
@@ -1762,7 +2085,10 @@ extension LivescoreLeague: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreLeague, rhs: LivescoreLeague) -> Bool {
+  public static func ==(
+lhs: LivescoreLeague, 
+rhs: LivescoreLeague
+) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.countryID != rhs.countryID {return false}
@@ -1842,7 +2168,10 @@ extension LivescoreTeam: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreTeam, rhs: LivescoreTeam) -> Bool {
+  public static func ==(
+lhs: LivescoreTeam, 
+rhs: LivescoreTeam
+) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.image != rhs.image {return false}
@@ -1888,7 +2217,10 @@ extension LivescorePlayer: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescorePlayer, rhs: LivescorePlayer) -> Bool {
+  public static func ==(
+lhs: LivescorePlayer, 
+rhs: LivescorePlayer
+) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -1969,7 +2301,10 @@ extension LivescoreTopscorer: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreTopscorer, rhs: LivescoreTopscorer) -> Bool {
+  public static func ==(
+lhs: LivescoreTopscorer, 
+rhs: LivescoreTopscorer
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -2030,7 +2365,10 @@ extension LivescoreStandingRecord: SwiftProtobuf.Message, SwiftProtobuf._Message
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreStandingRecord, rhs: LivescoreStandingRecord) -> Bool {
+  public static func ==(
+lhs: LivescoreStandingRecord, 
+rhs: LivescoreStandingRecord
+) -> Bool {
     if lhs.played != rhs.played {return false}
     if lhs.win != rhs.win {return false}
     if lhs.draw != rhs.draw {return false}
@@ -2133,7 +2471,10 @@ extension LivescoreStanding: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreStanding, rhs: LivescoreStanding) -> Bool {
+  public static func ==(
+lhs: LivescoreStanding, 
+rhs: LivescoreStanding
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -2185,7 +2526,10 @@ extension LivescoreCompetitionScoreline: SwiftProtobuf.Message, SwiftProtobuf._M
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreCompetitionScoreline, rhs: LivescoreCompetitionScoreline) -> Bool {
+  public static func ==(
+lhs: LivescoreCompetitionScoreline, 
+rhs: LivescoreCompetitionScoreline
+) -> Bool {
     if lhs.count != rhs.count {return false}
     if lhs.score1 != rhs.score1 {return false}
     if lhs.score2 != rhs.score2 {return false}
@@ -2253,7 +2597,10 @@ extension LivescoreCompetitionStats: SwiftProtobuf.Message, SwiftProtobuf._Messa
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreCompetitionStats, rhs: LivescoreCompetitionStats) -> Bool {
+  public static func ==(
+lhs: LivescoreCompetitionStats, 
+rhs: LivescoreCompetitionStats
+) -> Bool {
     if lhs.matches != rhs.matches {return false}
     if lhs.goals != rhs.goals {return false}
     if lhs.homeWins != rhs.homeWins {return false}
@@ -2390,7 +2737,10 @@ extension LivescoreCompetition: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreCompetition, rhs: LivescoreCompetition) -> Bool {
+  public static func ==(
+lhs: LivescoreCompetition, 
+rhs: LivescoreCompetition
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -2519,7 +2869,10 @@ extension LivescoreMatchSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreMatchSummary, rhs: LivescoreMatchSummary) -> Bool {
+  public static func ==(
+lhs: LivescoreMatchSummary, 
+rhs: LivescoreMatchSummary
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -2577,7 +2930,10 @@ extension LivescoreMatchUpdateSide: SwiftProtobuf.Message, SwiftProtobuf._Messag
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreMatchUpdateSide, rhs: LivescoreMatchUpdateSide) -> Bool {
+  public static func ==(
+lhs: LivescoreMatchUpdateSide, 
+rhs: LivescoreMatchUpdateSide
+) -> Bool {
     if lhs._team != rhs._team {return false}
     if lhs.oldScore != rhs.oldScore {return false}
     if lhs.newScore != rhs.newScore {return false}
@@ -2689,7 +3045,10 @@ extension LivescoreMatchUpdate: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreMatchUpdate, rhs: LivescoreMatchUpdate) -> Bool {
+  public static func ==(
+lhs: LivescoreMatchUpdate, 
+rhs: LivescoreMatchUpdate
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -2759,7 +3118,10 @@ extension LivescoreVideo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreVideo, rhs: LivescoreVideo) -> Bool {
+  public static func ==(
+lhs: LivescoreVideo, 
+rhs: LivescoreVideo
+) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.title != rhs.title {return false}
     if lhs.embed != rhs.embed {return false}
@@ -2823,7 +3185,10 @@ extension LivescoreMatchEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreMatchEvent, rhs: LivescoreMatchEvent) -> Bool {
+  public static func ==(
+lhs: LivescoreMatchEvent, 
+rhs: LivescoreMatchEvent
+) -> Bool {
     if lhs.playerID != rhs.playerID {return false}
     if lhs.playerName != rhs.playerName {return false}
     if lhs.participantID != rhs.participantID {return false}
@@ -2876,7 +3241,10 @@ extension LivescoreLineup: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreLineup, rhs: LivescoreLineup) -> Bool {
+  public static func ==(
+lhs: LivescoreLineup, 
+rhs: LivescoreLineup
+) -> Bool {
     if lhs.playerID != rhs.playerID {return false}
     if lhs.playerName != rhs.playerName {return false}
     if lhs.jerseyNumber != rhs.jerseyNumber {return false}
@@ -2910,7 +3278,10 @@ extension LivescoreCoach: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreCoach, rhs: LivescoreCoach) -> Bool {
+  public static func ==(
+lhs: LivescoreCoach, 
+rhs: LivescoreCoach
+) -> Bool {
     if lhs.name != rhs.name {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -2996,7 +3367,10 @@ extension LivescoreTeamLineup: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreTeamLineup, rhs: LivescoreTeamLineup) -> Bool {
+  public static func ==(
+lhs: LivescoreTeamLineup, 
+rhs: LivescoreTeamLineup
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -3058,7 +3432,10 @@ extension LivescoreFixtureStatistic: SwiftProtobuf.Message, SwiftProtobuf._Messa
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreFixtureStatistic, rhs: LivescoreFixtureStatistic) -> Bool {
+  public static func ==(
+lhs: LivescoreFixtureStatistic, 
+rhs: LivescoreFixtureStatistic
+) -> Bool {
     if lhs.typeName != rhs.typeName {return false}
     if lhs.location != rhs.location {return false}
     if lhs.statType != rhs.statType {return false}
@@ -3092,7 +3469,10 @@ extension LivescoreReferee: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreReferee, rhs: LivescoreReferee) -> Bool {
+  public static func ==(
+lhs: LivescoreReferee, 
+rhs: LivescoreReferee
+) -> Bool {
     if lhs.name != rhs.name {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -3208,7 +3588,10 @@ extension LivescoreVenue: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreVenue, rhs: LivescoreVenue) -> Bool {
+  public static func ==(
+lhs: LivescoreVenue, 
+rhs: LivescoreVenue
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -3263,7 +3646,10 @@ extension LivescorePredictionPercent: SwiftProtobuf.Message, SwiftProtobuf._Mess
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescorePredictionPercent, rhs: LivescorePredictionPercent) -> Bool {
+  public static func ==(
+lhs: LivescorePredictionPercent, 
+rhs: LivescorePredictionPercent
+) -> Bool {
     if lhs.home != rhs.home {return false}
     if lhs.draw != rhs.draw {return false}
     if lhs.away != rhs.away {return false}
@@ -3307,7 +3693,10 @@ extension LivescorePrediction: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescorePrediction, rhs: LivescorePrediction) -> Bool {
+  public static func ==(
+lhs: LivescorePrediction, 
+rhs: LivescorePrediction
+) -> Bool {
     if lhs.typeID != rhs.typeID {return false}
     if lhs.typeName != rhs.typeName {return false}
     if lhs._percent != rhs._percent {return false}
@@ -3347,7 +3736,10 @@ extension LivescoreLineups: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreLineups, rhs: LivescoreLineups) -> Bool {
+  public static func ==(
+lhs: LivescoreLineups, 
+rhs: LivescoreLineups
+) -> Bool {
     if lhs._home != rhs._home {return false}
     if lhs._away != rhs._away {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -3394,7 +3786,10 @@ extension LivescoreTeamH2H: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreTeamH2H, rhs: LivescoreTeamH2H) -> Bool {
+  public static func ==(
+lhs: LivescoreTeamH2H, 
+rhs: LivescoreTeamH2H
+) -> Bool {
     if lhs._team != rhs._team {return false}
     if lhs.form != rhs.form {return false}
     if lhs.topContributors != rhs.topContributors {return false}
@@ -3471,7 +3866,10 @@ extension LivescoreH2H: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreH2H, rhs: LivescoreH2H) -> Bool {
+  public static func ==(
+lhs: LivescoreH2H, 
+rhs: LivescoreH2H
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -3597,7 +3995,10 @@ extension LivescoreMatchContentState: SwiftProtobuf.Message, SwiftProtobuf._Mess
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreMatchContentState, rhs: LivescoreMatchContentState) -> Bool {
+  public static func ==(
+lhs: LivescoreMatchContentState, 
+rhs: LivescoreMatchContentState
+) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -3684,7 +4085,10 @@ extension LivescoreMatch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreMatch, rhs: LivescoreMatch) -> Bool {
+  public static func ==(
+lhs: LivescoreMatch, 
+rhs: LivescoreMatch
+) -> Bool {
     if lhs._match_ != rhs._match_ {return false}
     if lhs.events != rhs.events {return false}
     if lhs._lineup != rhs._lineup {return false}
@@ -3724,6 +4128,10 @@ extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if !self.image.isEmpty {
       try visitor.visitSingularStringField(value: self.image, fieldNumber: 1)
     }
@@ -3751,7 +4159,10 @@ extension LivescoreWebPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreWebPage, rhs: LivescoreWebPage) -> Bool {
+  public static func ==(
+lhs: LivescoreWebPage, 
+rhs: LivescoreWebPage
+) -> Bool {
     if lhs.image != rhs.image {return false}
     if lhs.title != rhs.title {return false}
     if lhs.subtitle != rhs.subtitle {return false}
@@ -3788,7 +4199,10 @@ extension LivescoreWebPageList: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreWebPageList, rhs: LivescoreWebPageList) -> Bool {
+  public static func ==(
+lhs: LivescoreWebPageList, 
+rhs: LivescoreWebPageList
+) -> Bool {
     if lhs.pages != rhs.pages {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -3818,8 +4232,414 @@ extension LivescoreMatchSummaryList: SwiftProtobuf.Message, SwiftProtobuf._Messa
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: LivescoreMatchSummaryList, rhs: LivescoreMatchSummaryList) -> Bool {
+  public static func ==(
+lhs: LivescoreMatchSummaryList, 
+rhs: LivescoreMatchSummaryList
+) -> Bool {
     if lhs.matches != rhs.matches {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreUpcomingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UpcomingRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: LivescoreUpcomingRequest, 
+rhs: LivescoreUpcomingRequest
+) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreScoresByDateRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ScoresByDateRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}date\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._date) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._date {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: LivescoreScoresByDateRequest, 
+rhs: LivescoreScoresByDateRequest
+) -> Bool {
+    if lhs._date != rhs._date {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreEntityByIdRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EntityByIdRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: LivescoreEntityByIdRequest, 
+rhs: LivescoreEntityByIdRequest
+) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreWebpageCompetitionsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebpageCompetitionsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}q\0\u{1}limit\0\u{1}offset\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._q) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self._limit) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self._offset) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._q {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._limit {
+      try visitor.visitSingularInt64Field(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._offset {
+      try visitor.visitSingularInt64Field(value: v, fieldNumber: 3)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: LivescoreWebpageCompetitionsRequest, 
+rhs: LivescoreWebpageCompetitionsRequest
+) -> Bool {
+    if lhs._q != rhs._q {return false}
+    if lhs._limit != rhs._limit {return false}
+    if lhs._offset != rhs._offset {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreWebpageTeamsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebpageTeamsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}q\0\u{1}limit\0\u{1}offset\0\u{3}competition_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._q) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self._limit) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self._offset) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._competitionID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._q {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._limit {
+      try visitor.visitSingularInt64Field(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._offset {
+      try visitor.visitSingularInt64Field(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._competitionID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: LivescoreWebpageTeamsRequest, 
+rhs: LivescoreWebpageTeamsRequest
+) -> Bool {
+    if lhs._q != rhs._q {return false}
+    if lhs._limit != rhs._limit {return false}
+    if lhs._offset != rhs._offset {return false}
+    if lhs._competitionID != rhs._competitionID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreWebpageNewsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebpageNewsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{1}q\0\u{3}competition_id\0\u{3}team_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self._limit) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self._offset) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._q) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._competitionID) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self._teamID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._limit {
+      try visitor.visitSingularInt64Field(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._offset {
+      try visitor.visitSingularInt64Field(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._q {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._competitionID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._teamID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 5)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: LivescoreWebpageNewsRequest, 
+rhs: LivescoreWebpageNewsRequest
+) -> Bool {
+    if lhs._limit != rhs._limit {return false}
+    if lhs._offset != rhs._offset {return false}
+    if lhs._q != rhs._q {return false}
+    if lhs._competitionID != rhs._competitionID {return false}
+    if lhs._teamID != rhs._teamID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreWebpageVideosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebpageVideosRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_type\0\u{3}competition_id\0\u{3}team_id\0\u{1}q\0\u{1}page\0\u{3}page_size\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._videoType) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._competitionID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._teamID) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._q) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self._page) }()
+      case 6: try { try decoder.decodeSingularInt64Field(value: &self._pageSize) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._videoType {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._competitionID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._teamID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._q {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
+    try { if let v = self._page {
+      try visitor.visitSingularInt64Field(value: v, fieldNumber: 5)
+    } }()
+    try { if let v = self._pageSize {
+      try visitor.visitSingularInt64Field(value: v, fieldNumber: 6)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: LivescoreWebpageVideosRequest, 
+rhs: LivescoreWebpageVideosRequest
+) -> Bool {
+    if lhs._videoType != rhs._videoType {return false}
+    if lhs._competitionID != rhs._competitionID {return false}
+    if lhs._teamID != rhs._teamID {return false}
+    if lhs._q != rhs._q {return false}
+    if lhs._page != rhs._page {return false}
+    if lhs._pageSize != rhs._pageSize {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreWebpageByIdRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebpageByIdRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}type\0\u{1}id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt32Field(value: &self.type) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.type != 0 {
+      try visitor.visitSingularInt32Field(value: self.type, fieldNumber: 1)
+    }
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: LivescoreWebpageByIdRequest, 
+rhs: LivescoreWebpageByIdRequest
+) -> Bool {
+    if lhs.type != rhs.type {return false}
+    if lhs.id != rhs.id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreWebpageByUrlRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WebpageByUrlRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: LivescoreWebpageByUrlRequest, 
+rhs: LivescoreWebpageByUrlRequest
+) -> Bool {
+    if lhs.url != rhs.url {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension LivescoreLiveEventsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".LiveEventsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(
+lhs: LivescoreLiveEventsRequest, 
+rhs: LivescoreLiveEventsRequest
+) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
