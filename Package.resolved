@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mahainc/flow-kit.git",
       "state" : {
-        "revision" : "5b914fb02ec01039f9e9d5ad5e237ec92c87cc42",
-        "version" : "1.2.65-26.1.1-ffi"
+        "revision" : "98ea0aadc2e722ed013b002ba2efe346dc7d6191",
+        "version" : "1.2.67-27.2-ffi"
       }
     },
     {

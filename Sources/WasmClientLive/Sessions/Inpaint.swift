@@ -66,8 +66,14 @@ extension WasmActor {
         if let maskObjects {
             args["mask_objects"] = Google_Protobuf_Value(stringValue: maskObjects)
         }
-        let result: InpaintErase = try await runInpaint(
-            actionID: WasmClient.ActionID.erase,
+        // Dispatch erase through the gRPC-style METHOD-NAME path (`run(method:)`), the
+        // route flow-kit-example uses. The legacy UUID action path (`run`/`create` on a
+        // resolved `WaTAction`) mis-decodes erase's large event-stream response ("missing
+        // field event_id"); the method-name path decodes it straight into `InpaintErase`.
+        let instance = try await readyEngine()
+        let result: InpaintErase = try await instance.run(
+            method: WasmClient.Inpaint.Method.erase.rawValue,
+            providerId: "",
             args: args
         )
         return WasmClient.Inpaint.EraseResult(
@@ -158,6 +164,7 @@ extension WasmActor {
             bbox = .zero
         }
         return WasmClient.Inpaint.Segment(
+            objectID: proto.hasMask && proto.mask.hasID ? proto.mask.id : "",
             bbox: bbox,
             maskURL: proto.hasMask ? proto.mask.url : "",
             metadata: mapMetadata(proto.metadata)

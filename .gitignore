@@ -2,6 +2,7 @@
 .swiftpm/
 .DS_Store
 .claude/
+.clean-code/
 
 # Bazel side-by-side build artifacts (do not commit)
 /bazel-*

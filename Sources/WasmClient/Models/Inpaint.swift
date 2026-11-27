@@ -55,17 +55,23 @@ extension WasmClient.Inpaint {
 
     public struct Segment: Sendable, Equatable, Identifiable {
         public let id: UUID
+        /// The engine's own object id (the mask's `TypesImage.id`). This is the token
+        /// `erase` expects in its comma-joined `maskObjects` list; empty when the engine
+        /// did not tag the segment, in which case the caller substitutes its index.
+        public let objectID: String
         public let bbox: CGRect
         public let maskURL: String
         public let metadata: [String: String]
 
         public init(
             id: UUID = UUID(),
+            objectID: String = "",
             bbox: CGRect = .zero,
             maskURL: String = "",
             metadata: [String: String] = [:]
         ) {
             self.id = id
+            self.objectID = objectID
             self.bbox = bbox
             self.maskURL = maskURL
             self.metadata = metadata

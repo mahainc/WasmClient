@@ -26,6 +26,47 @@ private enum MockConstants {
     static let longDelay: UInt64 = 1_500_000_000
 }
 
+// MARK: - Smartcar mock reading
+
+/// Sample generic read payload per method, keyed by the same wire field names the
+/// live `Struct` decode produces, so downstream TCA tests see believable data.
+private func mockSmartcarReading(
+    for method: WasmClient.Smartcar.Method
+) -> [String: WasmClient.Smartcar.Value] {
+    switch method {
+        case .getOdometer:
+            ["distanceKm": .number(34_512.7)]
+        case .getBatteryLevel, .teslaBatteryStatus:
+            ["percentRemaining": .number(0.72), "rangeKm": .number(310.5)]
+        case .getChargeLimit:
+            ["limit": .number(0.8)]
+        case .getNominalCapacity:
+            ["capacityKwh": .number(57.5)]
+        case .getTiresPressure:
+            [
+                "frontLeftKpa": .number(240),
+                "frontRightKpa": .number(241),
+                "backLeftKpa": .number(238),
+                "backRightKpa": .number(239),
+            ]
+        case .getSpeedometer:
+            ["speedKph": .number(0)]
+        case .getLockStatus:
+            [
+                "isLocked": .bool(true),
+                "doors": .array([
+                    .object(["type": .string("frontLeft"), "status": .string("LOCKED")]),
+                    .object(["type": .string("frontRight"), "status": .string("UNLOCKED")]),
+                ]),
+                "windows": .array([
+                    .object(["type": .string("frontLeft"), "status": .string("CLOSED")])
+                ]),
+            ]
+        default:
+            [:]
+    }
+}
+
 // MARK: - Mock Implementations
 
 extension WasmClient {
@@ -43,10 +84,21 @@ extension WasmClient {
         refreshActions: {},
         funnelEngine: { nil },
         scan: { _, _, _ in Vision.ScanResult() },
+        scanViews: { _, _, _ in Vision.ScanResult() },
         describe: { _, _, _, _ in Vision.ScanResult() },
         visualSearch: { _, _ in [] },
         shopping: { _, _ in [] },
         lookupVin: { _ in Smartcar.Vehicle() },
+        smartcarConnectConfig: { _ in Smartcar.Connection.Config() },
+        smartcarHostedConnectEvent: { _, _, _, _ in Smartcar.Connection.Decision() },
+        smartcarAccounts: { [] },
+        smartcarSwitchAccount: { _ in [] },
+        smartcarDeleteAccount: { _ in [] },
+        smartcarCatalog: { Smartcar.Catalog() },
+        smartcarAllVehicles: { _, _ in [] },
+        smartcarGetPermissions: { _, _ in [] },
+        smartcarRead: { _, _, _ in [:] },
+        smartcarControl: { _, _, _ in Smartcar.ControlResponse() },
         uploadImage: { _ in "" },
         uploadFile: { _, _ in "" },
         chatModels: { _, _, _, _ in ([], 0) },
@@ -57,6 +109,9 @@ extension WasmClient {
         createChatModel: { _, _ in "" },
         initializeChatProvider: { _, _ in },
         completion: { _, _ in Chat.Message(role: .assistant, content: "") },
+        chatRun: { _, _, _, _, _ in
+            Chat.ChatRunResult(message: Chat.Message(role: .assistant, content: ""))
+        },
         listProviders: { [] },
         authProvider: { _ in (providerID: "", cacheDir: "") },
         listVoices: { _, _, _, _ in Chat.VoiceList() },
@@ -69,6 +124,22 @@ extension WasmClient {
         musicLyrics: { _ in [] },
         musicRelated: { _, _ in WasmClient.Music.TrackList() },
         musicSuggestions: { _ in [] },
+        newsList: { _ in WasmClient.News.Feed() },
+        caloriesAnalyze: { _, _, _ in WasmClient.Calories.FoodResult() },
+        caloriesSearch: { _, _ in WasmClient.Calories.SearchResult() },
+        caloriesHealthScore: { _, _, _, _, _, _ in WasmClient.Calories.HealthScore() },
+        caloriesBarcode: { _, _ in WasmClient.Calories.FoodResult() },
+        caloriesSuggestions: { _ in WasmClient.Calories.SearchResult() },
+        caloriesIngredient: { _, _ in WasmClient.Calories.FoodResult() },
+        plantList: { _, _, _, _, _, _, _, _ in WasmClient.Plant.ListResult() },
+        plantSearch: { _, _, _ in [] },
+        plantComplete: { _, _, _ in [] },
+        plantDetail: { _, _, _ in WasmClient.Plant.Detail() },
+        plantWaterCalc: { _, _, _, _, _, _ in WasmClient.Plant.WaterCalc() },
+        plantRepottingChecker: { _, _, _ in WasmClient.Plant.RepottingResult() },
+        plantLightMeter: { _, _ in WasmClient.Plant.LightMeter() },
+        plantDiagnose: { _, _, _, _, _, _ in WasmClient.Plant.DiagnoseResult() },
+        plantWeather: { _, _, _, _ in WasmClient.Plant.WeatherResult() },
         suggest: { _, _ in [] },
         readOutLoud: { _, _, _ in .data(Data(), mime: "") },
         ttsVoices: { _, _ in [] },
@@ -117,14 +188,10 @@ extension WasmClient {
             WasmClient.LiveScore.Match(
                 summary: WasmClient.LiveScore.MatchSummary(
                     id: id,
-                    homeTeam: "",
-                    awayTeam: "",
-                    homeLogoURL: "",
-                    awayLogoURL: "",
+                    home: WasmClient.LiveScore.MatchSummarySide(),
+                    away: WasmClient.LiveScore.MatchSummarySide(),
                     kickoff: Date(),
                     competitionID: "",
-                    homeScore: 0,
-                    awayScore: 0,
                     embedURL: ""
                 )
             )
@@ -140,7 +207,31 @@ extension WasmClient {
         setNotification: { _, _, _, _, _ in },
         getNotificationSettings: { WasmClient.Notification.Settings(enabled: false, topics: []) },
         notificationSubscribe: { _, _, _ in },
-        reportLiveActivityToken: { _, _, _ in }
+        reportLiveActivityToken: { _, _, _ in },
+        deleteUser: { _ in },
+        tcgScan: { _, _ in WasmClient.TCG.ScanResult() },
+        tcgCatalogDetail: { _, _ in WasmClient.TCG.CatalogDetail() },
+        tcgSoldListings: { _, _, _, _, _ in WasmClient.TCG.SoldListings() },
+        tcgCatalogBrowse: { _, _, _, _, _, _, _, _ in WasmClient.TCG.CatalogBrowse() },
+        tcgTrending: { _ in WasmClient.TCG.Trending() },
+        tcgSearchFilters: { WasmClient.TCG.SearchFilters() },
+        tcgListSets: { _, _, _, _, _ in WasmClient.TCG.ListSets() },
+        tcgAccountInfo: { WasmClient.TCG.AccountInfo() },
+        tcgListCollections: { [] },
+        tcgCreateCollection: { _, _ in [] },
+        tcgUpdateCollection: { _, _, _ in [] },
+        tcgDeleteCollection: { _ in [] },
+        tcgCollectionSummary: { WasmClient.TCG.CollectionSummary() },
+        tcgCollectionItems: { _, _, _ in WasmClient.TCG.CollectionItems() },
+        tcgAddCards: { _, _ in WasmClient.TCG.AddCardsResult() },
+        tcgHoldingDetail: { _ in WasmClient.TCG.HoldingDetail() },
+        tcgUpdateHolding: { _, _, _, _, _ in WasmClient.TCG.UpdateHoldingResult() },
+        tcgRemoveHolding: { _, _, _, _ in WasmClient.TCG.RemoveHoldingResult() },
+        tcgPortfolioPerformance: { _, _, _, _ in WasmClient.TCG.PortfolioPerformance() },
+        tcgValueOverTime: { _, _, _, _ in WasmClient.TCG.ValueOverTime() },
+        tcgTopMovers: { _, _, _, _, _ in WasmClient.TCG.TopMovers() },
+        tcgPerformanceBreakdown: { _, _, _, _, _ in WasmClient.TCG.PerformanceBreakdown() },
+        tcgProfitLoss: { _, _ in WasmClient.TCG.ProfitLoss() }
     )
 
     public static let happy = Self(
@@ -187,6 +278,17 @@ extension WasmClient {
                 price: Vision.PriceInfo(averageFairMarketPrice: "$29.99")
             )
         },
+        scanViews: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.longDelay)
+            return Vision.ScanResult(
+                title: "Amethyst",
+                description: "A violet variety of quartz.",
+                categoryType: "rock",
+                categoryInfo: Vision.CategoryInfo(type: "rockInfo", fields: ["Hardness": "7", "Luster": "Vitreous"]),
+                facts: ["Formula": "SiO₂"],
+                alternatives: [Vision.ScanResult(title: "Fluorite", categoryType: "rock")]
+            )
+        },
         describe: { _, _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.longDelay)
             return Vision.ScanResult(
@@ -216,7 +318,72 @@ extension WasmClient {
         },
         lookupVin: { vin in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
-            return Smartcar.Vehicle(vin: vin, make: "Toyota", model: "Camry", year: "2021")
+            return Smartcar.Vehicle(identifier: vin, make: "Toyota", model: "Camry", year: "2021")
+        },
+        smartcarConnectConfig: { mode in
+            Smartcar.Connection.Config(
+                applicationID: "mock-app-id",
+                redirectURI: "scmock://exchange",
+                scope: ["read_odometer", "read_battery", "read_charge", "read_tires"],
+                mode: mode == .unspecified ? .test : mode,
+                connectURL: "https://connect.smartcar.com/oauth/authorize?mock=1"
+            )
+        },
+        smartcarHostedConnectEvent: { url, _, _, _ in
+            url.contains("exchange")
+                ? Smartcar.Connection.Decision(
+                    action: .complete,
+                    userID: "mock-user-id",
+                    preview: Smartcar.Connection.Preview(
+                        vehicleID: "mock-vehicle-id",
+                        contour: "frontRight",
+                        image: "file:///mock/preview.png",
+                        vehicle: Smartcar.Vehicle(
+                            identifier: "5YJ3E1EA7KF000000",
+                            make: "TESLA",
+                            model: "Model 3",
+                            year: "2022"
+                        )
+                    )
+                )
+                : Smartcar.Connection.Decision(action: .continue)
+        },
+        smartcarAccounts: {
+            [Smartcar.Account(userID: "mock-user-id", label: "Mock Tesla")]
+        },
+        smartcarSwitchAccount: { userID in
+            [Smartcar.Account(userID: userID, label: "Mock Tesla")]
+        },
+        smartcarDeleteAccount: { _ in [] },
+        smartcarCatalog: {
+            Smartcar.Catalog(
+                makes: [
+                    Smartcar.Catalog.Make(
+                        company: "Tesla",
+                        logo: "tesla/logo.png",
+                        models: [
+                            Smartcar.Catalog.Model(
+                                name: "Model 3",
+                                year: "2020+",
+                                image: "tesla/model3.png",
+                                fuelConsumption: "15 kWh/100km",
+                                speedBoost: "0-100 in 3.3s"
+                            )
+                        ]
+                    )
+                ],
+                path: "https://cdn.example.com/catalog"
+            )
+        },
+        smartcarAllVehicles: { _, _ in
+            [Smartcar.Vehicle(identifier: "5YJ3E1EA7KF000000", make: "TESLA", model: "Model 3", year: "2022")]
+        },
+        smartcarGetPermissions: { _, _ in
+            [.readOdometer, .readBattery, .readCharge, .readTires]
+        },
+        smartcarRead: { method, _, _ in mockSmartcarReading(for: method) },
+        smartcarControl: { _, _, args in
+            Smartcar.ControlResponse(action: args["action"]?.stringValue ?? "OK")
         },
         uploadImage: { _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
@@ -302,6 +469,12 @@ extension WasmClient {
         completion: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
             return Chat.Message(role: .assistant, content: "A mock completion.")
+        },
+        chatRun: { _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return Chat.ChatRunResult(
+                message: Chat.Message(role: .assistant, content: "A mock completion.")
+            )
         },
         listProviders: {
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
@@ -394,6 +567,171 @@ extension WasmClient {
         musicSuggestions: { _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
             return ["pop music", "rock classics", "jazz vibes"]
+        },
+        newsList: { request in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.News.Feed(
+                items: [
+                    WasmClient.News.Item(
+                        id: "article-1",
+                        title: "Mock Headline",
+                        url: "https://example.com/s/mock",
+                        imageURL: "https://example.com/mock.jpg",
+                        source: "mock-source",
+                        author: "Mock Author",
+                        publishedAt: "2026-06-25T07:40:40Z",
+                        category: request.category.rawValue,
+                        hits: 42,
+                        metadata: ["summary": "A plausible mock article."]
+                    )
+                ],
+                nextOffset: 1,
+                tagsVocabulary: []
+            )
+        },
+        caloriesAnalyze: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Calories.FoodResult(
+                name: "Grilled Chicken Salad",
+                calories: 420,
+                protein: 38,
+                carbs: 12,
+                fats: 24,
+                healthScore: 8,
+                ingredients: [
+                    WasmClient.Calories.Ingredient(
+                        name: "grilled chicken",
+                        calories: 230,
+                        protein: 32,
+                        amount: 150,
+                        unit: "g"
+                    )
+                ]
+            )
+        },
+        caloriesSearch: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Calories.SearchResult(
+                items: [
+                    WasmClient.Calories.FoodItem(
+                        id: "food-1",
+                        name: "Banana",
+                        calories: 105,
+                        protein: 1.3,
+                        carbs: 27,
+                        fats: 0.4
+                    )
+                ]
+            )
+        },
+        caloriesHealthScore: { _, _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Calories.HealthScore(
+                rating: 7,
+                balance: "Well-balanced",
+                fullness: "Very filling",
+                goalFit: "Good for weight loss",
+                message: "A solid, nutrient-dense choice.",
+                tips: ["Add more vegetables"]
+            )
+        },
+        caloriesBarcode: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Calories.FoodResult(name: "Coca-Cola Classic 330ml", calories: 139)
+        },
+        caloriesSuggestions: { _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Calories.SearchResult(
+                items: [
+                    WasmClient.Calories.FoodItem(id: "food-2", name: "Oatmeal", calories: 150)
+                ]
+            )
+        },
+        caloriesIngredient: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Calories.FoodResult(name: "Romaine Lettuce", calories: 17)
+        },
+        plantList: { _, _, _, _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Plant.ListResult(
+                plants: [
+                    WasmClient.Plant.Species(
+                        id: "sp-1",
+                        latinName: "Dianthus caryophyllus",
+                        commonNames: ["Carnation"]
+                    )
+                ],
+                total: 1
+            )
+        },
+        plantSearch: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return [WasmClient.Plant.Species(id: "sp-2", latinName: "Rosa", commonNames: ["Rose"])]
+        },
+        plantComplete: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return [WasmClient.Plant.Species(id: "sp-3", commonNames: ["Rosemary"])]
+        },
+        plantDetail: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Plant.Detail(
+                uid: "sp-1",
+                preferredName: "Carnation",
+                latinName: "Dianthus caryophyllus",
+                commonNames: ["Carnation"]
+            )
+        },
+        plantWaterCalc: { _, _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Plant.WaterCalc(
+                waterAmountMl: 250,
+                frequencyDays: 7,
+                careType: "moderate",
+                plantName: "Carnation"
+            )
+        },
+        plantRepottingChecker: { _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Plant.RepottingResult(
+                isPlant: true,
+                isRepottable: true,
+                topics: [
+                    WasmClient.Plant.RepotTopic(
+                        name: "Preparation",
+                        sections: [
+                            WasmClient.Plant.RepotSection(title: "How to repot", content: "Loosen the roots…")
+                        ]
+                    )
+                ]
+            )
+        },
+        plantLightMeter: { _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+            return WasmClient.Plant.LightMeter(level: "medium_light", lux: 850)
+        },
+        plantDiagnose: { _, _, _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Plant.DiagnoseResult(
+                plantName: "Carnation",
+                diseases: [
+                    WasmClient.Plant.DiseaseInfo(
+                        name: "Brown Spot",
+                        summary: "Fungal leaf spot",
+                        confidence: 0.82
+                    )
+                ],
+                tips: [WasmClient.Plant.Tip(id: "t1", title: "Pruning time?", content: "Trim damaged leaves.")]
+            )
+        },
+        plantWeather: { _, _, _, _ in
+            try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
+            return WasmClient.Plant.WeatherResult(
+                forecast: [
+                    WasmClient.Plant.WeatherDay(day: "2026-06-25", conditions: "Partially cloudy", temperature: 24)
+                ],
+                hardinessZone: "7b",
+                climateClassification: "Aw"
+            )
         },
         suggest: { _, _ in
             try await Task.sleep(nanoseconds: MockConstants.mediumDelay)
@@ -667,14 +1005,13 @@ extension WasmClient {
             [
                 LiveScore.MatchSummary(
                     id: "1",
-                    homeTeam: "PSG",
-                    awayTeam: "Bayern Munich",
-                    homeLogoURL: "",
-                    awayLogoURL: "",
+                    home: LiveScore.MatchSummarySide(teamID: "team/psg", teamName: "PSG"),
+                    away: LiveScore.MatchSummarySide(
+                        teamID: "team/bayern-munich",
+                        teamName: "Bayern Munich"
+                    ),
                     kickoff: Date().addingTimeInterval(3600),
                     competitionID: "0",
-                    homeScore: 0,
-                    awayScore: 0,
                     status: .notStarted,
                     embedURL: ""
                 )
@@ -684,14 +1021,18 @@ extension WasmClient {
             [
                 LiveScore.MatchSummary(
                     id: "2",
-                    homeTeam: "Arsenal",
-                    awayTeam: "Chelsea",
-                    homeLogoURL: "",
-                    awayLogoURL: "",
+                    home: LiveScore.MatchSummarySide(
+                        teamID: "team/arsenal",
+                        teamName: "Arsenal",
+                        score: 1
+                    ),
+                    away: LiveScore.MatchSummarySide(
+                        teamID: "team/chelsea",
+                        teamName: "Chelsea",
+                        score: 1
+                    ),
                     kickoff: Date(),
                     competitionID: "1",
-                    homeScore: 1,
-                    awayScore: 1,
                     status: .secondHalf,
                     embedURL: "",
                     competitionImage: "",
@@ -705,14 +1046,18 @@ extension WasmClient {
             return LiveScore.Match(
                 summary: LiveScore.MatchSummary(
                     id: id,
-                    homeTeam: "Arsenal",
-                    awayTeam: "Chelsea",
-                    homeLogoURL: "",
-                    awayLogoURL: "",
+                    home: LiveScore.MatchSummarySide(
+                        teamID: "team/arsenal",
+                        teamName: "Arsenal",
+                        score: 2
+                    ),
+                    away: LiveScore.MatchSummarySide(
+                        teamID: "team/chelsea",
+                        teamName: "Chelsea",
+                        score: 1
+                    ),
                     kickoff: Date(),
                     competitionID: "1",
-                    homeScore: 2,
-                    awayScore: 1,
                     status: .secondHalf,
                     embedURL: "",
                     competitionImage: "",
@@ -835,6 +1180,205 @@ extension WasmClient {
         },
         reportLiveActivityToken: { _, _, _ in
             try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+        },
+        deleteUser: { _ in
+            try await Task.sleep(nanoseconds: MockConstants.shortDelay)
+        },
+        tcgScan: { _, _ in
+            WasmClient.TCG.ScanResult(
+                scansRemaining: 3,
+                matches: [
+                    WasmClient.TCG.CardMatch(
+                        card: WasmClient.TCG.Card(id: "c1", name: "Charizard", game: .pokemon),
+                        confidence: 0.92
+                    )
+                ]
+            )
+        },
+        tcgCatalogDetail: { cardID, _ in
+            WasmClient.TCG.CatalogDetail(
+                card: WasmClient.TCG.Card(id: cardID, name: "Charizard", game: .pokemon),
+                ownedCount: 2
+            )
+        },
+        tcgSoldListings: { _, _, _, _, _ in
+            WasmClient.TCG.SoldListings(
+                searchURL: "https://ebay.com/sold",
+                listings: [
+                    WasmClient.TCG.SoldListing(
+                        id: "l1",
+                        marketplace: "eBay",
+                        title: "Auction",
+                        price: WasmClient.TCG.Money(amount: "120.00", currency: "USD")
+                    )
+                ],
+                hasMore: true
+            )
+        },
+        tcgCatalogBrowse: { _, _, game, _, _, _, _, _ in
+            WasmClient.TCG.CatalogBrowse(
+                cards: [WasmClient.TCG.Card(id: "c1", name: "Charizard", game: game)],
+                page: 1,
+                total: 1
+            )
+        },
+        tcgTrending: { _ in
+            WasmClient.TCG.Trending(
+                entries: [WasmClient.TCG.TrendingEntry(cardID: "c1", score: "0.9", rank: 1)]
+            )
+        },
+        tcgSearchFilters: {
+            WasmClient.TCG.SearchFilters(
+                filters: [WasmClient.TCG.SearchFilter(id: "f1", name: "Pokemon", game: .pokemon)],
+                sortOptions: [WasmClient.TCG.SortOption(id: "price", displayName: "Price")]
+            )
+        },
+        tcgListSets: { _, _, _, currency, _ in
+            WasmClient.TCG.ListSets(
+                sets: [WasmClient.TCG.CardSet(id: "s1", name: "Base Set", cardCount: 102)],
+                languages: [WasmClient.TCG.SetLanguage(code: "en", description: "English")],
+                category: WasmClient.TCG.CategoryDetails(name: "Pokemon"),
+                currency: currency ?? "USD"
+            )
+        },
+        tcgAccountInfo: {
+            WasmClient.TCG.AccountInfo(
+                account: WasmClient.TCG.Account(
+                    id: "a1",
+                    handle: "trainer",
+                    nickname: "Ash",
+                    tier: "pro",
+                    totalCards: "250"
+                )
+            )
+        },
+        tcgListCollections: {
+            [WasmClient.TCG.Collection(id: "col1", name: "Binder", isDefault: true)]
+        },
+        tcgCreateCollection: { name, isPublic in
+            [WasmClient.TCG.Collection(id: "col2", name: name, isPublic: isPublic)]
+        },
+        tcgUpdateCollection: { collectionID, name, _ in
+            [WasmClient.TCG.Collection(id: collectionID, name: name ?? "Binder")]
+        },
+        tcgDeleteCollection: { _ in [] },
+        tcgCollectionSummary: {
+            WasmClient.TCG.CollectionSummary(
+                totalCards: "250",
+                totalSealed: "4",
+                totalGraded: "12",
+                totalValue: WasmClient.TCG.Money(amount: "9999.00", currency: "USD")
+            )
+        },
+        tcgCollectionItems: { _, _, _ in
+            WasmClient.TCG.CollectionItems(
+                items: [
+                    WasmClient.TCG.CollectionItem(
+                        id: "h1",
+                        card: WasmClient.TCG.Card(id: "c1", name: "Charizard", game: .pokemon),
+                        quantity: 2,
+                        condition: .nearMint
+                    )
+                ]
+            )
+        },
+        tcgAddCards: { _, _ in WasmClient.TCG.AddCardsResult(ok: true) },
+        tcgHoldingDetail: { holdingID in
+            WasmClient.TCG.HoldingDetail(
+                item: WasmClient.TCG.CollectionItem(
+                    id: holdingID,
+                    card: WasmClient.TCG.Card(id: "c1", name: "Charizard", game: .pokemon),
+                    quantity: 2,
+                    condition: .nearMint
+                )
+            )
+        },
+        tcgUpdateHolding: { holdingID, _, _, _, quantity in
+            WasmClient.TCG.UpdateHoldingResult(
+                ok: true,
+                item: WasmClient.TCG.CollectionItem(id: holdingID, quantity: quantity ?? 1)
+            )
+        },
+        tcgRemoveHolding: { _, _, _, _ in WasmClient.TCG.RemoveHoldingResult(ok: true) },
+        tcgPortfolioPerformance: { _, _, _, window in
+            WasmClient.TCG.PortfolioPerformance(
+                costBasis: WasmClient.TCG.Money(amount: "100.00", currency: "USD"),
+                marketValue: WasmClient.TCG.Money(amount: "471.47", currency: "USD"),
+                gain: WasmClient.TCG.Money(amount: "371.47", currency: "USD"),
+                roiPercentage: "371.475",
+                cardCount: 12,
+                window: window == WasmClient.TCG.AnalyticsWindow(rawValue: "") ? .allTime : window
+            )
+        },
+        tcgValueOverTime: { _, window, _, _ in
+            WasmClient.TCG.ValueOverTime(
+                marketSeries: [
+                    WasmClient.TCG.ValuePoint(
+                        at: "2026-01-01",
+                        value: WasmClient.TCG.Money(amount: "400.00", currency: "USD")
+                    ),
+                    WasmClient.TCG.ValuePoint(
+                        at: "2026-02-01",
+                        value: WasmClient.TCG.Money(amount: "471.47", currency: "USD")
+                    ),
+                ],
+                peakValue: WasmClient.TCG.Money(amount: "471.47", currency: "USD"),
+                peakAt: "2026-02-01",
+                peakIsCurrent: true,
+                window: window == WasmClient.TCG.AnalyticsWindow(rawValue: "") ? .allTime : window
+            )
+        },
+        tcgTopMovers: { _, window, _, _, _ in
+            WasmClient.TCG.TopMovers(
+                movers: [
+                    WasmClient.TCG.Mover(
+                        card: WasmClient.TCG.Card(id: "c1", name: "Charizard", game: .pokemon),
+                        currentPrice: WasmClient.TCG.Money(amount: "471.47", currency: "USD"),
+                        windowOpenPrice: WasmClient.TCG.Money(amount: "400.00", currency: "USD"),
+                        priceChange: WasmClient.TCG.Money(amount: "71.47", currency: "USD"),
+                        changePercentage: "17.868"
+                    )
+                ],
+                window: window == WasmClient.TCG.AnalyticsWindow(rawValue: "") ? .allTime : window
+            )
+        },
+        tcgPerformanceBreakdown: { _, facet, window, _, _ in
+            WasmClient.TCG.PerformanceBreakdown(
+                groups: [
+                    WasmClient.TCG.BreakdownGroup(
+                        label: "Base Set",
+                        cardCount: 5,
+                        marketValue: WasmClient.TCG.Money(amount: "300.00", currency: "USD"),
+                        changePercentage: "12.5",
+                        direction: .up,
+                        barFill: 1.0
+                    )
+                ],
+                facet: facet == WasmClient.TCG.BreakdownFacet(rawValue: "") ? .bySet : facet,
+                window: window == WasmClient.TCG.AnalyticsWindow(rawValue: "") ? .allTime : window
+            )
+        },
+        tcgProfitLoss: { _, _ in
+            WasmClient.TCG.ProfitLoss(
+                currency: "USD",
+                summary: WasmClient.TCG.ProfitLossSummary(
+                    costBasis: WasmClient.TCG.Money(amount: "100.00", currency: "USD"),
+                    marketValue: WasmClient.TCG.Money(amount: "471.47", currency: "USD"),
+                    gain: WasmClient.TCG.Money(amount: "371.47", currency: "USD"),
+                    roiPercentage: "371.475"
+                ),
+                rows: [
+                    WasmClient.TCG.ProfitLossRow(
+                        game: .pokemon,
+                        categoryID: "pokemon",
+                        categoryName: "Pokémon",
+                        costBasis: WasmClient.TCG.Money(amount: "100.00", currency: "USD"),
+                        marketValue: WasmClient.TCG.Money(amount: "471.47", currency: "USD"),
+                        gain: WasmClient.TCG.Money(amount: "371.47", currency: "USD"),
+                        roiPercentage: "371.475"
+                    )
+                ]
+            )
         }
     )
 }

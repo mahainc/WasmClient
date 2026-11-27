@@ -41,6 +41,12 @@ public struct WasmClient: Sendable {
             _ imageData: Data, _ category: String, _ language: String
         ) async throws -> WasmClient.Vision.ScanResult
 
+    /// Multi-photo scan: the first image is the subject, the rest extra views of it.
+    public var scanViews:
+        @Sendable (
+            _ images: [Data], _ category: String, _ language: String
+        ) async throws -> WasmClient.Vision.ScanResult
+
     public var describe:
         @Sendable (
             _ imageURL: String, _ category: String, _ language: String, _ provider: String
@@ -59,6 +65,50 @@ public struct WasmClient: Sendable {
     // MARK: - Smart Car
 
     public var lookupVin: @Sendable (_ vin: String) async throws -> WasmClient.Smartcar.Vehicle
+
+    public var smartcarConnectConfig:
+        @Sendable (
+            _ mode: WasmClient.Smartcar.Connection.Mode
+        ) async throws -> WasmClient.Smartcar.Connection.Config
+
+    public var smartcarHostedConnectEvent:
+        @Sendable (
+            _ url: String, _ bodyText: String, _ vehicleID: String, _ contour: String
+        ) async throws -> WasmClient.Smartcar.Connection.Decision
+
+    public var smartcarAccounts: @Sendable () async throws -> [WasmClient.Smartcar.Account]
+
+    public var smartcarSwitchAccount:
+        @Sendable (
+            _ userID: String
+        ) async throws -> [WasmClient.Smartcar.Account]
+
+    public var smartcarDeleteAccount:
+        @Sendable (
+            _ userID: String
+        ) async throws -> [WasmClient.Smartcar.Account]
+
+    public var smartcarCatalog: @Sendable () async throws -> WasmClient.Smartcar.Catalog
+
+    public var smartcarAllVehicles:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> [WasmClient.Smartcar.Vehicle]
+
+    public var smartcarGetPermissions:
+        @Sendable (
+            _ vehicleID: String, _ make: String
+        ) async throws -> [WasmClient.Smartcar.Permission]
+
+    public var smartcarRead:
+        @Sendable (
+            _ method: WasmClient.Smartcar.Method, _ vehicleID: String, _ make: String
+        ) async throws -> [String: WasmClient.Smartcar.Value]
+
+    public var smartcarControl:
+        @Sendable (
+            _ method: WasmClient.Smartcar.Method, _ vehicleID: String, _ args: [String: WasmClient.Smartcar.Value]
+        ) async throws -> WasmClient.Smartcar.ControlResponse
 
     // MARK: - Blobstore
 
@@ -102,6 +152,20 @@ public struct WasmClient: Sendable {
             _ config: WasmClient.Chat.Config,
             _ messages: [WasmClient.Chat.Message]
         ) async throws -> WasmClient.Chat.Message
+
+    /// Run the agentic tool-calling loop: send the conversation, and while the
+    /// model keeps emitting `toolCalls`, run each tool's handler, feed the
+    /// result back as a `role: .tool` message, and re-invoke the model — up to
+    /// `maxRounds` times. Additive over `completion`; existing chat entry points
+    /// are untouched.
+    public var chatRun:
+        @Sendable (
+            _ config: WasmClient.Chat.Config,
+            _ messages: [WasmClient.Chat.Message],
+            _ tools: [WasmClient.Chat.ExecutableTool],
+            _ maxRounds: Int,
+            _ onEvent: (@Sendable (WasmClient.Chat.ChatRunEvent) async -> Void)?
+        ) async throws -> WasmClient.Chat.ChatRunResult
 
     public var listProviders: @Sendable () async throws -> [WasmClient.Chat.ProviderInfo]
 
@@ -166,6 +230,114 @@ public struct WasmClient: Sendable {
         @Sendable (
             _ query: String
         ) async throws -> [String]
+
+    // MARK: - News
+
+    public var newsList:
+        @Sendable (
+            _ request: WasmClient.News.Request
+        ) async throws -> WasmClient.News.Feed
+
+    // MARK: - Calories
+
+    public var caloriesAnalyze:
+        @Sendable (
+            _ providerID: String?, _ text: String?, _ image: String?
+        ) async throws -> WasmClient.Calories.FoodResult
+
+    public var caloriesSearch:
+        @Sendable (
+            _ providerID: String?, _ query: String
+        ) async throws -> WasmClient.Calories.SearchResult
+
+    public var caloriesHealthScore:
+        @Sendable (
+            _ providerID: String?,
+            _ name: String,
+            _ calories: Double?,
+            _ protein: Double?,
+            _ carbs: Double?,
+            _ fats: Double?
+        ) async throws -> WasmClient.Calories.HealthScore
+
+    public var caloriesBarcode:
+        @Sendable (
+            _ providerID: String?, _ barcode: String
+        ) async throws -> WasmClient.Calories.FoodResult
+
+    public var caloriesSuggestions:
+        @Sendable (
+            _ providerID: String?
+        ) async throws -> WasmClient.Calories.SearchResult
+
+    public var caloriesIngredient:
+        @Sendable (
+            _ providerID: String?, _ name: String
+        ) async throws -> WasmClient.Calories.FoodResult
+
+    // MARK: - Plant
+
+    public var plantList:
+        @Sendable (
+            _ query: String?,
+            _ listType: WasmClient.Plant.ListType?,
+            _ latitude: Double?,
+            _ longitude: Double?,
+            _ season: WasmClient.Plant.Season?,
+            _ month: Int?,
+            _ limit: Int?,
+            _ offset: Int?
+        ) async throws -> WasmClient.Plant.ListResult
+
+    public var plantSearch:
+        @Sendable (
+            _ searchText: String, _ languageCode: String?, _ countryCode: String?
+        ) async throws -> [WasmClient.Plant.Species]
+
+    public var plantComplete:
+        @Sendable (
+            _ searchText: String, _ languageCode: String?, _ countryCode: String?
+        ) async throws -> [WasmClient.Plant.Species]
+
+    public var plantDetail:
+        @Sendable (
+            _ uid: String, _ languageCode: String?, _ countryCode: String?
+        ) async throws -> WasmClient.Plant.Detail
+
+    public var plantWaterCalc:
+        @Sendable (
+            _ file: String?,
+            _ plantID: String?,
+            _ settings: String?,
+            _ countryCode: String?,
+            _ latitude: Double?,
+            _ longitude: Double?
+        ) async throws -> WasmClient.Plant.WaterCalc
+
+    public var plantRepottingChecker:
+        @Sendable (
+            _ file: String, _ plantID: String?, _ plantName: String?
+        ) async throws -> WasmClient.Plant.RepottingResult
+
+    public var plantLightMeter:
+        @Sendable (
+            _ brightness: Double?, _ file: String?
+        ) async throws -> WasmClient.Plant.LightMeter
+
+    public var plantDiagnose:
+        @Sendable (
+            _ file: String,
+            _ plantID: String?,
+            _ countryCode: String?,
+            _ latitude: Double?,
+            _ longitude: Double?,
+            _ additionalFiles: [String]
+        ) async throws -> WasmClient.Plant.DiagnoseResult
+
+    public var plantWeather:
+        @Sendable (
+            _ latitude: Double, _ longitude: Double, _ countryCode: String?, _ day: String?
+        ) async throws -> WasmClient.Plant.WeatherResult
 
     // MARK: - Suggest
 
@@ -446,4 +618,151 @@ public struct WasmClient: Sendable {
         @Sendable (
             _ entity: String, _ entityID: String, _ laToken: String
         ) async throws -> Void
+
+    public var deleteUser:
+        @Sendable (
+            _ firebaseUID: String
+        ) async throws -> Void
+
+    // MARK: - TCG
+
+    public var tcgScan:
+        @Sendable (
+            _ imageBase64: String, _ game: WasmClient.TCG.Game
+        ) async throws -> WasmClient.TCG.ScanResult
+
+    public var tcgCatalogDetail:
+        @Sendable (
+            _ cardID: String, _ currency: String?
+        ) async throws -> WasmClient.TCG.CatalogDetail
+
+    public var tcgSoldListings:
+        @Sendable (
+            _ cardID: String,
+            _ grade: String?,
+            _ subType: String?,
+            _ offset: Int?,
+            _ limit: Int?
+        ) async throws -> WasmClient.TCG.SoldListings
+
+    public var tcgCatalogBrowse:
+        @Sendable (
+            _ page: Int?,
+            _ limit: Int?,
+            _ game: WasmClient.TCG.Game,
+            _ query: String?,
+            _ sortID: String?,
+            _ sortAscending: Bool?,
+            _ filterIds: [String],
+            _ setID: String?
+        ) async throws -> WasmClient.TCG.CatalogBrowse
+
+    public var tcgTrending:
+        @Sendable (
+            _ game: WasmClient.TCG.Game
+        ) async throws -> WasmClient.TCG.Trending
+
+    public var tcgSearchFilters: @Sendable () async throws -> WasmClient.TCG.SearchFilters
+
+    public var tcgListSets:
+        @Sendable (
+            _ collectionID: String?,
+            _ game: WasmClient.TCG.Game,
+            _ language: String?,
+            _ currency: String?,
+            _ allCollections: Bool?
+        ) async throws -> WasmClient.TCG.ListSets
+
+    public var tcgAccountInfo: @Sendable () async throws -> WasmClient.TCG.AccountInfo
+
+    public var tcgListCollections: @Sendable () async throws -> [WasmClient.TCG.Collection]
+
+    public var tcgCreateCollection:
+        @Sendable (
+            _ name: String, _ isPublic: Bool
+        ) async throws -> [WasmClient.TCG.Collection]
+
+    public var tcgUpdateCollection:
+        @Sendable (
+            _ collectionID: String, _ name: String?, _ isPublic: Bool?
+        ) async throws -> [WasmClient.TCG.Collection]
+
+    public var tcgDeleteCollection:
+        @Sendable (
+            _ collectionID: String
+        ) async throws -> [WasmClient.TCG.Collection]
+
+    public var tcgCollectionSummary: @Sendable () async throws -> WasmClient.TCG.CollectionSummary
+
+    public var tcgCollectionItems:
+        @Sendable (
+            _ collectionID: String, _ currency: String?, _ allCollections: Bool?
+        ) async throws -> WasmClient.TCG.CollectionItems
+
+    public var tcgAddCards:
+        @Sendable (
+            _ collectionID: String, _ items: [WasmClient.TCG.AddCardItem]
+        ) async throws -> WasmClient.TCG.AddCardsResult
+
+    public var tcgHoldingDetail:
+        @Sendable (
+            _ holdingID: String
+        ) async throws -> WasmClient.TCG.HoldingDetail
+
+    public var tcgUpdateHolding:
+        @Sendable (
+            _ holdingID: String,
+            _ paidPrice: String?,
+            _ acquiredAt: String?,
+            _ note: String?,
+            _ quantity: Int?
+        ) async throws -> WasmClient.TCG.UpdateHoldingResult
+
+    public var tcgRemoveHolding:
+        @Sendable (
+            _ holdingID: String,
+            _ cardID: String,
+            _ variant: WasmClient.TCG.Variant,
+            _ quantity: Int
+        ) async throws -> WasmClient.TCG.RemoveHoldingResult
+
+    public var tcgPortfolioPerformance:
+        @Sendable (
+            _ collectionID: String,
+            _ currency: String?,
+            _ allCollections: Bool?,
+            _ window: WasmClient.TCG.AnalyticsWindow
+        ) async throws -> WasmClient.TCG.PortfolioPerformance
+
+    public var tcgValueOverTime:
+        @Sendable (
+            _ collectionID: String,
+            _ window: WasmClient.TCG.AnalyticsWindow,
+            _ currency: String?,
+            _ allCollections: Bool?
+        ) async throws -> WasmClient.TCG.ValueOverTime
+
+    public var tcgTopMovers:
+        @Sendable (
+            _ collectionID: String,
+            _ window: WasmClient.TCG.AnalyticsWindow,
+            _ limit: Int?,
+            _ currency: String?,
+            _ allCollections: Bool?
+        ) async throws -> WasmClient.TCG.TopMovers
+
+    public var tcgPerformanceBreakdown:
+        @Sendable (
+            _ collectionID: String,
+            _ facet: WasmClient.TCG.BreakdownFacet,
+            _ window: WasmClient.TCG.AnalyticsWindow,
+            _ currency: String?,
+            _ allCollections: Bool?
+        ) async throws -> WasmClient.TCG.PerformanceBreakdown
+
+    public var tcgProfitLoss:
+        @Sendable (
+            _ collectionID: String,
+            _ currency: String?
+        ) async throws -> WasmClient.TCG.ProfitLoss
 }

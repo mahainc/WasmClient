@@ -77,17 +77,26 @@ extension WasmClient.Chat {
         public let text: String
         public let imageURL: String
         public let imageDetail: String
+        /// Base64-encoded audio payload for an `input_audio` part (NOT a data
+        /// URI — just the raw base64), paired with `audioFormat` (e.g. "wav",
+        /// "mp3"). Empty for text/image parts.
+        public let audioData: String
+        public let audioFormat: String
 
         public init(
             type: String = "text",
             text: String = "",
             imageURL: String = "",
-            imageDetail: String = ""
+            imageDetail: String = "",
+            audioData: String = "",
+            audioFormat: String = ""
         ) {
             self.type = type
             self.text = text
             self.imageURL = imageURL
             self.imageDetail = imageDetail
+            self.audioData = audioData
+            self.audioFormat = audioFormat
         }
     }
 
@@ -151,6 +160,73 @@ extension WasmClient.Chat {
             self.title = title
             self.startIndex = startIndex
             self.endIndex = endIndex
+        }
+    }
+}
+
+// MARK: - Tool Execution (agentic loop)
+
+extension WasmClient.Chat {
+    /// A `Tool` definition paired with the handler that runs it.
+    ///
+    /// `Tool` is only the *definition* sent up to the model; `ExecutableTool`
+    /// adds the *behavior* the host runs when the model emits a matching
+    /// `ToolCall`. It is intentionally NOT stored on `Config` (which must stay
+    /// `Equatable`) — pass it as a `chatRun` argument instead.
+    public struct ExecutableTool: Sendable {
+        public let tool: Tool
+        public let handler: @Sendable (ToolCall) async throws -> String
+
+        public init(
+            tool: Tool,
+            handler: @escaping @Sendable (ToolCall) async throws -> String
+        ) {
+            self.tool = tool
+            self.handler = handler
+        }
+
+        /// Convenience: build the `Tool` definition inline.
+        public init(
+            functionName: String,
+            functionDescription: String = "",
+            parametersJSON: String = "{}",
+            strict: Bool = false,
+            handler: @escaping @Sendable (ToolCall) async throws -> String
+        ) {
+            self.tool = Tool(
+                functionName: functionName,
+                functionDescription: functionDescription,
+                parametersJSON: parametersJSON,
+                strict: strict
+            )
+            self.handler = handler
+        }
+    }
+
+    /// Progress events emitted by `chatRun` as the agentic loop advances, so a
+    /// caller can stream intermediate state to the UI. The terminal answer is
+    /// still the `ChatRunResult` return value; these are the steps in between.
+    public enum ChatRunEvent: Sendable {
+        case round(Int)
+        case assistantMessage(Message)
+        case toolCallStarted(ToolCall)
+        case toolResult(callID: String, content: String)
+        case finished(Message)
+    }
+
+    /// The outcome of a `chatRun`: the final assistant answer plus the full
+    /// transcript (every message appended during the loop, including the
+    /// `role: .tool` results) so callers can persist the conversation.
+    public struct ChatRunResult: Sendable, Equatable {
+        public let message: Message
+        public let transcript: [Message]
+
+        public init(
+            message: Message,
+            transcript: [Message] = []
+        ) {
+            self.message = message
+            self.transcript = transcript
         }
     }
 }
@@ -268,6 +344,15 @@ extension WasmClient.Chat {
         public let systemPrompt: String
         public let tools: [Tool]
         public let providerID: String
+        /// When true, `buildChatBody` attaches `web_search_options` so the
+        /// backend model grounds its answer with web results (returned as
+        /// `Message.annotations`). Default off — existing callers are unchanged.
+        public let webSearch: Bool
+
+        /// Output modalities forwarded as `modalities` (e.g. `["text"]`). Audio
+        /// models (`gpt-4o-audio-preview`) reject `input_audio` requests unless
+        /// this is set; empty omits the field, leaving text-only models unchanged.
+        public let modalities: [String]
 
         public init(
             model: String = "gpt-4o-mini",
@@ -275,7 +360,9 @@ extension WasmClient.Chat {
             apiKey: String = "",
             systemPrompt: String = "",
             tools: [Tool] = [],
-            providerID: String = ""
+            providerID: String = "",
+            webSearch: Bool = false,
+            modalities: [String] = []
         ) {
             self.model = model
             self.endpoint = endpoint
@@ -283,6 +370,8 @@ extension WasmClient.Chat {
             self.systemPrompt = systemPrompt
             self.tools = tools
             self.providerID = providerID
+            self.webSearch = webSearch
+            self.modalities = modalities
         }
     }
 }

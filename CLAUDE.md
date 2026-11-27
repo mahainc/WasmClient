@@ -63,6 +63,17 @@ that workaround.
 - AIArt is the only session that catalogue-ranks providers + fails over (to dodge an
   unprovisioned `runware`); read `docs/aiart-provider-failover.md` **only** when touching
   `Sessions/AIArt.swift` provider resolution or debugging a `missing runware data entry`.
+- `teamID`/`teamName`/`teamLogoURL` is declared six times over in
+  `Models/LiveScore.swift`; `docs/team-identity-duplication.md` has the six sites, why the
+  sixth was added rather than the triple collapsed, and what a `TeamRef` would cost (93 call
+  sites). Read it **only** before adding a seventh copy or starting that refactor — a
+  `clean-code` G5 on one of those structs is already answered there.
+- Livescore args are assembled through `Dictionary.set(_:ifPresent:)` / `set(_:ifGiven:)` in
+  `Sessions/LivescoreArgs.swift` — never `args["key"] = Google_Protobuf_Value(...)` by hand.
+  `ifPresent` drops an empty string, `ifGiven` keeps it, and that difference is what goes on the
+  wire. `docs/optional-arg-assembly-duplication.md` has the per-key table, why two names beat one
+  boolean flag, and the `G25` on the bare wire keys that is still open. Read it **only** when
+  adding a key or an endpoint.
 
 ## Code Quality (clean-code)
 
@@ -95,3 +106,24 @@ must defer to the gates that own the rest:
 5. Wire in `Live.swift`
 6. Run `clean-code --apply` on the new session, then `clean-code --review` the diff,
    before build-verifying via `bazel-builder`.
+
+## Releasing
+
+WasmClient uses independent SemVer — do NOT derive the version from the FlowKit
+engine. New additive domains/closures are a minor bump; breaking public-surface
+changes are a major bump (ask before choosing major). Release work runs on `dev`
+with the `haikt-vtn` GitHub account.
+
+Every release follows this sequence, and **every release/tag is merged into `main`
+so the two branches stay in sync**:
+
+1. Commit the work on `dev` and push `dev`.
+2. Create an annotated tag `X.Y.Z` at the release commit and push the tag.
+3. Create the GitHub Release (`gh release create X.Y.Z --target dev …`); it is not
+   done until `gh release view X.Y.Z` succeeds.
+4. **Merge `dev` → `main` and push `main`.** Prefer a fast-forward
+   (`git checkout main && git merge --ff-only dev && git push origin main`); only
+   use a merge commit if the branches have diverged. Then switch back to `dev`.
+
+The tag must end up reachable from BOTH `dev` and `main` (the 4.1.0 release is the
+reference for this flow).

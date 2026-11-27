@@ -20,7 +20,7 @@ let package = Package(
         // Exact pin keeps sibling FlowKit consumers on one shared engine build.
         .package(
             url: "https://github.com/mahainc/flow-kit.git",
-            exact: "1.2.65-26.1.1-ffi"
+            exact: "1.2.67-27.2-ffi"
         ),
         // FlowKit-linking targets must provide SwiftProtobuf explicitly.
         .package(

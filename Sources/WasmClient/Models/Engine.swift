@@ -1,7 +1,7 @@
 import Foundation
 
 extension WasmClient {
-    public static let bundledFlowKitVersion: String = "1.2.65-26.1.1-ffi"
+    public static let bundledFlowKitVersion: String = "1.2.67-27.2-ffi"
 
     public struct EngineHandle: @unchecked Sendable {
         public let rawValue: Any

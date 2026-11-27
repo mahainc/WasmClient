@@ -19,6 +19,9 @@ extension WasmClient.Vision {
         public var physical: PhysicalFeatures?
         public var price: PriceInfo?
         public var aiCommentary: AICommentary?
+        public var categoryInfo: CategoryInfo?
+        public var facts: [String: String]
+        public var alternatives: [ScanResult]
         public var discoverMore: [ShoppingProduct]
         public var buyNow: [Link]
         public var sources: [Link]
@@ -36,6 +39,9 @@ extension WasmClient.Vision {
             physical: PhysicalFeatures? = nil,
             price: PriceInfo? = nil,
             aiCommentary: AICommentary? = nil,
+            categoryInfo: CategoryInfo? = nil,
+            facts: [String: String] = [:],
+            alternatives: [ScanResult] = [],
             discoverMore: [ShoppingProduct] = [],
             buyNow: [Link] = [],
             sources: [Link] = [],
@@ -52,6 +58,9 @@ extension WasmClient.Vision {
             self.physical = physical
             self.price = price
             self.aiCommentary = aiCommentary
+            self.categoryInfo = categoryInfo
+            self.facts = facts
+            self.alternatives = alternatives
             self.discoverMore = discoverMore
             self.buyNow = buyNow
             self.sources = sources
@@ -90,6 +99,19 @@ extension WasmClient.Vision {
     public struct PhysicalFeatures: Sendable, Equatable {
         public var fields: [String: String]
         public init(fields: [String: String] = [:]) { self.fields = fields }
+    }
+
+    /// Route-specific details (rock, coin, …) whose `type` names the info block.
+    public struct CategoryInfo: Sendable, Equatable {
+        public var type: String
+        public var fields: [String: String]
+        public init(
+            type: String = "",
+            fields: [String: String] = [:]
+        ) {
+            self.type = type
+            self.fields = fields
+        }
     }
 
     public struct PriceInfo: Sendable, Equatable {
